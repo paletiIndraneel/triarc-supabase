@@ -1,0 +1,33 @@
+.heading-xl{
+
+font-family:"Space Grotesk",sans-serif;
+
+font-size:clamp(3rem,7vw,6rem);
+
+font-weight:800;
+
+line-height:.95;
+
+letter-spacing:-.03em;
+
+}
+
+.heading-lg{
+
+font-family:"Space Grotesk",sans-serif;
+
+font-size:clamp(2rem,4vw,4rem);
+
+font-weight:700;
+
+}
+
+.body-lg{
+
+font-size:1.125rem;
+
+line-height:1.8;
+
+color:var(--muted);
+
+}

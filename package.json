@@ -1,0 +1,43 @@
+{
+  "name": "triarc-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.6",
+    "@fontsource/orbitron": "^5.2.6",
+    "@fontsource/space-grotesk": "^5.2.6",
+    "@react-google-maps/api": "^2.20.7",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^1.28.0",
+    "next": "^15.5.2",
+    "nodemailer": "^9.0.5",
+    "react": "^19.1.1",
+    "react-countup": "^6.5.3",
+    "react-dom": "^19.1.1",
+    "react-icons": "^5.5.0",
+    "swiper": "^11.2.10",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^15.5.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true,
+    "unrs-resolver@1.12.2": true
+  }
+}

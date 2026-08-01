@@ -1,0 +1,17 @@
+:root{
+
+--bg-primary:#03120D;
+--bg-secondary:#071C13;
+--surface:rgba(255,255,255,.05);
+--glass:rgba(255,255,255,.08);
+
+--primary:#00D26A;
+--secondary:#4ADE80;
+--accent:#A3E635;
+
+--text:#FFFFFF;
+--muted:#D2DAD4;
+
+--border:rgba(255,255,255,.10);
+
+}

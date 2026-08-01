@@ -1,0 +1,22 @@
+.text-clamp-1,
+.text-clamp-2,
+.text-clamp-3 {
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+}
+
+.text-clamp-1 {
+	-webkit-line-clamp: 1;
+	line-clamp: 1;
+}
+
+.text-clamp-2 {
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+}
+
+.text-clamp-3 {
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+}

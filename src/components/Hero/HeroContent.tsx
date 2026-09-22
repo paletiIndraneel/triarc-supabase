@@ -3,16 +3,6 @@ import { Sparkles } from "lucide-react";
 export default function HeroContent() {
   return (
     <div className="motion-reveal mx-auto flex w-full max-w-[38rem] flex-col items-center text-center lg:mx-0 lg:items-start lg:text-left">
-      <div className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 shadow-[0_10px_28px_rgba(0,0,0,0.2)] backdrop-blur-sm">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-300/30 bg-emerald-300/10 text-sm font-bold text-emerald-100">
-          T
-        </div>
-        <div className="text-left">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">Logo / Title Placeholder</p>
-          <p className="text-sm font-semibold text-white/90">TriArc EV Hub</p>
-        </div>
-      </div>
-
       <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300/60 bg-[linear-gradient(120deg,rgba(16,185,129,0.24),rgba(110,231,183,0.2))] px-4 py-2 text-sm font-semibold tracking-[0.01em] text-emerald-50 shadow-[0_10px_34px_rgba(16,185,129,0.22)] backdrop-blur-md">
         <span className="rounded-full bg-emerald-300/20 p-1 text-emerald-100">
           <Sparkles size={13} />

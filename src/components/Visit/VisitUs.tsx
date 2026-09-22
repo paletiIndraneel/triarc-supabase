@@ -41,7 +41,7 @@ const socialLinks = [
 
 export default function VisitUs() {
   return (
-    <section id="contact" className="relative mt-8 overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_28%),#03110d] pb-16 pt-16 sm:mt-10 sm:pb-20 sm:pt-20 lg:mt-12 lg:pb-24 lg:pt-24 xl:pb-28 xl:pt-28">
+    <section id="contact" className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_28%),#03110d] pb-16 pt-12 sm:pb-20 sm:pt-16 lg:pb-20 lg:pt-16 xl:pb-24 xl:pt-16">
       <Container>
         <div className="grid gap-6 lg:mt-1 lg:grid-cols-[1fr_1fr] lg:items-stretch lg:gap-7 xl:gap-9">
           <GlassCard className="motion-reveal h-full border-white/10 bg-emerald-950/40 p-5 shadow-[0_20px_70px_rgba(0,0,0,0.22)] sm:p-7 lg:mr-2 lg:p-7">

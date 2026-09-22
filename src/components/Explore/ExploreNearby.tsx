@@ -14,7 +14,7 @@ export default function ExploreNearby() {
   const others = places.filter((p) => !p.featured);
 
   return (
-    <section id="explore" className="relative mt-14 overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.11),_transparent_30%),#061912] pb-24 pt-20 sm:mt-16 sm:pb-28 sm:pt-24 lg:mt-20 lg:pb-32 lg:pt-28 xl:pb-36 xl:pt-32">
+    <section id="explore" className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.11),_transparent_30%),#061912] pb-16 pt-16 sm:pb-20 sm:pt-20 lg:pb-20 lg:pt-20 xl:pb-24 xl:pt-20">
       <Container>
         <div className="grid gap-7 lg:grid-cols-[1.02fr_0.98fr] lg:items-stretch lg:gap-10 xl:gap-12">
           {featured && (

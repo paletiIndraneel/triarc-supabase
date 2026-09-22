@@ -9,7 +9,7 @@ export default function ChargingSolutions() {
   const others = chargingSolutions.filter((item) => !item.title.toLowerCase().includes("dc"));
 
   return (
-    <section id="charging" className="relative mt-4 overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(52,211,153,0.13),_transparent_35%),#04140F] pb-16 pt-24 sm:mt-6 sm:pb-20 sm:pt-28 lg:mt-8 lg:pb-24 lg:pt-32 xl:pb-28">
+    <section id="charging" className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(52,211,153,0.13),_transparent_35%),#04140F] pb-12 pt-16 sm:pb-16 sm:pt-20 lg:pb-16 lg:pt-20 xl:pb-16">
       <Container>
         <div className="rounded-[30px] border border-white/10 bg-white/[0.02] p-3 sm:p-4 lg:p-5">
           <div className="grid gap-6 lg:grid-cols-[0.44fr_0.56fr] lg:items-start lg:gap-8">

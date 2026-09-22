@@ -1,8 +1,6 @@
 /node_modules
 /.next
+/out
 package-lock.json
-/node_modules
-/node_modules
-/.next
-/.next
-/.next
+.dev.vars
+.wrangler

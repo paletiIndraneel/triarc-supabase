@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { Menu, Sparkles } from "lucide-react";
+import { Menu, X, Zap } from "lucide-react";
 import Container from "@/components/Container";
 import { navigation } from "@/data/navigation";
 
@@ -35,9 +34,11 @@ export default function Navbar() {
         >
           <Link href="#hero" className="flex items-center gap-3 rounded-full transition hover:opacity-90" aria-label="TriArc home">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
-              <Sparkles size={18} />
+              <Zap size={18} />
             </div>
-
+            <span className="font-[Space_Grotesk,sans-serif] text-lg font-bold tracking-tight text-white">
+              TriArc
+            </span>
           </Link>
 
           <div className="hidden items-center gap-8 lg:flex">
@@ -58,8 +59,9 @@ export default function Navbar() {
             className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:border-emerald-300/40 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 lg:hidden"
             onClick={() => setMobileOpen((value) => !value)}
             aria-label="Toggle navigation"
+            aria-expanded={mobileOpen}
           >
-            <Menu size={18} />
+            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </nav>
 

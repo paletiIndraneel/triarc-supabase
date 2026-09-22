@@ -13,7 +13,7 @@ export default function Hero() {
         <div
           className="mx-auto grid w-full max-w-[1440px] items-center gap-[clamp(24px,3vw,48px)] lg:grid-cols-[0.8fr_1.2fr]"
           style={{
-            paddingTop: "clamp(56px, 6vw, 96px)",
+            paddingTop: "clamp(104px, 9vw, 152px)",
             paddingBottom: "clamp(32px, 5vw, 72px)",
           }}
         >

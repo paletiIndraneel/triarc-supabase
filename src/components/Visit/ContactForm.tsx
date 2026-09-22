@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Phone, MessageCircle } from "lucide-react";
 
 interface FormState {
   name: string;
@@ -141,6 +142,28 @@ export default function ContactForm() {
         )}
         {status === "loading" ? "Sending…" : "Send Message"}
       </button>
+
+      <div className="mt-2 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-6 text-white/50">
+          Prefer talking directly? We usually respond within a few hours.
+        </p>
+        <div className="flex gap-2">
+          <a
+            href="tel:+919981234567"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold text-white/80 transition hover:border-emerald-400/40 hover:bg-white/10 hover:text-emerald-200"
+          >
+            <Phone size={14} /> Call
+          </a>
+          <a
+            href="https://wa.me/919981234567"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+          >
+            <MessageCircle size={14} /> WhatsApp
+          </a>
+        </div>
+      </div>
     </form>
   );
 }

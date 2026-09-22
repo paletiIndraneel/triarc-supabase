@@ -12,16 +12,16 @@ export default function Home() {
       <main>
         <Hero />
         <ExperienceTriArc />
-        <div className="relative h-16">
-          <SectionCurveDivider variant="soft" tone="emerald" heightClass="h-16" className="opacity-70" />
+        <div className="relative h-10">
+          <SectionCurveDivider variant="soft" tone="emerald" heightClass="h-10" className="opacity-70" />
         </div>
         <ChargingSolutions />
-        <div className="relative h-16">
-          <SectionCurveDivider variant="soft" tone="emerald" heightClass="h-16" />
+        <div className="relative h-10">
+          <SectionCurveDivider variant="soft" tone="emerald" heightClass="h-10" />
         </div>
         <ExploreNearby />
-        <div className="relative h-10">
-          <SectionCurveDivider variant="soft" tone="teal" heightClass="h-10" className="opacity-55" />
+        <div className="relative h-8">
+          <SectionCurveDivider variant="soft" tone="teal" heightClass="h-8" className="opacity-55" />
         </div>
         <VisitUs />
       </main>

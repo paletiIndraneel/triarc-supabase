@@ -5,29 +5,22 @@ import GlassCard from "@/components/ui/GlassCard";
 
 const highlights = [
   {
-    title: "EV Charging Infrastructure",
+    title: "EV Charger Installation",
     description:
-      "TRIARC EV Hub provides EV charger installation and EV charging infrastructure for businesses and property owners across the region.",
+      "TRIARC provides EV charger installation and EV charging infrastructure for businesses and property owners across the region.",
     href: "/solutions/charger-installation",
     cta: "Charger installation",
   },
   {
-    title: "Commercial EV Charging",
-    description:
-      "Dependable commercial EV charging for businesses operating electric vehicles in and around Bhadrachalam.",
-    href: "/solutions/commercial-charging",
-    cta: "Commercial charging",
-  },
-  {
     title: "Fleet EV Charging",
     description:
-      "Fleet EV charging support for organisations managing multiple electric vehicles across Telangana.",
+      "Dedicated fleet EV charging support for organisations managing multiple electric vehicles across Telangana.",
     href: "/solutions/fleet-charging",
     cta: "Fleet charging",
   },
 ];
 
-/** Homepage section covering charging infrastructure, commercial/fleet solutions, and the Bhadrachalam location — with links into the dedicated pages. */
+/** Homepage section covering charger installation, fleet programs, and the Bhadrachalam location — distinct from the charging-type cards above, with links into the dedicated pages. */
 export default function StationHighlights() {
   return (
     <section className="relative overflow-hidden bg-[#04140f] pb-16 pt-14 sm:pb-20 sm:pt-16">
@@ -40,11 +33,12 @@ export default function StationHighlights() {
             Charging Infrastructure Built for Bhadrachalam, Telangana
           </h2>
           <p className="mt-5 text-base leading-8 text-white/80 sm:text-lg">
-            Beyond our EV charging station, TRIARC EV Hub supports the wider EV charging infrastructure needs of Bhadrachalam and Telangana &mdash; from charger installation to commercial and fleet EV charging.
+            Beyond charging your vehicle on-site, TRIARC EV Hub helps bring EV charging infrastructure to businesses and supports fleet operators across the region.
           </p>
         </div>
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-3">
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:mx-auto sm:max-w-3xl">
+
           {highlights.map((item) => (
             <GlassCard key={item.href} className="flex h-full flex-col p-6">
               <h3 className="text-lg font-bold text-white">{item.title}</h3>

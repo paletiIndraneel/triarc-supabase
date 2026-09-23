@@ -2,12 +2,10 @@
 
 TriArc-Web — Supabase Authentication Implementation Requirements
 ================================================================
-.
 Repository
 ----------
 Repository: sakethram9/triarc-web
 Branch: development
-
 Purpose
 -------
 Migrate the existing TriArc-Web admin authentication from the current custom

@@ -7,6 +7,7 @@
   "build": "next build",
   "start": "next start",
   "lint": "next lint",
+  "opennext-build": "opennextjs-cloudflare build",
   "preview": "opennextjs-cloudflare preview",
   "deploy": "opennextjs-cloudflare deploy"
 },
@@ -27,15 +28,16 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "^15.5.2",
-    "tailwindcss": "^4",
-    "typescript": "^5",
-    "wrangler": "^4.132.0"
+  "@opennextjs/cloudflare": "^1.20.6",
+  "@tailwindcss/postcss": "^4",
+  "@types/node": "^20",
+  "@types/react": "^19",
+  "@types/react-dom": "^19",
+  "eslint": "^9",
+  "eslint-config-next": "^15.5.2",
+  "tailwindcss": "^4",
+  "typescript": "^5",
+  "wrangler": "^4.132.0"
   },
   "allowScripts": {
     "sharp@0.34.5": true,

@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "pages:dev": "next build && wrangler pages dev out --compatibility-date=2024-09-23"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "preview": "opennextjs-cloudflare preview",
+  "deploy": "opennextjs-cloudflare deploy"
+},
   "dependencies": {
     "@fontsource/inter": "^5.2.6",
     "@fontsource/orbitron": "^5.2.6",
@@ -41,14 +42,5 @@
     "unrs-resolver@1.12.2": true,
     "esbuild@0.28.1": true,
     "workerd@1.20260915.1": true
-  },
-
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "preview": "opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare deploy"
   }
 }

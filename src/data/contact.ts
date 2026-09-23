@@ -3,7 +3,7 @@ export const contact = {
         "TriArc EV Hub, Bhadrachalam, Telangana",
 
     phone:
-        "+91 99812 34567",
+        "+91 79933 56677",
 
     email:
         "info@triarcevhub.com",

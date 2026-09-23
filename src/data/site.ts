@@ -12,7 +12,7 @@ export const site = {
     state: "Telangana",
     address: "TriArc EV Hub, Bhadrachalam",
     hours: "Open 24 × 7",
-    phone: "+91 99812 34567",
+    phone: "+91 79933 56677",
     email: "info@triarc.in",
   },
 

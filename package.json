@@ -41,5 +41,14 @@
     "unrs-resolver@1.12.2": true,
     "esbuild@0.28.1": true,
     "workerd@1.20260915.1": true
+  },
+
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "preview": "opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare deploy"
   }
 }

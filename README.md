@@ -1,2 +1,2 @@
 ﻿# triarc-web
-.
+

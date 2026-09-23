@@ -1,4 +1,6 @@
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { chargingSolutions } from "@/data/charging";
 
@@ -32,6 +34,14 @@ export default function ChargerCard({ charger, featured = false }: Props) {
           <p className={`mt-2 max-w-[58ch] text-white/80 ${featured ? "text-clamp-2 text-sm leading-6 sm:text-[0.95rem]" : "text-clamp-2 text-sm leading-6"}`}>
             {charger.description}
           </p>
+          {charger.href && (
+            <Link
+              href={charger.href}
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-300 transition hover:text-emerald-200"
+            >
+              Learn more <ArrowRight size={14} />
+            </Link>
+          )}
         </div>
       </div>
     </GlassCard>

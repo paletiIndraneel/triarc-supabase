@@ -5,7 +5,7 @@ import ContactForm from "@/components/Visit/ContactForm";
 
 const infoItems = [
   { icon: MapPin, title: "Location", value: ["TriArc EV Hub", "Bhadrachalam, Telangana"] },
-  { icon: Phone, title: "Contact", value: ["+91 99812 34567", "info@triarcevhub.com"] },
+  { icon: Phone, title: "Contact", value: ["+91 79933 56677", "info@triarcevhub.com"] },
   { icon: Clock3, title: "Hours", value: ["Open 24 × 7", "Fast charging available round the clock"] },
 ];
 

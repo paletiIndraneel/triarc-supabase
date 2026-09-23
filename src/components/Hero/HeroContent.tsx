@@ -13,14 +13,14 @@ export default function HeroContent() {
       </div>
 
       <h1 className="mt-8 w-full text-[clamp(2.4rem,4.8vw,5.2rem)] font-black leading-[0.95] tracking-[-0.03em] text-white [text-wrap:balance]">
-       Elevate your drive.
+        EV Charging Station in
         <span className="mt-2 block bg-gradient-to-r from-emerald-300 via-emerald-400 to-lime-300 bg-clip-text text-transparent">
-          Simplify your charge.
+          Bhadrachalam, Telangana
         </span>
       </h1>
 
       <p className="mt-6 max-w-[38rem] text-[clamp(1rem,1.2vw,1.2rem)] leading-7 text-white/80 sm:leading-8">
-        Enjoy a seamless, safe, and beautifully designed charging experience from arrival to departure.
+        Elevate your drive and simplify your charge — TRIARC EV Hub delivers reliable EV charging and charging infrastructure for vehicles, businesses and fleets in Bhadrachalam.
       </p> 
     </div>
   );

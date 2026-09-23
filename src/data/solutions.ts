@@ -2,82 +2,162 @@ export interface Solution {
   slug: string;
   navLabel: string;
   metaTitle: string;
+  metaDescription: string;
   title: string;
-  description: string;
   summary: string;
   body: string[];
+  highlights?: string[];
+  cta: {
+    label: string;
+    href: string;
+  };
 }
 
 export const solutions: Solution[] = [
   {
     slug: "ev-charging",
     navLabel: "EV Charging",
-    metaTitle: "EV Charging Solutions | TRIARC EV Hub",
-    title: "EV Charging Solutions",
-    description:
-      "TRIARC EV Hub provides EV charging solutions in Bhadrachalam, Telangana, with dependable AC and DC charging for daily driving, longer trips and everything in between.",
-    summary: "Reliable AC and DC EV charging for everyday driving and longer journeys.",
+    metaTitle: "EV Charging in Bhadrachalam | TRIARC EV Hub",
+    metaDescription:
+      "Find EV charging at TRIARC EV Hub in Bhadrachalam, Telangana. Learn about the station and plan your visit.",
+    title: "EV Charging in Bhadrachalam",
+    summary:
+      "Convenient EV charging for drivers visiting TRIARC EV Hub in Bhadrachalam.",
     body: [
-      "TRIARC EV Hub offers EV charging built around convenience, safety and reliability. Whether you're stopping for a quick top-up or parking for a longer duration, our charging station in Bhadrachalam is designed to keep your electric vehicle ready for the road ahead.",
-      "Our EV charging infrastructure supports multiple vehicle types, including electric cars and three-wheelers, with well-lit charging bays and a comfortable space to wait while your vehicle charges.",
-      "As part of the wider TRIARC EV Hub charging infrastructure in Telangana, our EV charging solutions are built to grow with the needs of everyday drivers as well as businesses and fleets operating in and around Bhadrachalam.",
+      "TRIARC EV Hub provides EV charging for drivers visiting Bhadrachalam, Telangana. Whether you're stopping for a quick top-up or parking for a longer duration, the station is a convenient place to charge while you continue your journey.",
+      "EV charging at TRIARC EV Hub supports multiple vehicle types, including electric cars and three-wheelers, with a comfortable space to wait while your vehicle charges.",
+      "TRIARC EV Hub also works with businesses and fleet operators who are planning EV charging infrastructure of their own, drawing on its experience running a working EV charging station in Bhadrachalam.",
     ],
+    cta: {
+      label: "Find TRIARC EV Hub",
+      href: "/ev-station/triarc-ev-hub-bhadrachalam",
+    },
   },
+
   {
     slug: "dc-fast-charging",
     navLabel: "DC Fast Charging",
-    metaTitle: "DC Fast Charging Solutions | TRIARC EV Hub",
-    title: "DC Fast Charging Solutions",
-    description:
-      "DC fast charging from TRIARC EV Hub in Bhadrachalam, Telangana helps drivers recharge quickly and continue their journey with minimal waiting time.",
-    summary: "High-speed DC fast charging to minimise waiting time on the road.",
+    metaTitle: "DC Fast Charging in Bhadrachalam | TRIARC EV Hub",
+    metaDescription:
+      "Explore DC fast charging information at TRIARC EV Hub in Bhadrachalam, Telangana.",
+    title: "DC Fast Charging in Bhadrachalam",
+    summary:
+      "DC fast charging to help minimise waiting time on the road.",
     body: [
-      "For drivers who need to get back on the road quickly, TRIARC EV Hub provides DC fast charging in Bhadrachalam. DC fast charging is ideal for highway travellers and anyone looking to top up their electric vehicle in a shorter amount of time compared to standard AC charging.",
-      "Our DC fast charging station is part of TRIARC EV Hub's broader EV charging infrastructure in Telangana, supporting the growing number of electric vehicles on regional routes through Bhadrachalam.",
-      "TODO: Publish verified charger power ratings, connector types and charging speed once confirmed for the Bhadrachalam station.",
+      "TRIARC EV Hub offers DC fast charging in Bhadrachalam for drivers who want to get back on the road with less waiting time than standard AC charging.",
+      "DC fast charging at TRIARC EV Hub is part of the station's broader role in supporting EV charging infrastructure in Bhadrachalam and the wider Telangana region.",
+      "Specific charger power ratings and connector types should be confirmed before being published as station specifications.",
     ],
+    cta: {
+      label: "Find TRIARC EV Hub",
+      href: "/ev-station/triarc-ev-hub-bhadrachalam",
+    },
   },
+
   {
     slug: "charger-installation",
     navLabel: "Charger Installation",
-    metaTitle: "EV Charger Installation & Infrastructure | TRIARC EV Hub",
-    title: "EV Charger Installation & Charging Infrastructure",
-    description:
-      "TRIARC provides EV charger installation and EV charging infrastructure solutions, helping businesses and property owners bring reliable charging online.",
-    summary: "EV charger installation and infrastructure planning for businesses and properties.",
+    metaTitle: "EV Charger Installation in Telangana | TRIARC EV Hub",
+    metaDescription:
+      "TRIARC EV Hub provides EV charger installation and charging infrastructure solutions for suitable residential, commercial and business requirements.",
+    title: "EV Charger Installation",
+    summary:
+      "Plan and install EV charging infrastructure for suitable residential, commercial and other locations.",
     body: [
-      "Beyond operating our own EV charging station in Bhadrachalam, TRIARC provides EV charger installation and EV charging infrastructure solutions for businesses and property owners who want to offer charging on-site.",
-      "Our approach to charging infrastructure installation focuses on reliability and long-term serviceability, drawing on our experience running an operating EV charging station in Telangana.",
-      "If you are exploring EV charging infrastructure for a business, workplace or commercial property, TRIARC EV Hub can help you understand what is involved in bringing an EV charger installation online.",
+      "Looking to add EV charging at your property or business? TRIARC can help you evaluate charging requirements and plan an appropriate EV charging installation.",
+      "Every property is different, so TRIARC works through the specifics of a site before recommending an approach to EV charger installation.",
     ],
+    highlights: [
+      "Site requirements",
+      "Charging requirements",
+      "Installation planning",
+      "Commercial applications",
+      "Fleet requirements",
+    ],
+    cta: {
+      label: "Discuss Your Installation",
+      href: "/contact",
+    },
   },
+
   {
-    slug: "commercial-charging",
-    navLabel: "Commercial Charging",
+    slug: "commercial-ev-charging",
+    navLabel: "Commercial EV Charging",
     metaTitle: "Commercial EV Charging Solutions | TRIARC EV Hub",
+    metaDescription:
+      "Plan EV charging infrastructure for businesses, workplaces and commercial locations with TRIARC EV Hub.",
     title: "Commercial EV Charging Solutions",
-    description:
-      "TRIARC EV Hub delivers commercial EV charging solutions for businesses operating electric vehicles in and around Bhadrachalam, Telangana.",
-    summary: "Commercial EV charging infrastructure for businesses and commercial vehicles.",
+    summary:
+      "Charging infrastructure solutions for businesses, customer facilities, workplaces and commercial operations.",
     body: [
-      "TRIARC EV Hub supports commercial EV charging for businesses that rely on electric vehicles as part of daily operations, including electric three-wheelers and other commercial vehicle types.",
-      "Our commercial EV charging infrastructure is designed for dependable, repeat use, helping local businesses in Bhadrachalam and the wider Telangana region keep commercial vehicles charged and on schedule.",
-      "TRIARC EV Hub can be a charging point for businesses looking for a dependable commercial EV charging option in the region.",
+      "TRIARC EV Hub supports commercial EV charging for businesses that rely on electric vehicles as part of daily operations, including workplaces, customer facilities and other commercial locations.",
+      "TRIARC works with businesses in and around Bhadrachalam, Telangana to plan EV charging infrastructure suited to commercial use.",
     ],
+    cta: {
+      label: "Talk to TRIARC",
+      href: "/contact",
+    },
   },
+
   {
     slug: "fleet-charging",
     navLabel: "Fleet Charging",
     metaTitle: "Fleet EV Charging Solutions | TRIARC EV Hub",
+    metaDescription:
+      "Explore EV charging infrastructure solutions for commercial and electric vehicle fleets with TRIARC EV Hub.",
     title: "Fleet EV Charging Solutions",
-    description:
-      "TRIARC EV Hub offers fleet EV charging solutions for organisations managing multiple electric vehicles in and around Bhadrachalam, Telangana.",
-    summary: "Fleet EV charging infrastructure for organisations managing multiple vehicles.",
+    summary:
+      "Charging infrastructure planned around the operational needs of electric fleets and commercial vehicles.",
     body: [
-      "Organisations operating a fleet of electric vehicles need charging infrastructure that is reliable and easy to plan around. TRIARC EV Hub provides fleet EV charging support for fleets travelling through or operating in Bhadrachalam.",
-      "Our fleet EV charging infrastructure is built on the same reliable AC and DC charging used at our public EV charging station, giving fleet operators a dependable option in the Telangana region.",
-      "If your organisation is evaluating fleet EV charging in or around Bhadrachalam, TRIARC EV Hub is glad to discuss your requirements.",
+      "Organisations operating a fleet of electric vehicles need charging infrastructure that is reliable and easy to plan around. TRIARC EV Hub works with fleet operators travelling through or operating in and around Bhadrachalam, Telangana.",
+      "Fleet EV charging solutions from TRIARC are planned around the operational needs of the vehicles involved, rather than a one-size-fits-all approach.",
     ],
+    cta: {
+      label: "Discuss Fleet Charging",
+      href: "/contact",
+    },
+  },
+];
+
+export interface HubService {
+  title: string;
+  description: string;
+  cta: string;
+  href: string;
+}
+
+// Services displayed on the /charging-solutions hub page.
+export const hubServices: HubService[] = [
+  {
+    title: "EV Charging",
+    description:
+      "Convenient EV charging for drivers visiting TRIARC EV Hub in Bhadrachalam.",
+    cta: "Visit TRIARC EV Hub",
+    href: "/ev-station/triarc-ev-hub-bhadrachalam",
+  },
+
+  {
+    title: "EV Charger Installation",
+    description:
+      "Plan and install EV charging infrastructure for suitable residential, commercial and other locations.",
+    cta: "Enquire About Installation",
+    href: "/charging-solutions/charger-installation",
+  },
+
+  {
+    title: "Commercial EV Charging",
+    description:
+      "Charging infrastructure solutions for businesses, customer facilities, workplaces and commercial operations.",
+    cta: "Discuss Your Requirement",
+    href: "/charging-solutions/commercial-ev-charging",
+  },
+
+  {
+    title: "Fleet Charging",
+    description:
+      "Charging infrastructure planned around the operational needs of electric fleets and commercial vehicles.",
+    cta: "Talk to TRIARC",
+    href: "/charging-solutions/fleet-charging",
   },
 ];
 

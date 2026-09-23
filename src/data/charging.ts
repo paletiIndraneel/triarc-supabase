@@ -5,7 +5,7 @@ export const chargingSolutions = [
     image: "/images/charging/ac-charging.png",
     description:
       "Ideal for destination charging, workplaces and longer parking durations.",
-    href: "/solutions/ev-charging",
+    href: "/charging-solutions/ev-charging",
   },
 
   {
@@ -14,7 +14,7 @@ export const chargingSolutions = [
     image: "/images/charging/dc-fast-charging.png",
     description:
       "Recharge quickly and continue your journey with high-speed DC charging.",
-    href: "/solutions/dc-fast-charging",
+    href: "/charging-solutions/dc-fast-charging",
   },
 
   {
@@ -23,6 +23,6 @@ export const chargingSolutions = [
     image: "/images/charging/commercial-charging.png",
     description:
       "Reliable charging infrastructure for electric three-wheelers and commercial fleets.",
-    href: "/solutions/commercial-charging",
+    href: "/charging-solutions/commercial-ev-charging",
   },
 ];

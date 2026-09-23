@@ -2,25 +2,29 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Container from "@/components/Container";
 import GlassCard from "@/components/ui/GlassCard";
-import PrimaryButton from "@/components/ui/PrimaryButton";
 import PageHero from "@/components/seo/PageHero";
 import Breadcrumbs from "@/components/seo/Breadcrumbs";
 import { solutions, getSolutionBySlug } from "@/data/solutions";
 
-const solution = getSolutionBySlug("commercial-charging")!;
+const solution = getSolutionBySlug("commercial-ev-charging")!;
 const related = solutions.filter((s) => s.slug !== solution.slug);
 
 export const metadata: Metadata = {
   title: solution.metaTitle,
-  description: solution.description,
-  alternates: { canonical: "/solutions/commercial-charging" },
+  description: solution.metaDescription,
+  alternates: { canonical: "/charging-solutions/commercial-ev-charging" },
 };
 
-export default function CommercialChargingPage() {
+export default function CommercialEvChargingPage() {
   return (
     <main className="bg-[#03110d]">
-      <Breadcrumbs items={[{ name: "Solutions", url: "/solutions" }, { name: solution.title, url: "/solutions/commercial-charging" }]} />
-      <PageHero eyebrow="Commercial Charging" title={solution.title} description={solution.description} />
+      <Breadcrumbs
+        items={[
+          { name: "Charging Solutions", url: "/charging-solutions" },
+          { name: solution.title, url: "/charging-solutions/commercial-ev-charging" },
+        ]}
+      />
+      <PageHero eyebrow="Commercial EV Charging" title={solution.title} description={solution.metaDescription} />
 
       <section className="relative pb-14 sm:pb-16">
         <Container>
@@ -33,9 +37,14 @@ export default function CommercialChargingPage() {
           </GlassCard>
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <PrimaryButton href="/contact">Discuss Commercial Charging</PrimaryButton>
             <Link
-              href="/solutions/fleet-charging"
+              href={solution.cta.href}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 px-6 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 sm:px-7 sm:py-4 sm:text-base"
+            >
+              {solution.cta.label}
+            </Link>
+            <Link
+              href="/charging-solutions/fleet-charging"
               className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm font-semibold text-white/80 transition hover:border-emerald-400/40 hover:text-white sm:px-7 sm:py-4 sm:text-base"
             >
               Explore fleet charging
@@ -47,13 +56,13 @@ export default function CommercialChargingPage() {
       <section className="relative bg-[#04140f] pb-16 pt-14 sm:pb-20">
         <Container>
           <h2 className="text-center text-2xl font-black text-white sm:text-3xl">Related Solutions</h2>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((item) => (
               <GlassCard key={item.slug} className="p-6">
                 <h3 className="text-lg font-bold text-white">{item.title}</h3>
                 <p className="mt-2 text-sm leading-7 text-white/75">{item.summary}</p>
                 <Link
-                  href={`/solutions/${item.slug}`}
+                  href={`/charging-solutions/${item.slug}`}
                   className="mt-4 inline-flex text-sm font-semibold text-emerald-300 transition hover:text-emerald-200"
                 >
                   Learn more

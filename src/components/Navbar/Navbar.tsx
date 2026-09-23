@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X, Zap } from "lucide-react";
 import Container from "@/components/Container";
-import { navigation } from "@/data/navigation";
+import { navigation, navCta } from "@/data/navigation";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -32,7 +32,7 @@ export default function Navbar() {
               : "border-white/10 bg-white/5 backdrop-blur-xl"
           }`}
         >
-          <Link href="#hero" className="flex items-center gap-3 rounded-full transition hover:opacity-90" aria-label="TriArc home">
+          <Link href="/" className="flex items-center gap-3 rounded-full transition hover:opacity-90" aria-label="TriArc home">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 shadow-[0_0_0_1px_rgba(255,255,255,0.03)]">
               <Zap size={18} />
             </div>
@@ -54,15 +54,24 @@ export default function Navbar() {
             ))}
           </div>
 
-          <button
-            type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:border-emerald-300/40 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 lg:hidden"
-            onClick={() => setMobileOpen((value) => !value)}
-            aria-label="Toggle navigation"
-            aria-expanded={mobileOpen}
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href={navCta.href}
+              className="hidden items-center rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(16,185,129,0.25)] lg:inline-flex"
+            >
+              {navCta.label}
+            </Link>
+
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:border-emerald-300/40 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 lg:hidden"
+              onClick={() => setMobileOpen((value) => !value)}
+              aria-label="Toggle navigation"
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
         </nav>
 
         {mobileOpen ? (
@@ -78,6 +87,13 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
+              <Link
+                href={navCta.href}
+                className="mt-1 rounded-2xl bg-gradient-to-r from-emerald-400 to-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white"
+                onClick={() => setMobileOpen(false)}
+              >
+                {navCta.label}
+              </Link>
             </div>
           </div>
         ) : null}

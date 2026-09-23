@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import GlassCard from "@/components/ui/GlassCard";
 import SignInForm from "@/components/Admin/SignInForm";
 
@@ -13,7 +14,9 @@ export default function SignInPage() {
       <GlassCard className="w-full max-w-md p-8">
         <h1 className="text-2xl font-bold text-white">Admin Sign In</h1>
         <p className="mt-2 text-sm text-white/60">Restricted access.</p>
-        <SignInForm />
+        <Suspense fallback={null}>
+          <SignInForm />
+        </Suspense>
       </GlassCard>
     </main>
   );

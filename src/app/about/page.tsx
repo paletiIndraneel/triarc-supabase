@@ -1,66 +1,117 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import Image from "next/image";
+import { CheckCircle2, MapPin, ArrowRight } from "lucide-react";
+
 import Container from "@/components/Container";
-import GlassCard from "@/components/ui/GlassCard";
 import PrimaryButton from "@/components/ui/PrimaryButton";
-import PageHero from "@/components/seo/PageHero";
 import Breadcrumbs from "@/components/seo/Breadcrumbs";
 import { contact } from "@/data/contact";
 
 export const metadata: Metadata = {
-  title: "About TRIARC EV Hub | EV Charging Infrastructure",
-  description:
-    "TRIARC EV Hub operates an EV charging station in Bhadrachalam, Telangana, and provides EV charger installation and charging infrastructure for businesses and fleets.",
-  alternates: { canonical: "/about" },
+	title: "About TRIARC EV Hub",
+	description:
+		"Learn about TRIARC EV Hub, an EV charging station in Bhadrachalam, Telangana, open 24 × 7 with convenient parking and Wi-Fi.",
+	alternates: {
+		canonical: "/about",
+	},
 };
 
+const highlights = [
+	"EV charging in Bhadrachalam, Telangana",
+	"Open 24 × 7",
+	"Convenient Park Road location",
+	"Wi-Fi available",
+	"Parking available",
+];
+
 export default function AboutPage() {
-  return (
-    <main className="bg-[#03110d]">
-      <Breadcrumbs items={[{ name: "About", url: "/about" }]} />
-      <PageHero
-        eyebrow="About Us"
-        title="About TRIARC EV Hub"
-        description="TRIARC EV Hub operates an EV charging station in Bhadrachalam, Telangana, and supports the region's shift to electric mobility through reliable EV charging infrastructure."
-      />
+	return (
+		<main className="bg-[#03110d]">
+			{/* Breadcrumb */}
+			<Breadcrumbs
+				items={[
+					{
+						name: "About",
+						url: "/about",
+					},
+				]}
+			/>
 
-      <section className="relative pb-16 sm:pb-20">
-        <Container>
-          <GlassCard className="mx-auto max-w-3xl space-y-5 p-6 sm:p-8">
-            <p className="text-base leading-8 text-white/80">
-              TRIARC EV Hub runs an EV charging station in Bhadrachalam, Telangana, offering AC and DC fast charging for electric cars and three-wheelers. Our goal is to make EV charging simple, safe and dependable for everyone passing through Bhadrachalam.
-            </p>
-            <p className="text-base leading-8 text-white/80">
-              Alongside operating our own charging station, TRIARC provides EV charger installation and EV charging infrastructure solutions, helping businesses and property owners bring charging online. We also support commercial EV charging and fleet EV charging for organisations operating electric vehicles in and around the region.
-            </p>
-            <p className="text-base leading-8 text-white/80">
-              As EV adoption grows across Telangana, TRIARC EV Hub aims to be a dependable local partner for EV charging, charging infrastructure, and commercial and fleet charging needs.
-            </p>
+			{/* About Header */}
+			<section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(52,211,153,0.14),_transparent_35%),#03110d] pb-12 pt-8 sm:pb-16 sm:pt-10">
+				<Container>
+					<div className="mx-auto max-w-3xl text-center">
+						<span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
+							About Us
+						</span>
 
-            <div className="flex flex-wrap gap-3 pt-2">
-              <PrimaryButton href="/solutions">Explore our solutions</PrimaryButton>
-              <Link
-                href="/locations/bhadrachalam"
-                className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm font-semibold text-white/80 transition hover:border-emerald-400/40 hover:text-white sm:px-7 sm:py-4 sm:text-base"
-              >
-                Visit Bhadrachalam station
-              </Link>
-            </div>
+						<h1 className="mt-6 text-[clamp(2.2rem,4vw,3.6rem)] font-black leading-tight text-white">
+							About TRIARC EV Hub
+						</h1>
 
-            <p className="border-t border-white/10 pt-5 text-sm leading-7 text-white/60">
-              Have a question? Call us at{" "}
-              <a href={`tel:${contact.phoneHref}`} className="font-semibold text-emerald-300 hover:text-emerald-200">
-                {contact.phone}
-              </a>{" "}
-              or{" "}
-              <Link href="/contact" className="font-semibold text-emerald-300 hover:text-emerald-200">
-                contact us online
-              </Link>
-              .
-            </p>
-          </GlassCard>
-        </Container>
-      </section>
-    </main>
-  );
+						<p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-white/70 sm:text-lg">
+							TRIARC EV Hub is an EV charging destination in Bhadrachalam,
+							Telangana, making EV charging simple and convenient for every
+							journey.
+						</p>
+					</div>
+				</Container>
+			</section>
+
+			{/* Main About Content */}
+			<section className="relative overflow-hidden bg-[#03110d] pb-16 pt-4 sm:pb-20 sm:pt-8">
+				<Container>
+					<div className="grid items-center gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16 xl:gap-20">
+						{/* Image */}
+						<div className="relative mx-auto w-full max-w-[680px] overflow-hidden rounded-[30px] border border-white/10 bg-white/5">
+							<Image
+								src="/images/stations/experience.png"
+								alt="TRIARC EV Hub charging station in Bhadrachalam"
+								width={1400}
+								height={900}
+								sizes="(max-width: 1024px) 100vw, 50vw"
+								className="h-[320px] w-full object-cover sm:h-[400px] lg:h-[450px]"
+							/>
+						</div>
+
+						{/* Content */}
+						<div className="mx-auto w-full max-w-2xl">
+							<h2 className="text-3xl font-black leading-tight text-white sm:text-4xl lg:text-[2.7rem]">
+								Charging made simple.
+								<br />
+								<span className="text-emerald-400">
+									Your journey continues.
+								</span>
+							</h2>
+
+							<p className="mt-5 max-w-xl text-base leading-8 text-white/70 sm:text-lg">
+								Located on Park Road, next to Kakatiya Residency in
+								Bhadrachalam, TRIARC EV Hub provides a convenient place for EV
+								owners to charge, pause and continue their journey.
+							</p>
+
+							<div className="mt-7 grid gap-4 sm:grid-cols-2">
+								{highlights.map((item) => (
+									<div
+										key={item}
+										className="flex items-center gap-3"
+									>
+										<CheckCircle2
+											size={21}
+											strokeWidth={2.2}
+											className="shrink-0 text-emerald-400"
+										/>
+
+										<span className="text-sm font-medium text-white/80 sm:text-base">
+											{item}
+										</span>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+				</Container>
+			</section>
+		</main>
+	);
 }

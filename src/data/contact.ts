@@ -19,6 +19,10 @@ export const contact = {
     phoneHref:
         "+917993356677",
 
+    // TODO: this Google Business Profile URL looks non-standard (not a typical g.page/maps share link) — verify it resolves before relying on it publicly.
+    googleBusinessProfile:
+        "https://www.google.com/searchviewer/10?svid=CAwSHRIbCgNwdnESFENnMHZaeTh4TVhwb01UQnJjalV5GAo",
+
     email:
         "info@triarcevhub.com",
 

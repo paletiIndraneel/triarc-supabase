@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInForm() {
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
@@ -28,8 +30,12 @@ export default function SignInForm() {
         return;
       }
 
+      const callbackUrl = searchParams.get("callbackUrl");
+      const isSafeCallback = !!callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//");
+      const destination = isSafeCallback ? callbackUrl : "/admin";
+
       // Full navigation so the /admin edge middleware sees the new cookie.
-      window.location.href = "/admin";
+      window.location.href = destination;
     } catch {
       setErrorMsg("Network error. Please try again.");
       setStatus("error");

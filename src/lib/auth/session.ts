@@ -1,4 +1,4 @@
-// Signs/verifies the admin session cookie. Underscore-prefixed folder keeps this out of Cloudflare Pages routing.
+// Signs/verifies the admin session cookie using Web Crypto only (Edge Runtime / Cloudflare Workers compatible).
 
 const encoder = new TextEncoder();
 
@@ -27,6 +27,7 @@ async function hmacKey(secret: string): Promise<CryptoKey> {
 
 export const SESSION_COOKIE_NAME = "triarc_admin_session";
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+export const SESSION_TTL_SECONDS = SESSION_TTL_MS / 1000;
 
 export async function createSessionToken(secret: string): Promise<string> {
   const payloadB64 = base64UrlEncode(encoder.encode(JSON.stringify({ exp: Date.now() + SESSION_TTL_MS })));
@@ -50,16 +51,6 @@ export async function verifySessionToken(token: string | undefined, secret: stri
   } catch {
     return false;
   }
-}
-
-export function readCookie(request: Request, name: string): string | undefined {
-  const header = request.headers.get("Cookie") ?? request.headers.get("cookie");
-  if (!header) return undefined;
-  const match = header
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-  return match?.slice(name.length + 1);
 }
 
 // Compares SHA-256 digests byte-by-byte to avoid short-circuit timing leaks.

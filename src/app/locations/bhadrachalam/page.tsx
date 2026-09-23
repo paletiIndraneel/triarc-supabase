@@ -11,9 +11,8 @@ import { contact } from "@/data/contact";
 import { site } from "@/data/site";
 
 export const metadata: Metadata = {
-  title: "EV Charging Station in Bhadrachalam, Telangana | TRIARC EV Hub",
-  description:
-    "TRIARC EV Hub is an EV charging station in Bhadrachalam, Telangana, offering EV charging, DC fast charging and charging infrastructure for vehicles, businesses and fleets.",
+  title: "EV Charging in Bhadrachalam, Telangana | TRIARC EV Hub",
+  description: "Find EV charging and EV charging infrastructure solutions in Bhadrachalam, Telangana from TRIARC EV Hub.",
   alternates: { canonical: "/locations/bhadrachalam" },
 };
 
@@ -44,8 +43,8 @@ export default function BhadrachalamLocationPage() {
       <Breadcrumbs items={[{ name: "Bhadrachalam", url: "/locations/bhadrachalam" }]} />
       <PageHero
         eyebrow="Bhadrachalam, Telangana"
-        title="EV Charging Station in Bhadrachalam"
-        description="TRIARC EV Hub operates an EV charging station in Bhadrachalam, Telangana, providing EV charging and charging infrastructure for vehicles, businesses and fleets across the region."
+        title="EV Charging in Bhadrachalam, Telangana"
+        description="TRIARC EV Hub provides EV charging in Bhadrachalam, Telangana, along with EV charger installation, commercial charging and fleet charging support for local EV infrastructure needs."
       />
 
       <section className="relative pb-14 sm:pb-16">
@@ -53,19 +52,19 @@ export default function BhadrachalamLocationPage() {
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
             <GlassCard className="space-y-5 p-6 sm:p-8">
               <p className="text-base leading-8 text-white/80">
-                Situated in the heart of Bhadrachalam, TRIARC EV Hub gives EV drivers a reliable place to charge while exploring the town or continuing their journey through Telangana. Our EV charging station supports everyday drivers as well as businesses and fleets that need dependable charging infrastructure.
+                Situated in Bhadrachalam, TRIARC EV Hub gives individual EV owners a place to charge while exploring the town or continuing their journey through Telangana, alongside support for businesses and fleets that need dependable charging infrastructure.
               </p>
               <p className="text-base leading-8 text-white/80">
-                TRIARC EV Hub Bhadrachalam offers EV charging and DC fast charging, along with commercial and fleet EV charging support, making it a practical stop for a wide range of electric vehicles.
+                Beyond day-to-day EV charging, TRIARC works with businesses and property owners on charger installation, and with organisations on commercial and fleet EV charging requirements in and around Bhadrachalam.
               </p>
 
               <div className="flex flex-wrap gap-3 pt-2">
                 <PrimaryButton href={contact.maps}>Get Directions</PrimaryButton>
                 <Link
-                  href="/stations/triarc-ev-hub-bhadrachalam"
+                  href="/ev-station/triarc-ev-hub-bhadrachalam"
                   className="inline-flex items-center rounded-full border border-white/15 px-6 py-3.5 text-sm font-semibold text-white/80 transition hover:border-emerald-400/40 hover:text-white sm:px-7 sm:py-4 sm:text-base"
                 >
-                  View station details
+                  Find TRIARC EV Hub
                 </Link>
               </div>
             </GlassCard>
@@ -95,16 +94,16 @@ export default function BhadrachalamLocationPage() {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">Services</p>
                 <ul className="mt-3 space-y-2 text-sm text-white/75">
                   <li>
-                    <Link href="/solutions/ev-charging" className="transition hover:text-emerald-200">EV charging</Link>
+                    <Link href="/charging-solutions/ev-charging" className="transition hover:text-emerald-200">EV charging</Link>
                   </li>
                   <li>
-                    <Link href="/solutions/dc-fast-charging" className="transition hover:text-emerald-200">DC fast charging</Link>
+                    <Link href="/charging-solutions/dc-fast-charging" className="transition hover:text-emerald-200">DC fast charging</Link>
                   </li>
                   <li>
-                    <Link href="/solutions/commercial-charging" className="transition hover:text-emerald-200">Commercial EV charging</Link>
+                    <Link href="/charging-solutions/commercial-ev-charging" className="transition hover:text-emerald-200">Commercial EV charging</Link>
                   </li>
                   <li>
-                    <Link href="/solutions/fleet-charging" className="transition hover:text-emerald-200">Fleet EV charging</Link>
+                    <Link href="/charging-solutions/fleet-charging" className="transition hover:text-emerald-200">Fleet EV charging</Link>
                   </li>
                 </ul>
               </div>
@@ -113,7 +112,7 @@ export default function BhadrachalamLocationPage() {
                 href="/contact"
                 className="inline-flex text-sm font-semibold text-emerald-300 transition hover:text-emerald-200"
               >
-                Contact TRIARC EV Hub &rarr;
+                Contact Us &rarr;
               </Link>
             </GlassCard>
           </div>

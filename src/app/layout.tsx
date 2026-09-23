@@ -8,15 +8,19 @@ const SITE_URL = site.url;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+
   title: {
     default: "TRIARC EV Hub | EV Charging Station in Bhadrachalam, Telangana",
     template: "%s | TRIARC EV Hub",
   },
+
   description:
-    "TRIARC EV Hub is an EV charging station in Bhadrachalam, Telangana, offering EV charging and charging infrastructure solutions for vehicles, businesses and fleets.",
+    "TRIARC EV Hub is an EV charging station in Bhadrachalam, Telangana, providing EV charging and charger installation solutions for individuals, businesses and fleets.",
+
   alternates: {
     canonical: "/",
   },
+
   robots: {
     index: true,
     follow: true,
@@ -25,6 +29,7 @@ export const metadata: Metadata = {
       follow: true,
     },
   },
+
   openGraph: {
     title: "TRIARC EV Hub | EV Charging Station in Bhadrachalam, Telangana",
     description:
@@ -40,6 +45,7 @@ export const metadata: Metadata = {
       },
     ],
   },
+
   twitter: {
     card: "summary_large_image",
     title: "TRIARC EV Hub | EV Charging Station in Bhadrachalam, Telangana",

@@ -4,7 +4,7 @@ export const site = {
   brand: {
     name: "TriArc",
     fullName: "TRIARC EV Hub",
-    tagline: "Powering Every Journey Ahead.",
+    tagline: "Charging Tomorrow. Today.",
     description:
       "Premium EV charging destination in Bhadrachalam offering fast, reliable and customer-first charging experience.",
   },
@@ -14,7 +14,8 @@ export const site = {
     city: "Bhadrachalam",
     state: "Telangana",
     postalCode: "507111",
-    address: "Park Road, Next to Kakatiya Residency, Bhadrachalam, Telangana 507111, India",
+    address:
+      "Park Road, Next to Kakatiya Residency, Bhadrachalam, Telangana 507111, India",
     hours: "Open 24 × 7",
     phone: "+91 79933 56677",
     email: "info@triarc.in",
@@ -23,19 +24,19 @@ export const site = {
   navigation: [
     {
       label: "Home",
-      href: "#hero",
+      href: "/",
     },
     {
-      label: "Experience",
-      href: "#experience",
+      label: "Charging Solutions",
+      href: "/charging-solutions",
     },
     {
-      label: "Charging",
-      href: "#charging",
+      label: "About",
+      href: "/about",
     },
     {
-      label: "Visit",
-      href: "#contact",
+      label: "Contact",
+      href: "/contact",
     },
   ],
 

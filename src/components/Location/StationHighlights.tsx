@@ -1,71 +1,93 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Clock3, MapPin, Phone } from "lucide-react";
 import Container from "@/components/Container";
-import GlassCard from "@/components/ui/GlassCard";
+import { contact } from "@/data/contact";
+import { site } from "@/data/site";
 
-const highlights = [
-  {
-    title: "EV Charger Installation",
-    description:
-      "TRIARC provides EV charger installation and EV charging infrastructure for businesses and property owners across the region.",
-    href: "/solutions/charger-installation",
-    cta: "Charger installation",
-  },
-  {
-    title: "Fleet EV Charging",
-    description:
-      "Dedicated fleet EV charging support for organisations managing multiple electric vehicles across Telangana.",
-    href: "/solutions/fleet-charging",
-    cta: "Fleet charging",
-  },
-];
-
-/** Homepage section covering charger installation, fleet programs, and the Bhadrachalam location — distinct from the charging-type cards above, with links into the dedicated pages. */
 export default function StationHighlights() {
   return (
-    <section className="relative overflow-hidden bg-[#04140f] pb-16 pt-14 sm:pb-20 sm:pt-16">
+    <section
+      aria-labelledby="station-heading"
+      className="relative overflow-hidden bg-[#04140f] py-14 sm:py-16 lg:py-20"
+    >
       <Container>
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
-            TRIARC EV Hub &mdash; Bhadrachalam
-          </span>
-          <h2 className="mt-6 text-3xl font-black leading-tight text-white sm:text-4xl">
-            Charging Infrastructure Built for Bhadrachalam, Telangana
-          </h2>
-          <p className="mt-5 text-base leading-8 text-white/80 sm:text-lg">
-            Beyond charging your vehicle on-site, TRIARC EV Hub helps bring EV charging infrastructure to businesses and supports fleet operators across the region.
-          </p>
-        </div>
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-[28px] border border-white/10 bg-white/[0.025] p-5 sm:p-7 lg:p-8">
+            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
+                  Bhadrachalam Station
+                </span>
 
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:mx-auto sm:max-w-3xl">
+                <h2
+                  id="station-heading"
+                  className="mt-5 text-3xl font-black leading-tight text-white sm:text-4xl"
+                >
+                  {site.station.name}
+                </h2>
 
-          {highlights.map((item) => (
-            <GlassCard key={item.href} className="flex h-full flex-col p-6">
-              <h3 className="text-lg font-bold text-white">{item.title}</h3>
-              <p className="mt-3 flex-1 text-sm leading-7 text-white/75">{item.description}</p>
-              <Link
-                href={item.href}
-                className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-300 transition hover:text-emerald-200"
-              >
-                {item.cta} <ArrowRight size={15} />
-              </Link>
-            </GlassCard>
-          ))}
-        </div>
+                <div className="mt-5 space-y-3 text-sm leading-7 text-white/70 sm:text-base">
+                  <p className="flex items-start gap-3">
+                    <MapPin
+                      size={18}
+                      className="mt-1 shrink-0 text-emerald-300"
+                    />
+                    <span>{contact.address}</span>
+                  </p>
 
-        <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm text-white/70">
-          <Link
-            href="/locations/bhadrachalam"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-5 py-2.5 font-semibold text-white/85 transition hover:border-emerald-400/40 hover:text-white"
-          >
-            EV Charging Station in Bhadrachalam
-          </Link>
-          <Link
-            href="/stations/triarc-ev-hub-bhadrachalam"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-5 py-2.5 font-semibold text-white/85 transition hover:border-emerald-400/40 hover:text-white"
-          >
-            TRIARC EV Hub Bhadrachalam station details
-          </Link>
+                  <p className="flex items-center gap-3">
+                    <Phone
+                      size={18}
+                      className="shrink-0 text-emerald-300"
+                    />
+                    <a
+                      href={`tel:${contact.phoneHref}`}
+                      className="transition hover:text-emerald-300"
+                    >
+                      {contact.phone}
+                    </a>
+                  </p>
+
+                  <p className="flex items-center gap-3">
+                    <Clock3
+                      size={18}
+                      className="shrink-0 text-emerald-300"
+                    />
+                    <span>{contact.hours}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <a
+                  href={contact.maps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-full bg-emerald-400 px-6 py-3.5 text-sm font-bold text-emerald-950 transition hover:bg-emerald-300"
+                >
+                  Get Directions
+                  <ArrowRight size={16} className="ml-2" />
+                </a>
+
+                <Link
+                  href="/ev-station/triarc-ev-hub-bhadrachalam"
+                  className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white/85 transition hover:border-emerald-400/40 hover:text-white"
+                >
+                  Station Details
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 flex justify-center">
+            <Link
+              href="/locations/bhadrachalam"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-300 transition hover:text-emerald-200"
+            >
+              Explore EV charging in Bhadrachalam
+              <ArrowRight size={15} />
+            </Link>
+          </div>
         </div>
       </Container>
     </section>

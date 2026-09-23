@@ -1,6 +1,23 @@
 export const navigation = [
-  { label: "Experience", href: "#experience" },
-  { label: "Charging", href: "#charging" },
-  { label: "Explore", href: "#explore" },
-  { label: "Visit", href: "#contact" },
+  {
+    label: "Home",
+    href: "/",
+  },
+  {
+    label: "About",
+    href: "/about",
+  },
+  {
+    label: "Charging Solutions",
+    href: "/charging-solutions",
+  },
+  {
+    label: "Contact",
+    href: "/contact",
+  },
 ];
+
+export const navCta = {
+  label: "Find Our Station",
+  href: "/ev-station/triarc-ev-hub-bhadrachalam",
+};

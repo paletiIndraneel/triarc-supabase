@@ -5,7 +5,6 @@ import StationHighlights from "@/components/Location/StationHighlights";
 import ExploreNearby from "@/components/Explore/ExploreNearby";
 import VisitUs from "@/components/Visit/VisitUs";
 import Faq from "@/components/seo/Faq";
-import SectionCurveDivider from "@/components/ui/SectionCurveDivider";
 import Footer from "@/components/Footer/Footer";
 
 const homeFaqItems = [
@@ -17,17 +16,17 @@ const homeFaqItems = [
   {
     question: "Where is TRIARC EV Hub located?",
     answer:
-      "TRIARC EV Hub is located in Bhadrachalam, Telangana. See our Bhadrachalam location page for the full address and directions.",
+      "TRIARC EV Hub is located on Park Road, next to Kakatiya Residency, Bhadrachalam, Telangana 507111.",
   },
   {
     question: "Does TRIARC EV Hub offer DC fast charging?",
     answer:
-      "Yes, TRIARC EV Hub offers DC fast charging alongside AC charging for electric cars and three-wheelers.",
+      "Yes. TRIARC EV Hub offers DC fast charging in Bhadrachalam. Contact TRIARC for current station and charger information.",
   },
   {
-    question: "Does TRIARC EV Hub support businesses and fleets?",
+    question: "Does TRIARC support businesses and fleets?",
     answer:
-      "Yes, TRIARC EV Hub provides commercial EV charging and fleet EV charging solutions, along with EV charger installation for businesses and property owners.",
+      "Yes. TRIARC EV Hub provides commercial EV charging, fleet charging and EV charger installation solutions for suitable business requirements.",
   },
 ];
 
@@ -36,21 +35,13 @@ export default function Home() {
     <>
       <main>
         <Hero />
-        <ExperienceTriArc />
-        <div className="relative h-10">
-          <SectionCurveDivider variant="soft" tone="emerald" heightClass="h-10" className="opacity-70" />
-        </div>
+
         <ChargingSolutions />
-        <StationHighlights />
-        <div className="relative h-10">
-          <SectionCurveDivider variant="soft" tone="emerald" heightClass="h-10" />
-        </div>
+
+
         <ExploreNearby />
-        <div className="relative h-8">
-          <SectionCurveDivider variant="soft" tone="teal" heightClass="h-8" className="opacity-55" />
-        </div>
+
         <VisitUs />
-        <Faq items={homeFaqItems} />
       </main>
 
       <Footer />

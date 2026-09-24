@@ -41,7 +41,7 @@ export const site = {
   ],
 
   social: {
-    instagram: "#",
+    instagram: "https://www.instagram.com/chargewithtriarc/",
     linkedin: "#",
     facebook: "#",
   },

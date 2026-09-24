@@ -33,20 +33,7 @@ export default function VisitUs() {
                   fleet requirements.
                 </p>
 
-                <div className="mt-5 flex flex-col gap-3 text-sm text-white/70 sm:flex-row sm:flex-wrap">
-                  <span className="inline-flex items-center gap-2">
-                    <MapPin size={16} className="text-emerald-300" />
-                    {site.station.city}, {site.station.state}
-                  </span>
-
-                  <a
-                    href={`tel:${contact.phoneHref}`}
-                    className="inline-flex items-center gap-2 transition hover:text-emerald-300"
-                  >
-                    <Phone size={16} className="text-emerald-300" />
-                    {contact.phone}
-                  </a>
-                </div>
+   
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -59,13 +46,6 @@ export default function VisitUs() {
                   Get Directions
                   <ArrowRight size={16} className="ml-2" />
                 </a>
-
-                <Link
-                  href="/contact"
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-6 py-3.5 text-sm font-semibold text-white transition hover:border-emerald-400/40"
-                >
-                  Contact TRIARC
-                </Link>
               </div>
             </div>
           </div>

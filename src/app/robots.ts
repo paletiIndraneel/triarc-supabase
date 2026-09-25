@@ -21,6 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: "/",
       },
     ],
-    Sitemap: https://triarcgroup.in/sitemap.xml,
+    Sitemap: ${site.url}/sitemap.xml,
   };
 }

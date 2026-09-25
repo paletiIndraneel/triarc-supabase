@@ -5,3 +5,7 @@ package-lock.json
 .dev.vars
 .wrangler
 .env*.local
+
+# Local build artifacts
+.open-next/
+tsconfig.tsbuildinfo

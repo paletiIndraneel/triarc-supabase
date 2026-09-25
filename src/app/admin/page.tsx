@@ -47,7 +47,7 @@ export default function AdminPage() {
             <ShieldCheck className="text-emerald-300" size={22} />
             <h2 className="mt-3 text-lg font-bold text-white">Session</h2>
             <p className="mt-2 text-sm leading-6 text-white/60">
-              Your admin session stays active for 8 hours or until you sign out.
+              Your session is securely managed by Supabase. Sign out when you are finished.
             </p>
           </GlassCard>
         </div>
@@ -55,4 +55,3 @@ export default function AdminPage() {
     </main>
   );
 }
-

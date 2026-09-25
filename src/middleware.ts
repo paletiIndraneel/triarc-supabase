@@ -1,34 +1,63 @@
-// Edge middleware — protects /admin and its nested routes before any page is rendered.
-// Runs inside the same Cloudflare Worker as the app (see @opennextjs/cloudflare's populateProcessEnv),
-// so process.env.SESSION_SECRET resolves to the Wrangler secret at request time.
-
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/auth/session";
 
 export const config = {
   matcher: ["/admin", "/admin/:path*"],
 };
 
 export async function middleware(request: NextRequest) {
-  const secret = process.env.SESSION_SECRET;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!secret) {
-    console.error("[auth] SESSION_SECRET is not configured; blocking /admin access");
+  if (!url || !key) {
+    console.error("[auth] Supabase environment variables are missing.");
     return redirectToSignIn(request);
   }
 
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const authenticated = await verifySessionToken(token, secret);
+  let response = NextResponse.next({
+    request,
+  });
 
-  if (!authenticated) {
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => {
+          request.cookies.set(name, value);
+        });
+
+        response = NextResponse.next({
+          request,
+        });
+
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
     return redirectToSignIn(request);
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 function redirectToSignIn(request: NextRequest) {
   const signInUrl = new URL("/signin", request.url);
-  signInUrl.searchParams.set("callbackUrl", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+
+  signInUrl.searchParams.set(
+    "callbackUrl",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`
+  );
+
   return NextResponse.redirect(signInUrl);
 }

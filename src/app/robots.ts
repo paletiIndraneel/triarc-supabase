@@ -21,6 +21,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: "/",
       },
     ],
-    Sitemap: ${site.url}/sitemap.xml,
+    sitemap: `${site.url}/sitemap.xml`,
   };
 }

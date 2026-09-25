@@ -3,13 +3,24 @@ import { site } from "@/data/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: [
+   rules: [
       {
         userAgent: "*",
         allow: "/",
         disallow: ["/admin", "/signin"],
       },
+      {
+        userAgent: [
+          "GPTBot",
+          "ClaudeBot",
+          "CCBot",
+          "Google-Extended",
+          "Bytespider",
+          "Applebot-Extended",
+        ],
+        disallow: "/",
+      },
     ],
-    sitemap: `${site.url}/sitemap.xml`,
+    Sitemap: https://triarcgroup.in/sitemap.xml,
   };
 }

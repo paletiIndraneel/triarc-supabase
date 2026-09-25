@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Mail, ExternalLink, ShieldCheck } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import LogoutButton from "@/components/Admin/LogoutButton";
+import { createClient } from "@/lib/supabase/server";
 import { site } from "@/data/site";
 import { contact } from "@/data/contact";
 
@@ -11,14 +12,25 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const displayName =
+    user?.user_metadata?.display_name ||
+    user?.email?.split("@")[0] ||
+    "Admin";
+
   return (
     <main className="min-h-screen bg-[#03110d] px-6 py-16 sm:py-20">
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300">Admin</p>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Welcome back</h1>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Welcome {displayName}</h1>
             <p className="mt-2 text-sm text-white/60">Signed in to the {site.brand.fullName} admin area.</p>
           </div>
           <LogoutButton />

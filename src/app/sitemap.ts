@@ -13,7 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/charging-solutions/ev-charging", priority: 0.7, changeFrequency: "monthly" },
     { path: "/charging-solutions/dc-fast-charging", priority: 0.7, changeFrequency: "monthly" },
     { path: "/charging-solutions/charger-installation", priority: 0.7, changeFrequency: "monthly" },
-    { path: "/charging-solutions/commercial-charging", priority: 0.7, changeFrequency: "monthly" },
+    { path: "/charging-solutions/commercial-ev-charging", priority: 0.7, changeFrequency: "monthly" },
     { path: "/charging-solutions/fleet-charging", priority: 0.7, changeFrequency: "monthly" },
     { path: "/locations/bhadrachalam", priority: 0.9, changeFrequency: "monthly" },
     { path: "/ev-station/triarc-ev-hub-bhadrachalam", priority: 0.9, changeFrequency: "monthly" },

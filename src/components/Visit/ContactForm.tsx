@@ -50,7 +50,7 @@ export default function ContactForm() {
           body: {
             name: form.name,
             email: form.email,
-            phone: form.phone,
+            phone: form.phone || null,
             message: form.message,
           },
         }

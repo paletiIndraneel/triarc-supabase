@@ -5,7 +5,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default {
   fetch: withSupabase(
-    { auth: ["publishable", "secret"] },
+    { auth: "none" },
     async (req, ctx) => {
       if (req.method !== "POST") {
         return Response.json(
@@ -31,13 +31,9 @@ export default {
             ? body.message.trim()
             : "";
 
-        // Name, email and message are required.
-        // Phone is optional.
         if (!name || !email || !message) {
           return Response.json(
-            {
-              error: "Name, email, and message are required.",
-            },
+            { error: "Name, email, and message are required." },
             { status: 400 }
           );
         }
@@ -49,7 +45,7 @@ export default {
           );
         }
 
-        const { error } = await ctx.supabase
+        const { error } = await ctx.supabaseAdmin
           .from("enquiries")
           .insert({
             name,
@@ -59,12 +55,13 @@ export default {
           });
 
         if (error) {
-          console.error("[submit-enquiry] Supabase insert error:", error);
+          console.error(
+            "[submit-enquiry] Supabase insert error:",
+            error
+          );
 
           return Response.json(
-            {
-              error: "Unable to save your enquiry. Please try again.",
-            },
+            { error: "Unable to save your enquiry." },
             { status: 500 }
           );
         }
@@ -77,9 +74,7 @@ export default {
         console.error("[submit-enquiry] Error:", error);
 
         return Response.json(
-          {
-            error: "Something went wrong. Please try again.",
-          },
+          { error: "Something went wrong. Please try again." },
           { status: 500 }
         );
       }

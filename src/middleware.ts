@@ -44,26 +44,29 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // User must be authenticated.
   if (!user) {
     return redirectToSignIn(request);
   }
-// Verify that the authenticated user is an active admin.
-const { data: admin, error: adminError } = await supabase
-  .from("admin_users")
-  .select("role, active")
-  .eq("user_id", user.id)
-  .eq("role", "admin")
-  .eq("active", true)
-  .maybeSingle();
 
-if (adminError) {
-  console.error("[auth] Failed to verify admin access:", adminError);
-  return new NextResponse("Forbidden", { status: 403 });
-}
+  // User must also be an active admin.
+  const { data: admin, error: adminError } = await supabase
+    .from("admin_users")
+    .select("role, active")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
 
-if (!admin) {
-  return new NextResponse("Forbidden", { status: 403 });
-}
+  if (adminError) {
+    console.error("[auth] Failed to verify admin access:", adminError);
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
+  if (!admin) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
+
   return response;
 }
 

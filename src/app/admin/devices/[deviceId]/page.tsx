@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Activity, ArrowLeft, Cpu, HeartPulse, Radio, Server } from "lucide-react";
+import { Activity, ArrowLeft, Cpu, HeartPulse, Radio, Server, ShieldCheck, Wifi } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { createClient } from "@/lib/supabase/server";
 import DeviceManagement from "./DeviceManagement";
@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: "Device",
   robots: { index: false, follow: false },
 };
+
+const mqttTopics = ["readings", "health", "events", "heartbeat", "commands", "config"];
 
 export default async function DeviceDetailsPage({
   params,
@@ -37,6 +39,8 @@ export default async function DeviceDetailsPage({
       supabase.from("device_health").select("*").eq("device_id", device.device_id).order("recorded_at", { ascending: false }).limit(25),
       supabase.from("device_events").select("*").eq("device_id", device.device_id).order("recorded_at", { ascending: false }).limit(25),
     ]);
+
+  const topicPrefix = device.topic || `triarc/devices/${device.device_id}`;
 
   return (
     <main className="min-h-screen bg-[#03110d] px-6 py-16 sm:py-20">
@@ -79,7 +83,7 @@ export default async function DeviceDetailsPage({
               <Detail label="Firmware" value={device.firmware_version || "—"} />
               <Detail label="Last seen" value={device.last_seen ? new Date(device.last_seen).toLocaleString() : "Never"} />
               <Detail label="Endpoint" value={device.endpoint || "Not configured"} />
-              <Detail label="Topic" value={device.topic || "Not configured"} />
+              <Detail label="Topic prefix" value={topicPrefix} />
             </dl>
           </GlassCard>
 
@@ -93,6 +97,46 @@ export default async function DeviceDetailsPage({
             </div>
           </GlassCard>
         </div>
+
+        <GlassCard className="mt-4 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <Wifi className="text-emerald-300" size={22} />
+                <h2 className="text-lg font-bold text-white">MQTT Communication</h2>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-white/50">
+                Device communication is prepared for HiveMQ Cloud over MQTT with TLS. Credentials are intentionally not stored in the device record.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/5 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+              <ShieldCheck size={14} />
+              TLS required
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <CommunicationValue label="Protocol" value={device.connection_type.toUpperCase()} />
+            <CommunicationValue label="TLS port" value={String(device.port || 8883)} />
+            <CommunicationValue label="Broker" value={device.endpoint || "Not configured"} />
+            <CommunicationValue label="Topic prefix" value={topicPrefix} />
+          </div>
+
+          <div className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">Device topics</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {mqttTopics.map((suffix) => (
+                <code key={suffix} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white/70">
+                  {topicPrefix}/{suffix}
+                </code>
+              ))}
+            </div>
+          </div>
+
+          <p className="mt-5 text-xs leading-5 text-white/40">
+            MQTT credentials stay in the device firmware/provisioning path. The admin UI only stores non-secret connection metadata.
+          </p>
+        </GlassCard>
 
         <GlassCard className="mt-4 p-6">
           <h2 className="text-lg font-bold text-white">Live Data</h2>
@@ -166,6 +210,15 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 
 function Detail({ label, value }: { label: string; value: string }) {
   return <div><dt className="text-xs uppercase tracking-[0.15em] text-white/40">{label}</dt><dd className="mt-1 break-all text-sm text-white/80">{value}</dd></div>;
+}
+
+function CommunicationValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-xs uppercase tracking-wider text-white/40">{label}</p>
+      <p className="mt-2 break-all text-sm font-semibold text-white/80">{value}</p>
+    </div>
+  );
 }
 
 function Row({ label, value }: { label: string; value: number }) {

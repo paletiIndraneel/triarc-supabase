@@ -25,9 +25,10 @@ export default function NewDevicePage() {
       device_id: deviceId,
       site_name: String(form.get("site_name") || "").trim(),
       device_type: String(form.get("device_type") || "esp32_s3"),
-      connection_type: "mqtt",
-      port: 8883,
-      topic: deviceId ? `triarc/devices/${deviceId}` : null,
+      connection_type: "http",
+      port: 443,
+      endpoint: "https://triarcgroup.in/api/device/telemetry",
+      topic: null,
       status: "not_connected",
     };
 
@@ -70,7 +71,7 @@ export default function NewDevicePage() {
             Register device
           </h1>
           <p className="mt-2 text-sm text-white/60">
-            Register the physical device first. MQTT communication metadata is initialized automatically and can be adjusted later.
+            Register the physical device first. HTTPS telemetry is initialized automatically. The device sends telemetry to the Cloudflare-hosted ingestion endpoint.
           </p>
         </div>
 
@@ -93,9 +94,9 @@ export default function NewDevicePage() {
             </div>
 
             <div className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.03] p-4">
-              <p className="text-sm font-semibold text-white">MQTT defaults</p>
+              <p className="text-sm font-semibold text-white">HTTPS telemetry</p>
               <p className="mt-1 text-sm leading-6 text-white/50">
-                New devices use MQTT over TLS on port 8883 and receive a topic namespace based on their Device ID. The HiveMQ broker hostname can be configured after registration.
+                New devices use HTTPS on port 443 and send telemetry to the secure Cloudflare ingestion endpoint. No MQTT credentials are stored in the website.
               </p>
             </div>
 

@@ -14,6 +14,10 @@ export default function DeviceManagement({
     device_id: string;
     site_name: string | null;
     device_type: string;
+    connection_type: string;
+    endpoint: string | null;
+    port: number | null;
+    topic: string | null;
   };
 }) {
   const router = useRouter();
@@ -28,15 +32,25 @@ export default function DeviceManagement({
     setError("");
 
     const form = new FormData(event.currentTarget);
+    const connectionType = String(form.get("connection_type") || "mqtt");
+    const deviceId = device.device_id.trim();
+    const topicValue = String(form.get("topic") || "").trim();
+
+    const payload = {
+      name: String(form.get("name") || "").trim(),
+      site_name: String(form.get("site_name") || "").trim() || null,
+      device_type: String(form.get("device_type") || "esp32_s3"),
+      connection_type: connectionType,
+      endpoint: String(form.get("endpoint") || "").trim() || null,
+      port: Number(form.get("port") || 8883),
+      topic: topicValue || (connectionType === "mqtt" ? `triarc/devices/${deviceId}` : null),
+    };
+
     const supabase = createClient();
 
     const { error: updateError } = await supabase
       .from("devices")
-      .update({
-        name: String(form.get("name") || "").trim(),
-        site_name: String(form.get("site_name") || "").trim() || null,
-        device_type: String(form.get("device_type") || "esp32_s3"),
-      })
+      .update(payload)
       .eq("id", device.id);
 
     if (updateError) {
@@ -99,24 +113,50 @@ export default function DeviceManagement({
   }
 
   return (
-    <form onSubmit={save} className="space-y-4">
+    <form onSubmit={save} className="w-full max-w-xl space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <input name="name" defaultValue={device.name} required className={inputClass} placeholder="Device name" />
+        <input name="site_name" defaultValue={device.site_name || ""} className={inputClass} placeholder="Site" />
+
+        <select name="device_type" defaultValue={device.device_type} className={inputClass}>
+          <option value="esp32_s3">ESP32-S3</option>
+          <option value="pi5">Pi 5</option>
+        </select>
+
+        <select name="connection_type" defaultValue={device.connection_type || "mqtt"} className={inputClass}>
+          <option value="mqtt">MQTT</option>
+          <option value="websocket">WebSocket</option>
+          <option value="http">HTTP</option>
+        </select>
+
+        <input
+          name="endpoint"
+          defaultValue={device.endpoint || ""}
+          className={inputClass}
+          placeholder="Broker hostname / endpoint"
+        />
+
+        <input
+          name="port"
+          type="number"
+          min={1}
+          max={65535}
+          defaultValue={device.port || 8883}
+          className={inputClass}
+          placeholder="Port"
+        />
+      </div>
+
       <input
-        name="name"
-        defaultValue={device.name}
-        required
+        name="topic"
+        defaultValue={device.topic || `triarc/devices/${device.device_id}`}
         className={inputClass}
-        placeholder="Device name"
+        placeholder="MQTT topic prefix"
       />
-      <input
-        name="site_name"
-        defaultValue={device.site_name || ""}
-        className={inputClass}
-        placeholder="Site"
-      />
-      <select name="device_type" defaultValue={device.device_type} className={inputClass}>
-        <option value="esp32_s3">ESP32-S3</option>
-        <option value="pi5">Pi 5</option>
-      </select>
+
+      <p className="text-xs leading-5 text-white/40">
+        For HiveMQ Cloud MQTT, use TLS port 8883. Do not enter the MQTT username or password here; credentials remain outside the database and browser UI.
+      </p>
 
       <p className="text-xs text-white/40">
         Device ID cannot be changed here because telemetry is keyed to it.

@@ -12,6 +12,7 @@ export default function NewDevicePage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [provisioned, setProvisioned] = useState<{ deviceId: string; secret: string; endpoint: string } | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,11 +26,6 @@ export default function NewDevicePage() {
       device_id: deviceId,
       site_name: String(form.get("site_name") || "").trim(),
       device_type: String(form.get("device_type") || "esp32_s3"),
-      connection_type: "http",
-      port: 443,
-      endpoint: "https://triarcgroup.in/api/device/telemetry",
-      topic: null,
-      status: "not_connected",
     };
 
     if (!payload.name || !payload.device_id || !payload.site_name) {
@@ -39,20 +35,22 @@ export default function NewDevicePage() {
     }
 
     const supabase = createClient();
-    const { data, error: insertError } = await supabase
-      .from("devices")
-      .insert(payload)
-      .select("id")
-      .single();
+    const { data, error: provisionError } = await supabase.functions.invoke("provision-sentinel", {
+      body: payload,
+    });
 
-    if (insertError) {
-      setError(insertError.message);
+    if (provisionError || !data?.ok) {
+      setError(provisionError?.message || data?.error || "Device provisioning failed.");
       setSaving(false);
       return;
     }
 
-    router.push(`/admin/devices/${data.id}`);
-    router.refresh();
+    setProvisioned({
+      deviceId: data.device.device_id,
+      secret: data.provisioning.secret,
+      endpoint: data.provisioning.endpoint,
+    });
+    setSaving(false);
   }
 
   return (
@@ -71,7 +69,7 @@ export default function NewDevicePage() {
             Register device
           </h1>
           <p className="mt-2 text-sm text-white/60">
-            Register the physical device first. HTTPS telemetry is initialized automatically. The device sends telemetry to the Cloudflare-hosted ingestion endpoint.
+            Register and provision the physical device. The device communicates directly with Supabase over HTTPS; the device credential is generated once and shown only after provisioning.
           </p>
         </div>
 
@@ -96,16 +94,35 @@ export default function NewDevicePage() {
             <div className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.03] p-4">
               <p className="text-sm font-semibold text-white">HTTPS telemetry</p>
               <p className="mt-1 text-sm leading-6 text-white/50">
-                New devices use HTTPS on port 443 and send telemetry to the secure Cloudflare ingestion endpoint. No MQTT credentials are stored in the website.
+                New devices use direct HTTPS to Supabase on port 443. No MQTT credentials or plaintext device secrets are stored in the database.
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <p className="text-sm font-semibold text-white">Initial status</p>
               <p className="mt-1 text-sm text-white/50">
-                New devices start as <strong className="text-white/70">Not connected</strong> and will be updated automatically when the communication gateway is implemented.
+                New devices start as <strong className="text-white/70">Not connected</strong> and will become online after the Sentinel successfully synchronizes with Supabase.
               </p>
             </div>
+
+            {provisioned ? (
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5">
+                <p className="text-sm font-semibold text-amber-200">Provisioning credential — save this now</p>
+                <p className="mt-2 text-sm leading-6 text-white/60">
+                  This secret is shown once. Store it in the Sentinel private configuration. It is not stored in plaintext in Supabase.
+                </p>
+                <div className="mt-4 space-y-3 text-sm">
+                  <div><span className="text-white/40">Device ID:</span> <code className="text-white">{provisioned.deviceId}</code></div>
+                  <div><span className="text-white/40">Endpoint:</span> <code className="break-all text-white">{provisioned.endpoint}</code></div>
+                  <div><span className="text-white/40">Secret:</span> <code className="block break-all rounded-xl bg-black/30 p-3 text-white">{provisioned.secret}</code></div>
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <button type="button" onClick={() => router.push("/admin/devices")} className="rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-[#03110d]">
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {error ? (
               <div className="rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
@@ -117,7 +134,7 @@ export default function NewDevicePage() {
               <Link href="/admin/devices" className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-white/70 hover:bg-white/5">
                 Cancel
               </Link>
-              <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-[#03110d] disabled:opacity-50">
+              <button type="submit" disabled={saving || Boolean(provisioned)} className="inline-flex items-center gap-2 rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-[#03110d] disabled:opacity-50">
                 <Save size={17} />
                 {saving ? "Saving..." : "Register device"}
               </button>

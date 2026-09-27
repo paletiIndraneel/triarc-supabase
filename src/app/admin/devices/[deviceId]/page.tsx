@@ -6,6 +6,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import { createClient } from "@/lib/supabase/server";
 import DeviceManagement from "./DeviceManagement";
 import ReadingsTable from "./ReadingsTable";
+import LiveTelemetry from "./LiveTelemetry";
 
 export const metadata: Metadata = {
   title: "Device",
@@ -139,18 +140,27 @@ export default async function DeviceDetailsPage({
         </GlassCard>
 
         <GlassCard className="mt-4 p-6">
-          <h2 className="text-lg font-bold text-white">Live Data</h2>
-          <p className="mt-2 text-sm leading-6 text-white/50">
-            Live communication is not connected yet. This panel is reserved for gateway-delivered real-time data.
-          </p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {["Voltage", "Current", "Power", "Energy"].map((label) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-wider text-white/40">{label}</p>
-                <p className="mt-2 text-xl font-bold text-white">—</p>
-              </div>
-            ))}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-white">Live Data</h2>
+              <p className="mt-2 text-sm leading-6 text-white/50">
+                Updates from Supabase Realtime when the gateway receives a new MQTT reading.
+              </p>
+            </div>
+            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/5 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+              Realtime
+            </span>
           </div>
+          <LiveTelemetry
+            deviceId={device.device_id}
+            initialReading={readings?.[0] ? {
+              recorded_at: readings[0].recorded_at,
+              voltage: readings[0].voltage,
+              current: readings[0].current,
+              power: readings[0].power,
+              energy: readings[0].energy,
+            } : null}
+          />
         </GlassCard>
 
         <GlassCard className="mt-4 p-6">

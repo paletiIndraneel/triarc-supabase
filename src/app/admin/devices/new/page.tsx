@@ -4,9 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
-import GlassCard from "@/components/ui/GlassCard";
 import { createClient } from "@/lib/supabase/client";
-
 const inputClass =
   "mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30";
 
@@ -21,11 +19,15 @@ export default function NewDevicePage() {
     setError("");
 
     const form = new FormData(event.currentTarget);
+    const deviceId = String(form.get("device_id") || "").trim();
     const payload = {
       name: String(form.get("name") || "").trim(),
-      device_id: String(form.get("device_id") || "").trim(),
+      device_id: deviceId,
       site_name: String(form.get("site_name") || "").trim(),
       device_type: String(form.get("device_type") || "esp32_s3"),
+      connection_type: "mqtt",
+      port: 8883,
+      topic: deviceId ? `triarc/devices/${deviceId}` : null,
       status: "not_connected",
     };
 
@@ -68,7 +70,7 @@ export default function NewDevicePage() {
             Register device
           </h1>
           <p className="mt-2 text-sm text-white/60">
-            Register the physical device first. Communication settings will be configured separately later.
+            Register the physical device first. MQTT communication metadata is initialized automatically and can be adjusted later.
           </p>
         </div>
 
@@ -90,10 +92,17 @@ export default function NewDevicePage() {
               </label>
             </div>
 
+            <div className="rounded-2xl border border-emerald-400/10 bg-emerald-400/[0.03] p-4">
+              <p className="text-sm font-semibold text-white">MQTT defaults</p>
+              <p className="mt-1 text-sm leading-6 text-white/50">
+                New devices use MQTT over TLS on port 8883 and receive a topic namespace based on their Device ID. The HiveMQ broker hostname can be configured after registration.
+              </p>
+            </div>
+
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <p className="text-sm font-semibold text-white">Initial status</p>
               <p className="mt-1 text-sm text-white/50">
-                New devices start as <strong className="text-white/70">Not connected</strong> and will be updated automatically when communication is implemented.
+                New devices start as <strong className="text-white/70">Not connected</strong> and will be updated automatically when the communication gateway is implemented.
               </p>
             </div>
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, ExternalLink, ShieldCheck } from "lucide-react";
+import { Cpu, Mail, ExternalLink, ShieldCheck, ArrowRight } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import LogoutButton from "@/components/Admin/LogoutButton";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +37,19 @@ export default async function AdminPage() {
         </header>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link href="/admin/devices" className="block">
+            <GlassCard className="h-full p-6 hover:border-emerald-400/30">
+              <Cpu className="text-emerald-300" size={22} />
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-bold text-white">Devices</h2>
+                <ArrowRight className="text-white/40" size={18} />
+              </div>
+              <p className="mt-2 text-sm leading-6 text-white/60">
+                Register and manage Sentinel ESP32-S3 and Pi 5 installations.
+              </p>
+            </GlassCard>
+          </Link>
+
           <GlassCard className="p-6">
             <Mail className="text-emerald-300" size={22} />
             <h2 className="mt-3 text-lg font-bold text-white">Contact Inquiries</h2>

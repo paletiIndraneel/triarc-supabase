@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import GlassCard from "@/components/ui/GlassCard";
+
 const inputClass =
   "mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-emerald-400/50 focus:ring-1 focus:ring-emerald-400/30";
 

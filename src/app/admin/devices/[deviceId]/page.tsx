@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Activity, ArrowLeft, Cpu, HeartPulse, Radio, Server } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { createClient } from "@/lib/supabase/server";
+import DeviceManagement from "./DeviceManagement";
+import ReadingsTable from "./ReadingsTable";
 
 export const metadata: Metadata = {
   title: "Device",
@@ -26,20 +28,14 @@ export default async function DeviceDetailsPage({
 
   if (error || !device) notFound();
 
-  const [{ count: readingsCount }, { count: healthCount }, { count: eventsCount }] =
+  const [{ count: readingsCount }, { count: healthCount }, { count: eventsCount }, { data: readings }, { data: health }, { data: events }] =
     await Promise.all([
-      supabase
-        .from("device_readings")
-        .select("id", { count: "exact", head: true })
-        .eq("device_id", device.device_id),
-      supabase
-        .from("device_health")
-        .select("id", { count: "exact", head: true })
-        .eq("device_id", device.device_id),
-      supabase
-        .from("device_events")
-        .select("id", { count: "exact", head: true })
-        .eq("device_id", device.device_id),
+      supabase.from("device_readings").select("id", { count: "exact", head: true }).eq("device_id", device.device_id),
+      supabase.from("device_health").select("id", { count: "exact", head: true }).eq("device_id", device.device_id),
+      supabase.from("device_events").select("id", { count: "exact", head: true }).eq("device_id", device.device_id),
+      supabase.from("device_readings").select("*").eq("device_id", device.device_id).order("recorded_at", { ascending: false }).limit(50),
+      supabase.from("device_health").select("*").eq("device_id", device.device_id).order("recorded_at", { ascending: false }).limit(25),
+      supabase.from("device_events").select("*").eq("device_id", device.device_id).order("recorded_at", { ascending: false }).limit(25),
     ]);
 
   return (
@@ -52,19 +48,16 @@ export default async function DeviceDetailsPage({
 
         <header className="mt-5 flex flex-wrap items-start justify-between gap-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300">
-              Device
-            </p>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
-              {device.name}
-            </h1>
-            <p className="mt-2 text-sm text-white/50">
-              {device.device_id} · {device.site_name || "No site"}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300">Device</p>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">{device.name}</h1>
+            <p className="mt-2 text-sm text-white/50">{device.device_id} · {device.site_name || "No site"}</p>
           </div>
-          <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold capitalize text-white/70">
-            {device.status.replace("_", " ")}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold capitalize text-white/70">
+              {device.status.replace("_", " ")}
+            </span>
+            <DeviceManagement device={device} />
+          </div>
         </header>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -92,9 +85,7 @@ export default async function DeviceDetailsPage({
 
           <GlassCard className="p-6">
             <h2 className="text-lg font-bold text-white">Telemetry</h2>
-            <p className="mt-2 text-sm leading-6 text-white/50">
-              History is stored in three Supabase tables and is ready for the communication gateway.
-            </p>
+            <p className="mt-2 text-sm leading-6 text-white/50">Historical data is stored in the three Supabase telemetry tables.</p>
             <div className="mt-5 space-y-3 text-sm">
               <Row label="Readings" value={readingsCount ?? 0} />
               <Row label="Health" value={healthCount ?? 0} />
@@ -106,11 +97,58 @@ export default async function DeviceDetailsPage({
         <GlassCard className="mt-4 p-6">
           <h2 className="text-lg font-bold text-white">Live Data</h2>
           <p className="mt-2 text-sm leading-6 text-white/50">
-            Live device communication is not connected yet. This panel will be
-            populated by the server-side MQTT/WebSocket/HTTP gateway without
-            exposing device credentials to the browser.
+            Live communication is not connected yet. This panel is reserved for gateway-delivered real-time data.
           </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {["Voltage", "Current", "Power", "Energy"].map((label) => (
+              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs uppercase tracking-wider text-white/40">{label}</p>
+                <p className="mt-2 text-xl font-bold text-white">—</p>
+              </div>
+            ))}
+          </div>
         </GlassCard>
+
+        <GlassCard className="mt-4 p-6">
+          <h2 className="text-lg font-bold text-white">Recent readings</h2>
+          <p className="mt-1 text-sm text-white/50">Latest 50 records.</p>
+          <div className="mt-5">
+            {readings?.length ? <ReadingsTable readings={readings} /> : <Empty text="No readings have been received yet." />}
+          </div>
+        </GlassCard>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <GlassCard className="p-6">
+            <h2 className="text-lg font-bold text-white">Health</h2>
+            <div className="mt-4 space-y-3">
+              {health?.length ? health.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="flex justify-between gap-3">
+                    <span className="font-semibold text-white">{item.module || "System"}</span>
+                    <span className="text-xs capitalize text-white/50">{item.state || "—"}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-white/50">{item.message || "—"}</p>
+                  <p className="mt-2 text-xs text-white/30">{new Date(item.recorded_at).toLocaleString()}</p>
+                </div>
+              )) : <Empty text="No health records have been received yet." />}
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-6">
+            <h2 className="text-lg font-bold text-white">Events</h2>
+            <div className="mt-4 space-y-3">
+              {events?.length ? events.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="flex justify-between gap-3">
+                    <span className="font-semibold text-white">{item.event_type || "Event"}</span>
+                    <span className="text-xs text-white/30">{new Date(item.recorded_at).toLocaleString()}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-white/50">{item.message || "—"}</p>
+                </div>
+              )) : <Empty text="No events have been received yet." />}
+            </div>
+          </GlassCard>
+        </div>
       </div>
     </main>
   );
@@ -127,19 +165,13 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-[0.15em] text-white/40">{label}</dt>
-      <dd className="mt-1 break-all text-sm text-white/80">{value}</dd>
-    </div>
-  );
+  return <div><dt className="text-xs uppercase tracking-[0.15em] text-white/40">{label}</dt><dd className="mt-1 break-all text-sm text-white/80">{value}</dd></div>;
 }
 
 function Row({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-      <span className="text-white/50">{label}</span>
-      <span className="font-semibold text-white">{value}</span>
-    </div>
-  );
+  return <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"><span className="text-white/50">{label}</span><span className="font-semibold text-white">{value}</span></div>;
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/40">{text}</p>;
 }

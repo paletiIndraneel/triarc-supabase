@@ -5,12 +5,16 @@ type CmsConfig = {
   apiUrl: string;
   username: string;
   password: string;
-  organizationId: string;
-  projectId: string;
   locationId: number;
 };
 
+type CmsContext = {
+  organizationId: string;
+  projectId: string;
+};
+
 let cachedToken: { value: string; expiresAt: number } | null = null;
+let cachedContext: CmsContext | null = null;
 
 async function getRuntimeEnv(): Promise<Record<string, unknown>> {
   try {
@@ -25,12 +29,11 @@ export async function getCmsConfig(): Promise<CmsConfig> {
   const env = await getRuntimeEnv();
 
   return {
-    enabled: String(env.CMS_OPERATOR_DASHBOARD_ENABLED ?? "").toLowerCase() === "true",
+    enabled:
+      String(env.CMS_OPERATOR_DASHBOARD_ENABLED ?? "").toLowerCase() === "true",
     apiUrl: String(env.CMS_API_URL ?? "").replace(/\/$/, ""),
     username: String(env.CMS_API_USERNAME ?? ""),
     password: String(env.CMS_API_PASSWORD ?? ""),
-    organizationId: String(env.CMS_API_ORGANIZATION_ID ?? ""),
-    projectId: String(env.CMS_API_PROJECT_ID ?? ""),
     locationId: Number(env.CMS_API_LOCATION_ID ?? 0),
   };
 }
@@ -40,8 +43,6 @@ async function login(config: CmsConfig): Promise<string> {
     !config.apiUrl ||
     !config.username ||
     !config.password ||
-    !config.organizationId ||
-    !config.projectId ||
     !Number.isFinite(config.locationId) ||
     config.locationId <= 0
   ) {
@@ -49,7 +50,7 @@ async function login(config: CmsConfig): Promise<string> {
   }
 
   const response = await fetch(
-    `${config.apiUrl}/web/register/signin`,
+    "https://ogs.console.chargemod.com/web/register/signin",
     {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -76,6 +77,7 @@ async function login(config: CmsConfig): Promise<string> {
     value: token,
     expiresAt: Date.now() + 45 * 60 * 1000,
   };
+  cachedContext = null;
 
   return token;
 }
@@ -105,27 +107,28 @@ async function getToken(config: CmsConfig, forceRefresh = false) {
   return login(config);
 }
 
-async function cmsPost<T>(
+async function cmsFetch<T>(
   config: CmsConfig,
+  baseUrl: string,
   path: string,
-  body: Record<string, unknown>,
+  init: RequestInit,
   retry = true
 ): Promise<T> {
   const token = await getToken(config);
 
-  const response = await fetch(`${config.apiUrl}${path}`, {
-    method: "POST",
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
     headers: {
-      "content-type": "application/json",
+      ...(init.headers ?? {}),
       authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(body),
     cache: "no-store",
   });
 
   if (response.status === 401 && retry) {
     cachedToken = null;
-    return cmsPost<T>(config, path, body, false);
+    cachedContext = null;
+    return cmsFetch<T>(config, baseUrl, path, init, false);
   }
 
   if (!response.ok) {
@@ -138,11 +141,97 @@ async function cmsPost<T>(
   return response.json() as Promise<T>;
 }
 
+async function discoverContext(config: CmsConfig): Promise<CmsContext> {
+  if (cachedContext) return cachedContext;
+
+  type Organization = {
+    _id?: unknown;
+    isActive?: unknown;
+    isSuspended?: unknown;
+    organisationProjects?: unknown;
+  };
+
+  type OrganizationsResponse = {
+    foundOrganisation?: Organization[];
+  };
+
+  type ProjectsResponse = {
+    projects?: Array<{
+      _id?: unknown;
+      projectName?: unknown;
+    }>;
+  };
+
+  const organizations = await cmsFetch<OrganizationsResponse>(
+    config,
+    "https://ogs.console.chargemod.com",
+    "/web/org/get-organizations",
+    {
+      method: "GET",
+      headers: { accept: "application/json" },
+    }
+  );
+
+  const candidates = Array.isArray(organizations.foundOrganisation)
+    ? organizations.foundOrganisation
+    : [];
+
+  for (const organization of candidates) {
+    const organizationId =
+      typeof organization._id === "string" ? organization._id : "";
+
+    if (
+      !organizationId ||
+      organization.isActive === false ||
+      organization.isSuspended === true
+    ) {
+      continue;
+    }
+
+    const projects = await cmsFetch<ProjectsResponse>(
+      config,
+      "https://ogs.console.chargemod.com",
+      "/web/org/organisation/get-project",
+      {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ organizationId }),
+      }
+    );
+
+    const powerLineProject = projects.projects?.find(
+      (project) =>
+        typeof project._id === "string" &&
+        typeof project.projectName === "string" &&
+        project.projectName.trim().toLowerCase() === "powerline"
+    );
+
+    if (powerLineProject && typeof powerLineProject._id === "string") {
+      cachedContext = {
+        organizationId,
+        projectId: powerLineProject._id,
+      };
+      return cachedContext;
+    }
+  }
+
+  throw new Error("CMS PowerLine organization/project could not be discovered.");
+}
+
+async function getCmsContext(config: CmsConfig): Promise<CmsContext> {
+  return discoverContext(config);
+}
+
 export async function getDashboardData(
   config: CmsConfig,
   startDate: string,
   endDate: string
 ) {
+  const context = await getCmsContext(config);
+
   const body = {
     allowedLocations: [config.locationId],
     filterDate: { startDate, endDate },
@@ -153,12 +242,14 @@ export async function getDashboardData(
   const [summary, chart, chargers, locations] = await Promise.all([
     cmsPost<Record<string, unknown>>(
       config,
-      `/dashboard/get-transaction-data?organizationId=${config.organizationId}&projectId=${config.projectId}`,
+      context,
+      `/dashboard/get-transaction-data?organizationId=${context.organizationId}&projectId=${context.projectId}`,
       body
     ),
     cmsPost<Record<string, unknown>>(
       config,
-      `/dashboard/get-chart-data?organizationId=${config.organizationId}&projectId=${config.projectId}`,
+      context,
+      `/dashboard/get-chart-data?organizationId=${context.organizationId}&projectId=${context.projectId}`,
       {
         ...body,
         isStartYearForGraph: false,
@@ -166,25 +257,40 @@ export async function getDashboardData(
     ),
     cmsPost<Record<string, unknown>>(
       config,
+      context,
       "/dashboard/search-data/get-chargers",
       {
-        organizationId: config.organizationId,
-        projectId: config.projectId,
+        organizationId: context.organizationId,
+        projectId: context.projectId,
         allowedLocations: [config.locationId],
       }
     ),
     cmsPost<Record<string, unknown>>(
       config,
+      context,
       "/dashboard/search-data/get-locations",
       {
-        organizationId: config.organizationId,
-        projectId: config.projectId,
+        organizationId: context.organizationId,
+        projectId: context.projectId,
         allowedLocations: [config.locationId],
       }
     ),
   ]);
 
   return { summary, chart, chargers, locations };
+}
+
+async function cmsPost<T>(
+  config: CmsConfig,
+  context: CmsContext,
+  path: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  return cmsFetch<T>(config, config.apiUrl, path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function getTransactions(
@@ -198,12 +304,15 @@ export async function getTransactions(
     searchKey?: string;
   }
 ) {
+  const context = await getCmsContext(config);
+
   return cmsPost<Record<string, unknown>>(
     config,
+    context,
     "/pwr/charger/get-pwr-transaction",
     {
-      organizationId: config.organizationId,
-      projectId: config.projectId,
+      organizationId: context.organizationId,
+      projectId: context.projectId,
       perPageCount: options.perPage,
       pageNumber: options.page,
       filterDate: {
@@ -224,12 +333,15 @@ export async function getTransactions(
 }
 
 export async function getActiveTransactions(config: CmsConfig) {
+  const context = await getCmsContext(config);
+
   return cmsPost<Record<string, unknown>>(
     config,
+    context,
     "/pwr/charger/get-pwr-active-transaction",
     {
-      organizationId: config.organizationId,
-      projectId: config.projectId,
+      organizationId: context.organizationId,
+      projectId: context.projectId,
       perPageCount: 25,
       pageNumber: 1,
       allowedLocations: [config.locationId],

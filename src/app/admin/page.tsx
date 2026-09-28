@@ -4,6 +4,7 @@ import { Mail, ExternalLink, ShieldCheck } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import LogoutButton from "@/components/Admin/LogoutButton";
 import { createClient } from "@/lib/supabase/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { site } from "@/data/site";
 import { contact } from "@/data/contact";
 
@@ -14,6 +15,18 @@ export const metadata: Metadata = {
 
 export default async function AdminPage() {
   const supabase = await createClient();
+
+  let cmsEnabled = false;
+  try {
+    const context = await getCloudflareContext({ async: true });
+    cmsEnabled =
+      String(context.env.CMS_OPERATOR_DASHBOARD_ENABLED ?? "").toLowerCase() ===
+      "true";
+  } catch {
+    cmsEnabled =
+      String(process.env.CMS_OPERATOR_DASHBOARD_ENABLED ?? "").toLowerCase() ===
+      "true";
+  }
 
   const {
     data: { user },
@@ -37,6 +50,25 @@ export default async function AdminPage() {
         </header>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {cmsEnabled && (
+            <GlassCard className="p-6">
+              <ShieldCheck className="text-emerald-300" size={22} />
+              <h2 className="mt-3 text-lg font-bold text-white">
+                CMS Operator Dashboard
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-white/60">
+                View ChargeMOD Power Line operations, charger totals, live transactions, and transaction history.
+              </p>
+              <Link
+                href="/admin/cms"
+                className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-300 hover:text-emerald-200"
+              >
+                Open dashboard
+              </Link>
+            </GlassCard>
+          )}
+
+
           <GlassCard className="p-6">
             <Mail className="text-emerald-300" size={22} />
             <h2 className="mt-3 text-lg font-bold text-white">Contact Inquiries</h2>

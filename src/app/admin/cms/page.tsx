@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, RefreshCw, Zap } from "lucide-react";
+import { Activity, ArrowLeft, RefreshCw } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 
 type Dashboard = {
@@ -25,6 +25,15 @@ type Transaction = {
   stationType: string | null;
   stopReason: string | null;
   energyKwh: number | null;
+};
+
+type TransactionResponse = {
+  transactions?: Transaction[];
+  count?: number;
+};
+
+type ActiveTransactionResponse = {
+  count?: number;
 };
 
 function num(value: unknown) {
@@ -82,9 +91,9 @@ export default function CmsOperatorDashboard() {
       }
 
       const [dashboardData, transactionData, activeData] = await Promise.all([
-        dashboardResponse.json(),
-        transactionsResponse.json(),
-        activeResponse.json(),
+        dashboardResponse.json() as Promise<Dashboard>,
+        transactionsResponse.json() as Promise<TransactionResponse>,
+        activeResponse.json() as Promise<ActiveTransactionResponse>,
       ]);
 
       setDashboard(dashboardData);

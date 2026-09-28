@@ -36,7 +36,15 @@ export async function getCmsConfig(): Promise<CmsConfig> {
 }
 
 async function login(config: CmsConfig): Promise<string> {
-  if (!config.apiUrl || !config.username || !config.password) {
+  if (
+    !config.apiUrl ||
+    !config.username ||
+    !config.password ||
+    !config.organizationId ||
+    !config.projectId ||
+    !Number.isFinite(config.locationId) ||
+    config.locationId <= 0
+  ) {
     throw new Error("CMS runtime configuration is incomplete.");
   }
 

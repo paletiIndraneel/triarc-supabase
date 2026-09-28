@@ -1,14 +1,13 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-const ORGANIZATION_ID = "64b793030dd6bb39c1c3e270";
-const PROJECT_ID = "6494141957d29409895704d2";
-const LOCATION_ID = 1783154310261;
-
 type CmsConfig = {
   enabled: boolean;
   apiUrl: string;
   username: string;
   password: string;
+  organizationId: string;
+  projectId: string;
+  locationId: number;
 };
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
@@ -30,11 +29,10 @@ export async function getCmsConfig(): Promise<CmsConfig> {
     apiUrl: String(env.CMS_API_URL ?? "").replace(/\/$/, ""),
     username: String(env.CMS_API_USERNAME ?? ""),
     password: String(env.CMS_API_PASSWORD ?? ""),
+    organizationId: String(env.CMS_API_ORGANIZATION_ID ?? ""),
+    projectId: String(env.CMS_API_PROJECT_ID ?? ""),
+    locationId: Number(env.CMS_API_LOCATION_ID ?? 0),
   };
-}
-
-export function cmsLocationId() {
-  return LOCATION_ID;
 }
 
 async function login(config: CmsConfig): Promise<string> {
@@ -138,7 +136,7 @@ export async function getDashboardData(
   endDate: string
 ) {
   const body = {
-    allowedLocations: [LOCATION_ID],
+    allowedLocations: [config.locationId],
     filterDate: { startDate, endDate },
     searchValue: {},
     allowedCustomers: [],
@@ -147,12 +145,12 @@ export async function getDashboardData(
   const [summary, chart, chargers, locations] = await Promise.all([
     cmsPost<Record<string, unknown>>(
       config,
-      `/dashboard/get-transaction-data?organizationId=${ORGANIZATION_ID}&projectId=${PROJECT_ID}`,
+      `/dashboard/get-transaction-data?organizationId=${config.organizationId}&projectId=${config.projectId}`,
       body
     ),
     cmsPost<Record<string, unknown>>(
       config,
-      `/dashboard/get-chart-data?organizationId=${ORGANIZATION_ID}&projectId=${PROJECT_ID}`,
+      `/dashboard/get-chart-data?organizationId=${config.organizationId}&projectId=${config.projectId}`,
       {
         ...body,
         isStartYearForGraph: false,
@@ -162,18 +160,18 @@ export async function getDashboardData(
       config,
       "/dashboard/search-data/get-chargers",
       {
-        organizationId: ORGANIZATION_ID,
-        projectId: PROJECT_ID,
-        allowedLocations: [LOCATION_ID],
+        organizationId: config.organizationId,
+        projectId: config.projectId,
+        allowedLocations: [config.locationId],
       }
     ),
     cmsPost<Record<string, unknown>>(
       config,
       "/dashboard/search-data/get-locations",
       {
-        organizationId: ORGANIZATION_ID,
-        projectId: PROJECT_ID,
-        allowedLocations: [LOCATION_ID],
+        organizationId: config.organizationId,
+        projectId: config.projectId,
+        allowedLocations: [config.locationId],
       }
     ),
   ]);
@@ -196,8 +194,8 @@ export async function getTransactions(
     config,
     "/pwr/charger/get-pwr-transaction",
     {
-      organizationId: ORGANIZATION_ID,
-      projectId: PROJECT_ID,
+      organizationId: config.organizationId,
+      projectId: config.projectId,
       perPageCount: options.perPage,
       pageNumber: options.page,
       filterDate: {
@@ -208,7 +206,7 @@ export async function getTransactions(
         searchField: options.searchField ?? "",
         searchKey: options.searchKey ?? "",
       },
-      allowedLocations: [LOCATION_ID],
+      allowedLocations: [config.locationId],
       transactionType: null,
       sortType: -1,
       solarType: "",
@@ -222,11 +220,11 @@ export async function getActiveTransactions(config: CmsConfig) {
     config,
     "/pwr/charger/get-pwr-active-transaction",
     {
-      organizationId: ORGANIZATION_ID,
-      projectId: PROJECT_ID,
+      organizationId: config.organizationId,
+      projectId: config.projectId,
       perPageCount: 25,
       pageNumber: 1,
-      allowedLocations: [LOCATION_ID],
+      allowedLocations: [config.locationId],
       searchValue: { searchField: "", searchKey: "" },
       sortType: -1,
       solarType: "",

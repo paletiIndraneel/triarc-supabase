@@ -60,11 +60,11 @@ export async function middleware(request: NextRequest) {
 
   if (adminError) {
     console.error("[auth] Failed to verify admin access:", adminError);
-    return new NextResponse("Forbidden", { status: 403 });
+    return redirectToUnauthorized(request);
   }
 
   if (!admin) {
-    return new NextResponse("Forbidden", { status: 403 });
+    return redirectToUnauthorized(request);
   }
 
   return response;
@@ -79,4 +79,15 @@ function redirectToSignIn(request: NextRequest) {
   );
 
   return NextResponse.redirect(signInUrl);
+}
+
+function redirectToUnauthorized(request: NextRequest) {
+  const unauthorizedUrl = new URL("/unauthorized", request.url);
+
+  unauthorizedUrl.searchParams.set(
+    "callbackUrl",
+    `${request.nextUrl.pathname}${request.nextUrl.search}`
+  );
+
+  return NextResponse.redirect(unauthorizedUrl);
 }

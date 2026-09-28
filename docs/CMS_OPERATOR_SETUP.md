@@ -13,8 +13,11 @@ Add these as **Secrets**:
 
 - `CMS_API_USERNAME`
 - `CMS_API_PASSWORD`
+- `CMS_API_ORGANIZATION_ID`
+- `CMS_API_PROJECT_ID`
+- `CMS_API_LOCATION_ID`
 
-Use the existing ChargeMOD operator account credentials for the two secrets.
+The organization, project, and location identifiers are intentionally runtime configuration too. They are kept out of the repository and should be configured as **Secrets** because they are internal operator identifiers.
 
 ## Cloudflare Dashboard
 
@@ -24,7 +27,10 @@ Worker → Settings → Variables and Secrets:
 2. Add `CMS_API_URL` as an Environment Variable with value `https://ls.console.chargemod.com`.
 3. Add `CMS_API_USERNAME` as a Secret.
 4. Add `CMS_API_PASSWORD` as a Secret.
-5. Redeploy the Worker.
+5. Add `CMS_API_ORGANIZATION_ID` as a Secret.
+6. Add `CMS_API_PROJECT_ID` as a Secret.
+7. Add `CMS_API_LOCATION_ID` as a Secret.
+8. Redeploy the Worker.
 
 If `CMS_OPERATOR_DASHBOARD_ENABLED` is missing or anything other than `true`, the CMS dashboard is hidden from the TriArc admin and the CMS API routes return 404.
 
@@ -35,9 +41,12 @@ From a machine authenticated to the correct Cloudflare account:
 ```bash
 npx wrangler secret put CMS_API_USERNAME
 npx wrangler secret put CMS_API_PASSWORD
+npx wrangler secret put CMS_API_ORGANIZATION_ID
+npx wrangler secret put CMS_API_PROJECT_ID
+npx wrangler secret put CMS_API_LOCATION_ID
 ```
 
-The two non-secret runtime variables can be added in the Cloudflare dashboard. Do not put the CMS password or bearer token in `wrangler.jsonc`, GitHub Actions, `.env` committed to the repository, browser code, Supabase, or a `NEXT_PUBLIC_*` variable.
+The two non-secret runtime variables are the feature flag and CMS API base URL. All CMS account and internal operator identifiers remain runtime secrets. Do not put the CMS password or bearer token in `wrangler.jsonc`, GitHub Actions, `.env` committed to the repository, browser code, Supabase, or a `NEXT_PUBLIC_*` variable.
 
 ## Local development
 

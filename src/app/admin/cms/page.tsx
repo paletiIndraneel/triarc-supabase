@@ -109,15 +109,18 @@ function cleanDisplayValue(value: string, prefixes: string[]) {
 function displayUserName(value: string) {
   const name = value.trim();
 
-  if (
-    !name ||
-    /^guest user(?: undefined)?$/i.test(name) ||
-    /^guest user undefined$/i.test(name)
-  ) {
+  if (!name || /^guest user(?: undefined)?$/i.test(name)) {
     return "Guest";
   }
 
-  return name;
+  // ChargeMOD can append placeholder values such as "undefined" or "User"
+  // to a real name. Remove only those trailing placeholders.
+  const cleaned = name
+    .replace(/\s+undefined$/i, "")
+    .replace(/\s+user$/i, "")
+    .trim();
+
+  return cleaned || "Guest";
 }
 
 function displayLocation(value: string) {

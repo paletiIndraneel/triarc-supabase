@@ -158,31 +158,25 @@ export default function CmsOperatorDashboard() {
         transactionParams.set("endDate", today.endDate);
       }
 
-      const [dashboardResponse, transactionsResponse, activeResponse] =
-        await Promise.all([
-          fetch("/api/cms/dashboard", { cache: "no-store" }),
-          fetch(`/api/cms/transactions?${transactionParams.toString()}`, {
-            cache: "no-store",
-          }),
-          fetch("/api/cms/active-transactions", { cache: "no-store" }),
-        ]);
+      const response = await fetch(
+        `/api/cms/operator?${transactionParams.toString()}`,
+        { cache: "no-store" }
+      );
 
-      if (!dashboardResponse.ok) {
-        throw new Error(await dashboardResponse.text());
-      }
-      if (!transactionsResponse.ok) {
-        throw new Error(await transactionsResponse.text());
-      }
-      if (!activeResponse.ok) {
-        throw new Error(await activeResponse.text());
+      const data = (await response.json()) as {
+        error?: string;
+        dashboard?: Dashboard;
+        transactions?: TransactionResponse;
+        active?: ActiveTransactionResponse;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "CMS request failed.");
       }
 
-      const [dashboardData, transactionData, activeData] = await Promise.all([
-        dashboardResponse.json() as Promise<Dashboard>,
-        transactionsResponse.json() as Promise<TransactionResponse>,
-        activeResponse.json() as Promise<ActiveTransactionResponse>,
-      ]);
-
+      const dashboardData = data.dashboard;
+      const transactionData = data.transactions ?? {};
+      const activeData = data.active ?? {};
       const currentActiveTransactions = activeData.transactions ?? [];
 
       setDashboard(dashboardData);
@@ -260,9 +254,6 @@ export default function CmsOperatorDashboard() {
         {message && (
           <GlassCard className="mt-6 border-red-400/20 p-5">
             <p className="text-sm text-red-200">{message}</p>
-            <p className="mt-2 text-xs text-white/50">
-              Check the Cloudflare CMS runtime variables/secrets before troubleshooting the CMS API.
-            </p>
           </GlassCard>
         )}
 

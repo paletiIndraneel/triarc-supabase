@@ -39,6 +39,72 @@ type ActiveTransactionResponse = {
   count?: number;
 };
 
+type CmsCache = {
+  transactions: Transaction[];
+  coverage: Array<{ startDate: string; endDate: string }>;
+};
+
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache";
+
+function readCmsCache(): CmsCache {
+  if (typeof window === "undefined") return { transactions: [], coverage: [] };
+  try {
+    const raw = window.sessionStorage.getItem(CMS_CACHE_KEY);
+    if (!raw) return { transactions: [], coverage: [] };
+    const parsed = JSON.parse(raw) as Partial<CmsCache>;
+    return {
+      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+      coverage: Array.isArray(parsed.coverage) ? parsed.coverage : [],
+    };
+  } catch {
+    return { transactions: [], coverage: [] };
+  }
+}
+
+function writeCmsCache(cache: CmsCache) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(CMS_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
+function mergeCmsTransactions(existing: Transaction[], incoming: Transaction[]) {
+  const merged = new Map<string, Transaction>();
+  for (const transaction of [...existing, ...incoming]) {
+    const key = transaction.id || transaction.transactionId;
+    if (key) merged.set(key, transaction);
+  }
+  return Array.from(merged.values());
+}
+
+function rangeIsCovered(
+  coverage: CmsCache["coverage"],
+  startDate: string,
+  endDate: string
+) {
+  const requestedStart = new Date(startDate).getTime();
+  const requestedEnd = new Date(endDate).getTime();
+  return coverage.some((range) => {
+    const start = new Date(range.startDate).getTime();
+    const end = new Date(range.endDate).getTime();
+    return start <= requestedStart && end >= requestedEnd;
+  });
+}
+
+function filterTransactionsByRange(
+  source: Transaction[],
+  startDate: string,
+  endDate: string
+) {
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  return source.filter((transaction) => {
+    if (!transaction.startedAt) return false;
+    const timestamp = new Date(transaction.startedAt).getTime();
+    return timestamp >= start && timestamp < end;
+  });
+}
+
 function num(value: unknown) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -194,57 +260,92 @@ export default function CmsOperatorDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setMessage("");
 
     try {
       const dateRange = getDateRangeIST(datePreset);
-      const transactionParams = new URLSearchParams({
-        page: String(page),
-        perPage: "25",
-      });
+      let cache = readCmsCache();
 
-      transactionParams.set("startDate", dateRange.startDate);
-      transactionParams.set("endDate", dateRange.endDate);
-
-      const response = await fetch(
-        `/api/cms/operator?${transactionParams.toString()}`,
-        { cache: "no-store" }
-      );
-
-      const data = (await response.json()) as {
-        error?: string;
-        dashboard?: Dashboard;
-        transactions?: TransactionResponse;
-        active?: ActiveTransactionResponse;
-      };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "CMS request failed.");
+      if (forceRefresh) {
+        cache = { transactions: [], coverage: [] };
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(CMS_CACHE_KEY);
+        }
       }
 
-      const dashboardData = data.dashboard;
-      if (!dashboardData) {
-        throw new Error(data.error ?? "CMS dashboard data was not returned.");
+      let filteredTransactions: Transaction[];
+      let dashboardData: Dashboard | undefined;
+      let activeData: ActiveTransactionResponse = {};
+
+      if (rangeIsCovered(cache.coverage, dateRange.startDate, dateRange.endDate)) {
+        filteredTransactions = filterTransactionsByRange(
+          cache.transactions,
+          dateRange.startDate,
+          dateRange.endDate
+        );
+      } else {
+        const params = new URLSearchParams({
+          page: "1",
+          perPage: "25",
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+        });
+
+        const response = await fetch(
+          `/api/cms/operator?${params.toString()}`,
+          { cache: "no-store" }
+        );
+
+        const data = (await response.json()) as {
+          error?: string;
+          dashboard?: Dashboard;
+          transactions?: TransactionResponse & {
+            coverage?: { startDate: string; endDate: string };
+          };
+          active?: ActiveTransactionResponse;
+        };
+
+        if (!response.ok) {
+          throw new Error(data.error ?? "CMS request failed.");
+        }
+
+        dashboardData = data.dashboard;
+        if (!dashboardData) {
+          throw new Error(data.error ?? "CMS dashboard data was not returned.");
+        }
+
+        const incoming = data.transactions?.transactions ?? [];
+        const coverage = data.transactions?.coverage ?? dateRange;
+
+        cache = {
+          transactions: mergeCmsTransactions(cache.transactions, incoming),
+          coverage: [...cache.coverage, coverage],
+        };
+        writeCmsCache(cache);
+
+        filteredTransactions = filterTransactionsByRange(
+          cache.transactions,
+          dateRange.startDate,
+          dateRange.endDate
+        );
+        activeData = data.active ?? {};
       }
-      const transactionData = data.transactions ?? {};
-      const activeData = data.active ?? {};
+
       const currentActiveTransactions = activeData.transactions ?? [];
-
-      const historicalTransactions = transactionData.transactions ?? [];
       const liveTransactions = currentActiveTransactions.filter(
         (activeTransaction) =>
-          !historicalTransactions.some(
+          !filteredTransactions.some(
             (transaction) =>
               transaction.id === activeTransaction.id ||
               transaction.transactionId === activeTransaction.transactionId
           )
       );
 
-      setDashboard(dashboardData);
-      setTransactions([...liveTransactions, ...historicalTransactions]);
-      setCount((transactionData.count ?? 0) + liveTransactions.length);
+      if (dashboardData) setDashboard(dashboardData);
+      setTransactions([...liveTransactions, ...filteredTransactions]);
+      setCount(filteredTransactions.length + liveTransactions.length);
       setActive(activeData.count ?? currentActiveTransactions.length);
       setActiveTransactionIds(
         new Set(
@@ -258,11 +359,13 @@ export default function CmsOperatorDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [page, datePreset]);
+  }, [datePreset]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const pagedTransactions = transactions.slice((page - 1) * 25, page * 25);
 
   const summary = dashboard?.summary ?? {};
   const details =
@@ -305,7 +408,7 @@ export default function CmsOperatorDashboard() {
             </p>
           </div>
           <button
-            onClick={() => void load()}
+            onClick={() => void load(true)}
             disabled={loading}
             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
           >
@@ -386,7 +489,7 @@ export default function CmsOperatorDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {transactions.map((transaction) => {
+                {pagedTransactions.map((transaction) => {
                   const isActive =
                     transaction.stoppedAt == null &&
                     (activeTransactionIds.has(transaction.id) ||

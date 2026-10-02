@@ -44,9 +44,7 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300">Admin</p>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Welcome {displayName}</h1>
-            <p className="mt-2 text-sm text-white/60">Signed in to the {site.brand.fullName} admin area.</p>
           </div>
           <LogoutButton />
         </header>

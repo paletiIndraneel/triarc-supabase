@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X, Zap } from "lucide-react";
 import Container from "@/components/Container";
+import LogoutButton from "@/components/Admin/LogoutButton";
 import { navigation, navCta } from "@/data/navigation";
 
 export default function Navbar() {

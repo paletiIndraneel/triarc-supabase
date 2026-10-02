@@ -383,13 +383,41 @@ export async function getOperatorData(
     getActiveTransactions(config),
   ]);
 
-  const result = Array.isArray(transactions.result) ? transactions.result : [];
-  const sanitizedTransactions = result
+  const firstResult = Array.isArray(transactions.result) ? transactions.result : [];
+  const totalCount = Number(transactions.count ?? firstResult.length);
+  const totalPages = Math.max(1, Math.ceil(totalCount / transactionOptions.perPage));
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) =>
+      getTransactions(config, {
+        ...transactionOptions,
+        page: index + 2,
+      })
+    )
+  );
+
+  const rawTransactions = [
+    ...firstResult,
+    ...remainingPages.flatMap((pageResult) =>
+      Array.isArray(pageResult.result) ? pageResult.result : []
+    ),
+  ];
+
+  const sanitizedTransactions = rawTransactions
     .filter(
       (item): item is Record<string, unknown> =>
         Boolean(item) && typeof item === "object"
     )
     .map(sanitizeTransaction);
+
+  const uniqueTransactions = Array.from(
+    new Map(
+      sanitizedTransactions.map((transaction) => [
+        transaction.id || transaction.transactionId,
+        transaction,
+      ])
+    ).values()
+  );
 
   const activeResult = Array.isArray(active.result) ? active.result : [];
   const activeTransactions = activeResult
@@ -402,10 +430,15 @@ export async function getOperatorData(
   return {
     dashboard,
     transactions: {
-      transactions: sanitizedTransactions,
-      count: Number(transactions.count ?? 0),
+      transactions: uniqueTransactions,
+      count: uniqueTransactions.length,
+      totalCount,
       page: transactionOptions.page,
       perPage: transactionOptions.perPage,
+      coverage: {
+        startDate: transactionOptions.startDate,
+        endDate: transactionOptions.endDate,
+      },
     },
     active: {
       transactions: activeTransactions,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Menu, X, Zap } from "lucide-react";
 import Container from "@/components/Container";
@@ -10,6 +11,8 @@ import { navigation, navCta } from "@/data/navigation";
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,7 +65,7 @@ export default function Navbar() {
             </Link>
 
             <div className="hidden lg:block">
-              <LogoutButton compact />
+              {isAdminPage ? <LogoutButton compact /> : <Link href="/signin" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-emerald-300/40 hover:bg-white/5">Admin Login</Link>}
             </div>
 
             <button
@@ -98,7 +101,7 @@ export default function Navbar() {
                 {navCta.label}
               </Link>
               <div className="mt-1">
-                <LogoutButton compact />
+                {isAdminPage ? <LogoutButton compact /> : <Link href="/signin" className="block rounded-2xl border border-white/15 px-4 py-3 text-center text-sm font-semibold text-white/80 transition hover:border-emerald-300/40 hover:bg-white/5" onClick={() => setMobileOpen(false)}>Admin Login</Link>}
               </div>
             </div>
           </div>

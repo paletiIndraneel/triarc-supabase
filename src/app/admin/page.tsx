@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, ExternalLink, ShieldCheck } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
-import LogoutButton from "@/components/Admin/LogoutButton";
 import { createClient } from "@/lib/supabase/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { site } from "@/data/site";
@@ -46,7 +45,6 @@ export default async function AdminPage() {
           <div>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Welcome {displayName}</h1>
           </div>
-          <LogoutButton />
         </header>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

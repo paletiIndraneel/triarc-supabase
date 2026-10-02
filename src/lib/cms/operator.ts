@@ -110,17 +110,18 @@ function findToken(value: unknown): string | null {
   return null;
 }
 
-async function getToken(config: CmsConfig, forceRefresh = false) {
+async function getToken(config: CmsConfig) {
   const now = Date.now();
 
+  // All CMS API requests use this same cached token until it is close to expiry.
   if (
-    !forceRefresh &&
     cachedToken &&
     cachedToken.expiresAt > now + TOKEN_REFRESH_SKEW_MS
   ) {
     return cachedToken.value;
   }
 
+  // If several CMS requests arrive together, only one login request is made.
   if (tokenRefreshPromise) {
     return tokenRefreshPromise;
   }
@@ -186,7 +187,6 @@ async function discoverContext(config: CmsConfig): Promise<CmsContext> {
 }
 
 async function discoverContextInternal(config: CmsConfig): Promise<CmsContext> {
-
   type Organization = {
     _id?: unknown;
     isActive?: unknown;

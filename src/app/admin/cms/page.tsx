@@ -399,7 +399,7 @@ export default function CmsOperatorDashboard() {
 
       const visibleTransactions = [...liveTransactions, ...filteredTransactions];
       const nextDashboard = dashboardData
-        ? buildLocalDashboard(dashboardData, filteredTransactions)
+        ? dashboardData
         : buildLocalDashboard(dashboard, filteredTransactions);
 
       if (nextDashboard) setDashboard(nextDashboard);

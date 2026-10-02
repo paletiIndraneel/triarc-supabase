@@ -20,8 +20,10 @@ export default async function AdminPage() {
   try {
     const context = await getCloudflareContext({ async: true });
     cmsEnabled =
-      String(context.env.CMS_OPERATOR_DASHBOARD_ENABLED ?? "").toLowerCase() ===
-      "true";
+      String(
+        (context.env as unknown as Record<string, unknown>)
+          .CMS_OPERATOR_DASHBOARD_ENABLED ?? ""
+      ).toLowerCase() === "true";
   } catch {
     cmsEnabled =
       String(process.env.CMS_OPERATOR_DASHBOARD_ENABLED ?? "").toLowerCase() ===
@@ -67,9 +69,7 @@ export default async function AdminPage() {
           {cmsEnabled && (
             <GlassCard className="p-6">
               <ShieldCheck className="text-emerald-300" size={22} />
-              <h2 className="mt-3 text-lg font-bold text-white">
-                CMS Operator Dashboard
-              </h2>
+              <h2 className="mt-3 text-lg font-bold text-white">CMS Operator Dashboard</h2>
               <p className="mt-2 text-sm leading-6 text-white/60">
                 View ChargeMOD Power Line operations, charger totals, live transactions, and transaction history.
               </p>
@@ -81,7 +81,6 @@ export default async function AdminPage() {
               </Link>
             </GlassCard>
           )}
-
 
           <GlassCard className="p-6">
             <Mail className="text-emerald-300" size={22} />

@@ -328,7 +328,7 @@ export default function CmsOperatorDashboard() {
             <table className="min-w-[1050px] w-full text-left text-sm">
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>
-                  <th className="px-4 py-3">ID</th>
+                  <th className="px-4 py-3">Vehicle Number</th>
                   <th className="px-4 py-3">Started</th>
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Location</th>
@@ -355,7 +355,7 @@ export default function CmsOperatorDashboard() {
                       }
                     >
                       <td className="px-4 py-3 font-mono text-xs text-emerald-200">
-                        {transaction.transactionId || transaction.chargerId}
+                        {transaction.vehicleNumber || "—"}
                         {isActive && (
                           <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
                             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />

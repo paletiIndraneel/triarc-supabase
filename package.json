@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "opennext-build": "opennextjs-cloudflare build",
@@ -20,15 +20,15 @@
     "@supabase/supabase-js": "^2.117.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.28.0",
-    "next": "^15.5.2",
+    "next": "16.3.8",
+    "postcss": "8.5.28",
     "react": "^19.1.1",
     "react-countup": "^6.5.3",
     "react-dom": "^19.1.1",
     "react-icons": "^5.5.0",
-    "swiper": "^11.2.10",
-    "tailwind-merge": "^3.3.1",
-    "jspdf": "^4.2.1"
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.20.6",
@@ -37,7 +37,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^15.5.2",
+    "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "typescript": "^5",
     "wrangler": "^4.132.0"

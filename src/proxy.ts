@@ -5,7 +5,7 @@ export const config = {
   matcher: ["/admin", "/admin/:path*"],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -40,20 +40,20 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data, error: claimsError } = await supabase.auth.getClaims();
 
   // User must be authenticated.
-  if (!user) {
+  if (claimsError || !data?.claims?.sub) {
     return redirectToSignIn(request);
   }
+
+  const userId = data.claims.sub;
 
   // User must also be an active admin.
   const { data: admin, error: adminError } = await supabase
     .from("admin_users")
     .select("role, active")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .eq("role", "admin")
     .eq("active", true)
     .maybeSingle();

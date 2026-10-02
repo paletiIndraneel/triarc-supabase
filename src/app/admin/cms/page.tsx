@@ -175,6 +175,9 @@ export default function CmsOperatorDashboard() {
       }
 
       const dashboardData = data.dashboard;
+      if (!dashboardData) {
+        throw new Error(data.error ?? "CMS dashboard data was not returned.");
+      }
       const transactionData = data.transactions ?? {};
       const activeData = data.active ?? {};
       const currentActiveTransactions = activeData.transactions ?? [];

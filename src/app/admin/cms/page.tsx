@@ -33,6 +33,7 @@ type TransactionResponse = {
 };
 
 type ActiveTransactionResponse = {
+  transactions?: Transaction[];
   count?: number;
 };
 
@@ -113,8 +114,6 @@ function displayUserName(value: string) {
     return "Guest";
   }
 
-  // ChargeMOD can append placeholder values such as "undefined" or "User"
-  // to a real name. Remove only those trailing placeholders.
   const cleaned = name
     .replace(/\s+undefined$/i, "")
     .replace(/\s+user$/i, "")
@@ -134,8 +133,11 @@ function displayCharger(value: string) {
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [count, setCount] = useState(0);
   const [active, setActive] = useState(0);
+  const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [todayOnly, setTodayOnly] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -182,10 +184,21 @@ export default function CmsOperatorDashboard() {
         activeResponse.json() as Promise<ActiveTransactionResponse>,
       ]);
 
+      const currentActiveTransactions = activeData.transactions ?? [];
+
       setDashboard(dashboardData);
       setTransactions(transactionData.transactions ?? []);
       setCount(transactionData.count ?? 0);
-      setActive(activeData.count ?? 0);
+      setActive(activeData.count ?? currentActiveTransactions.length);
+      setActiveTransactionIds(
+        new Set(
+          currentActiveTransactions.flatMap((transaction) =>
+            [transaction.id, transaction.transactionId, transaction.chargerId].filter(
+              Boolean
+            )
+          )
+        )
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CMS request failed.");
     } finally {
@@ -325,37 +338,57 @@ export default function CmsOperatorDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 font-mono text-xs text-emerald-200">
-                      {transaction.transactionId || transaction.chargerId}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-white/70">
-                      {formatDate(transaction.startedAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>{displayUserName(transaction.userName)}</div>
-                      {transaction.mobile && (
-                        <div className="text-xs text-white/40">{transaction.mobile}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-white/70">
-                      {displayLocation(transaction.location)}
-                    </td>
-                    <td className="px-4 py-3 text-white/70">
-                      {displayCharger(transaction.chargerName)}
-                    </td>
-                    <td className="px-4 py-3">{transaction.stationType ?? "—"}</td>
-                    <td className="px-4 py-3 font-semibold">
-                      {transaction.energyKwh == null
-                        ? "—"
-                        : `${transaction.energyKwh.toFixed(2)} kWh`}
-                    </td>
-                    <td className="px-4 py-3 text-white/60">
-                      {transaction.stopReason ?? "—"}
-                    </td>
-                  </tr>
-                ))}
+                {transactions.map((transaction) => {
+                  const isActive =
+                    activeTransactionIds.has(transaction.id) ||
+                    activeTransactionIds.has(transaction.transactionId) ||
+                    activeTransactionIds.has(transaction.chargerId);
+
+                  return (
+                    <tr
+                      key={transaction.id}
+                      className={
+                        isActive
+                          ? "bg-emerald-400/10 ring-1 ring-inset ring-emerald-300/30 hover:bg-emerald-400/15"
+                          : "hover:bg-white/[0.02]"
+                      }
+                    >
+                      <td className="px-4 py-3 font-mono text-xs text-emerald-200">
+                        {transaction.transactionId || transaction.chargerId}
+                        {isActive && (
+                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-white/70">
+                        {formatDate(transaction.startedAt)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div>{displayUserName(transaction.userName)}</div>
+                        {transaction.mobile && (
+                          <div className="text-xs text-white/40">{transaction.mobile}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-white/70">
+                        {displayLocation(transaction.location)}
+                      </td>
+                      <td className="px-4 py-3 text-white/70">
+                        {displayCharger(transaction.chargerName)}
+                      </td>
+                      <td className="px-4 py-3">{transaction.stationType ?? "—"}</td>
+                      <td className="px-4 py-3 font-semibold">
+                        {transaction.energyKwh == null
+                          ? "—"
+                          : `${transaction.energyKwh.toFixed(2)} kWh`}
+                      </td>
+                      <td className="px-4 py-3 text-white/60">
+                        {transaction.stopReason ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!loading && transactions.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-12 text-center text-white/40">

@@ -13,8 +13,18 @@ type CmsContext = {
   projectId: string;
 };
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
+type CachedToken = {
+  value: string;
+  expiresAt: number;
+};
+
+let cachedToken: CachedToken | null = null;
 let cachedContext: CmsContext | null = null;
+let tokenRefreshPromise: Promise<string> | null = null;
+let contextDiscoveryPromise: Promise<CmsContext> | null = null;
+
+const TOKEN_TTL_MS = 45 * 60 * 1000;
+const TOKEN_REFRESH_SKEW_MS = 2 * 60 * 1000;
 
 async function getRuntimeEnv(): Promise<Record<string, unknown>> {
   try {
@@ -75,9 +85,10 @@ async function login(config: CmsConfig): Promise<string> {
 
   cachedToken = {
     value: token,
-    expiresAt: Date.now() + 45 * 60 * 1000,
+    expiresAt: Date.now() + TOKEN_TTL_MS,
   };
   cachedContext = null;
+  contextDiscoveryPromise = null;
 
   return token;
 }
@@ -100,11 +111,34 @@ function findToken(value: unknown): string | null {
 }
 
 async function getToken(config: CmsConfig, forceRefresh = false) {
-  if (!forceRefresh && cachedToken && cachedToken.expiresAt > Date.now()) {
+  const now = Date.now();
+
+  if (
+    !forceRefresh &&
+    cachedToken &&
+    cachedToken.expiresAt > now + TOKEN_REFRESH_SKEW_MS
+  ) {
     return cachedToken.value;
   }
 
-  return login(config);
+  if (tokenRefreshPromise) {
+    return tokenRefreshPromise;
+  }
+
+  tokenRefreshPromise = login(config).finally(() => {
+    tokenRefreshPromise = null;
+  });
+
+  return tokenRefreshPromise;
+}
+
+function invalidateToken(token: string) {
+  // Never clear a newer token installed by another concurrent request.
+  if (cachedToken?.value === token) {
+    cachedToken = null;
+    cachedContext = null;
+    contextDiscoveryPromise = null;
+  }
 }
 
 async function cmsFetch<T>(
@@ -126,8 +160,7 @@ async function cmsFetch<T>(
   });
 
   if (response.status === 401 && retry) {
-    cachedToken = null;
-    cachedContext = null;
+    invalidateToken(token);
     return cmsFetch<T>(config, baseUrl, path, init, false);
   }
 
@@ -143,6 +176,16 @@ async function cmsFetch<T>(
 
 async function discoverContext(config: CmsConfig): Promise<CmsContext> {
   if (cachedContext) return cachedContext;
+  if (contextDiscoveryPromise) return contextDiscoveryPromise;
+
+  contextDiscoveryPromise = discoverContextInternal(config).finally(() => {
+    contextDiscoveryPromise = null;
+  });
+
+  return contextDiscoveryPromise;
+}
+
+async function discoverContextInternal(config: CmsConfig): Promise<CmsContext> {
 
   type Organization = {
     _id?: unknown;

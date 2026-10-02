@@ -182,9 +182,19 @@ export default function CmsOperatorDashboard() {
       const activeData = data.active ?? {};
       const currentActiveTransactions = activeData.transactions ?? [];
 
+      const historicalTransactions = transactionData.transactions ?? [];
+      const liveTransactions = currentActiveTransactions.filter(
+        (activeTransaction) =>
+          !historicalTransactions.some(
+            (transaction) =>
+              transaction.id === activeTransaction.id ||
+              transaction.transactionId === activeTransaction.transactionId
+          )
+      );
+
       setDashboard(dashboardData);
-      setTransactions(transactionData.transactions ?? []);
-      setCount(transactionData.count ?? 0);
+      setTransactions([...liveTransactions, ...historicalTransactions]);
+      setCount((transactionData.count ?? 0) + liveTransactions.length);
       setActive(activeData.count ?? currentActiveTransactions.length);
       setActiveTransactionIds(
         new Set(

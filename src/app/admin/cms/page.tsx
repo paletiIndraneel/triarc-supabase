@@ -206,6 +206,12 @@ export default function CmsOperatorDashboard() {
 
   useEffect(() => {
     void load();
+
+    const interval = window.setInterval(() => {
+      void load();
+    }, 15000);
+
+    return () => window.clearInterval(interval);
   }, [load]);
 
   const summary = dashboard?.summary ?? {};

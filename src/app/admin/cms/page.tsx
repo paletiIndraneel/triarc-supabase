@@ -57,6 +57,24 @@ function formatDate(value: string | null) {
   });
 }
 
+function getTodayRangeIST() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  const date = `${values.year}-${values.month}-${values.day}`;
+
+  return {
+    startDate: `${date}T00:00:00+05:30`,
+    endDate: now.toISOString(),
+  };
+}
+
 function collectionLength(value: unknown): number {
   if (Array.isArray(value)) return value.length;
   if (!value || typeof value !== "object") return 0;
@@ -75,12 +93,48 @@ function collectionLength(value: unknown): number {
   return 0;
 }
 
+function cleanDisplayValue(value: string, prefixes: string[]) {
+  let cleaned = value.trim();
+
+  for (const prefix of prefixes) {
+    if (cleaned.toLowerCase().startsWith(prefix.toLowerCase())) {
+      cleaned = cleaned.slice(prefix.length).trim();
+      break;
+    }
+  }
+
+  return cleaned || value;
+}
+
+function displayUserName(value: string) {
+  const name = value.trim();
+
+  if (
+    !name ||
+    /^guest user(?: undefined)?$/i.test(name) ||
+    /^guest user undefined$/i.test(name)
+  ) {
+    return "Guest";
+  }
+
+  return name;
+}
+
+function displayLocation(value: string) {
+  return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
+}
+
+function displayCharger(value: string) {
+  return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
+}
+
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [count, setCount] = useState(0);
   const [active, setActive] = useState(0);
   const [page, setPage] = useState(1);
+  const [todayOnly, setTodayOnly] = useState(true);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -89,10 +143,21 @@ export default function CmsOperatorDashboard() {
     setMessage("");
 
     try {
+      const today = todayOnly ? getTodayRangeIST() : null;
+      const transactionParams = new URLSearchParams({
+        page: String(page),
+        perPage: "25",
+      });
+
+      if (today) {
+        transactionParams.set("startDate", today.startDate);
+        transactionParams.set("endDate", today.endDate);
+      }
+
       const [dashboardResponse, transactionsResponse, activeResponse] =
         await Promise.all([
           fetch("/api/cms/dashboard", { cache: "no-store" }),
-          fetch(`/api/cms/transactions?page=${page}&perPage=25`, {
+          fetch(`/api/cms/transactions?${transactionParams.toString()}`, {
             cache: "no-store",
           }),
           fetch("/api/cms/active-transactions", { cache: "no-store" }),
@@ -123,7 +188,7 @@ export default function CmsOperatorDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, todayOnly]);
 
   useEffect(() => {
     void load();
@@ -136,6 +201,16 @@ export default function CmsOperatorDashboard() {
       ? (summary.transactionDetails as Record<string, unknown>)
       : {};
   const locationCount = collectionLength(dashboard?.locations);
+
+  function selectToday() {
+    setTodayOnly(true);
+    setPage(1);
+  }
+
+  function showAllRecent() {
+    setTodayOnly(false);
+    setPage(1);
+  }
 
   return (
     <main className="min-h-screen bg-[#03110d] px-6 py-12 text-white sm:py-16">
@@ -196,14 +271,39 @@ export default function CmsOperatorDashboard() {
         </div>
 
         <GlassCard className="mt-6 overflow-hidden p-0">
-          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
             <div>
               <h2 className="font-bold">Transactions</h2>
-              <p className="text-xs text-white/50">{count} matching transactions</p>
+              <p className="text-xs text-white/50">
+                {todayOnly ? "Today's transactions" : "Recent transactions"} · {count} matching
+              </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-white/50">
-              <Activity size={14} />
-              Active: {active}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={selectToday}
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                  todayOnly
+                    ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                    : "border-white/10 text-white/60 hover:bg-white/5"
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={showAllRecent}
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                  !todayOnly
+                    ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                    : "border-white/10 text-white/60 hover:bg-white/5"
+                }`}
+              >
+                Recent
+              </button>
+              <div className="ml-1 flex items-center gap-2 text-xs text-white/50">
+                <Activity size={14} />
+                Active: {active}
+              </div>
             </div>
           </div>
 
@@ -231,13 +331,17 @@ export default function CmsOperatorDashboard() {
                       {formatDate(transaction.startedAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <div>{transaction.userName}</div>
+                      <div>{displayUserName(transaction.userName)}</div>
                       {transaction.mobile && (
                         <div className="text-xs text-white/40">{transaction.mobile}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-white/70">{transaction.location}</td>
-                    <td className="px-4 py-3 text-white/70">{transaction.chargerName}</td>
+                    <td className="px-4 py-3 text-white/70">
+                      {displayLocation(transaction.location)}
+                    </td>
+                    <td className="px-4 py-3 text-white/70">
+                      {displayCharger(transaction.chargerName)}
+                    </td>
                     <td className="px-4 py-3">{transaction.stationType ?? "—"}</td>
                     <td className="px-4 py-3 font-semibold">
                       {transaction.energyKwh == null

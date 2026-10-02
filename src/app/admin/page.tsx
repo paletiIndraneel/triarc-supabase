@@ -5,7 +5,6 @@ import GlassCard from "@/components/ui/GlassCard";
 import { createClient } from "@/lib/supabase/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { site } from "@/data/site";
-import { contact } from "@/data/contact";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -43,7 +42,9 @@ export default async function AdminPage() {
       <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Welcome {displayName}</h1>
+            <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
+              Welcome {displayName}
+            </h1>
           </div>
         </header>
 
@@ -82,8 +83,14 @@ export default async function AdminPage() {
             <Mail className="text-emerald-300" size={22} />
             <h2 className="mt-3 text-lg font-bold text-white">Contact Inquiries</h2>
             <p className="mt-2 text-sm leading-6 text-white/60">
-              Messages from the Visit Us form are emailed directly to {contact.email}. No submissions are stored in this dashboard.
+              View messages submitted through the Visit Us form.
             </p>
+            <Link
+              href="/admin/enquiries"
+              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-300 hover:text-emerald-200"
+            >
+              View inquiries
+            </Link>
           </GlassCard>
 
           <GlassCard className="p-6">

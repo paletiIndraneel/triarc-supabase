@@ -72,6 +72,21 @@ async function login(config: CmsConfig): Promise<string> {
     }
   );
 
+  if (response.status === 409) {
+    const payload = (await response.json().catch(() => null)) as
+      | {
+          status?: unknown;
+          message?: unknown;
+          sessions?: unknown;
+        }
+      | null;
+
+    if (payload?.status === "DEVICE_LIMIT_REACHED") {
+      await removeNodeSessionsFromDeviceLimit(payload, cachedToken?.value ?? null);
+      return login(config);
+    }
+  }
+
   if (!response.ok) {
     throw new Error(`CMS login failed with HTTP ${response.status}.`);
   }
@@ -85,12 +100,85 @@ async function login(config: CmsConfig): Promise<string> {
 
   cachedToken = {
     value: token,
-    expiresAt: Date.now() + TOKEN_TTL_MS,
+    expiresAt: getTokenExpiry(token) ?? Date.now() + TOKEN_TTL_MS,
   };
   cachedContext = null;
   contextDiscoveryPromise = null;
 
   return token;
+}
+
+async function removeNodeSessionsFromDeviceLimit(
+  payload: { sessions?: unknown },
+  token: string | null
+) {
+  if (!token) {
+    throw new Error(
+      "CMS device limit reached, but no active server token is available to remove the existing node sessions."
+    );
+  }
+
+  const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+  const nodeSessions = sessions.filter((session): session is Record<string, unknown> => {
+    if (!session || typeof session !== "object") return false;
+    const deviceInfo = (session as Record<string, unknown>).deviceInfo;
+    return (
+      Boolean(deviceInfo) &&
+      typeof deviceInfo === "object" &&
+      String((deviceInfo as Record<string, unknown>).userAgent ?? "")
+        .trim()
+        .toLowerCase() === "node"
+    );
+  });
+
+  for (const session of nodeSessions) {
+    const sessionId =
+      typeof session.sessionId === "string" ? session.sessionId : "";
+
+    if (!sessionId) continue;
+
+    const response = await fetch(
+      "https://ogs.console.chargemod.com/web/register/logout-device",
+      {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `CMS could not remove node session ${sessionId} (HTTP ${response.status}): ${detail.slice(0, 200)}`
+      );
+    }
+  }
+}
+
+function getTokenExpiry(token: string): number | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "="
+    );
+    const decoded = atob(padded);
+    const parsed = JSON.parse(decoded) as { exp?: unknown };
+
+    return typeof parsed.exp === "number" && Number.isFinite(parsed.exp)
+      ? parsed.exp * 1000
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function findToken(value: unknown): string | null {

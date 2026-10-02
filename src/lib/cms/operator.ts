@@ -82,8 +82,19 @@ async function login(config: CmsConfig): Promise<string> {
       | null;
 
     if (payload?.status === "DEVICE_LIMIT_REACHED") {
-      await removeNodeSessionsFromDeviceLimit(payload, cachedToken?.value ?? null);
-      return login(config);
+      try {
+        await removeNodeSessionsFromDeviceLimit(
+          payload,
+          cachedToken?.value ?? null
+        );
+        return login(config);
+      } catch (error) {
+        const detail =
+          error instanceof Error ? error.message : "Unable to clear server sessions.";
+        throw new Error(
+          `ChargeMOD device limit reached. TriArc could not automatically clear the existing server sessions. Please log out an old device in ChargeMOD and try again. ${detail}`
+        );
+      }
     }
   }
 

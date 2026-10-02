@@ -16,6 +16,7 @@ type Transaction = {
   id: string;
   transactionId: string;
   chargerId: string;
+  connectorId: number | null;
   startedAt: string | null;
   stoppedAt: string | null;
   userName: string;
@@ -134,9 +135,7 @@ export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
-  const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(
-    new Set()
-  );
+  const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [todayOnly, setTodayOnly] = useState(true);
@@ -192,11 +191,13 @@ export default function CmsOperatorDashboard() {
       setActive(activeData.count ?? currentActiveTransactions.length);
       setActiveTransactionIds(
         new Set(
-          currentActiveTransactions.flatMap((transaction) =>
-            [transaction.id, transaction.transactionId, transaction.chargerId].filter(
-              Boolean
-            )
-          )
+          currentActiveTransactions.flatMap((transaction) => [
+            transaction.id,
+            transaction.transactionId,
+            transaction.connectorId != null
+              ? `${transaction.chargerId}:${transaction.connectorId}`
+              : "",
+          ].filter(Boolean))
         )
       );
     } catch (error) {
@@ -342,7 +343,8 @@ export default function CmsOperatorDashboard() {
                   const isActive =
                     activeTransactionIds.has(transaction.id) ||
                     activeTransactionIds.has(transaction.transactionId) ||
-                    activeTransactionIds.has(transaction.chargerId);
+                    (transaction.connectorId != null &&
+                      activeTransactionIds.has(`${transaction.chargerId}:${transaction.connectorId}`));
 
                   return (
                     <tr

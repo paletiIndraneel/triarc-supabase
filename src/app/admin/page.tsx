@@ -93,19 +93,16 @@ export default async function AdminPage() {
           <GlassCard className="p-6">
             <ExternalLink className="text-emerald-300" size={22} />
             <h2 className="mt-3 text-lg font-bold text-white">Live Site</h2>
-            <p className="mt-2 text-sm leading-6 text-white/60">View the public {site.brand.name} site as visitors see it.</p>
-            <Link href="/" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-300 hover:text-emerald-200">
+            <p className="mt-2 text-sm leading-6 text-white/60">
+              View the public {site.brand.name} site as visitors see it.
+            </p>
+            <Link
+              href="/"
+              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-300 hover:text-emerald-200"
+            >
               Visit site
               <ExternalLink size={14} />
             </Link>
-          </GlassCard>
-
-          <GlassCard className="p-6">
-            <ShieldCheck className="text-emerald-300" size={22} />
-            <h2 className="mt-3 text-lg font-bold text-white">Session</h2>
-            <p className="mt-2 text-sm leading-6 text-white/60">
-              Your session is securely managed by Supabase. Sign out when you are finished.
-            </p>
           </GlassCard>
         </div>
       </div>

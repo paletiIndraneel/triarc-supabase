@@ -404,6 +404,7 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     id: String(raw._id ?? ""),
     transactionId: String(raw.transactionId ?? ""),
     chargerId: String(raw.identity ?? ""),
+    connectorId: toNumber(raw.connectorId),
     startedAt: raw.startAt ?? null,
     stoppedAt: raw.stopAt ?? null,
     userName: String(raw.userName ?? "Unknown"),

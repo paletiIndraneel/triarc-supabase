@@ -366,6 +366,54 @@ async function getCmsContext(config: CmsConfig): Promise<CmsContext> {
   return discoverContext(config);
 }
 
+export async function getOperatorData(
+  config: CmsConfig,
+  transactionOptions: {
+    page: number;
+    perPage: number;
+    startDate: string;
+    endDate: string;
+    searchField?: string;
+    searchKey?: string;
+  }
+) {
+  const [dashboard, transactions, active] = await Promise.all([
+    getDashboardData(config, transactionOptions.startDate, transactionOptions.endDate),
+    getTransactions(config, transactionOptions),
+    getActiveTransactions(config),
+  ]);
+
+  const result = Array.isArray(transactions.result) ? transactions.result : [];
+  const sanitizedTransactions = result
+    .filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === "object"
+    )
+    .map(sanitizeTransaction);
+
+  const activeResult = Array.isArray(active.result) ? active.result : [];
+  const activeTransactions = activeResult
+    .filter(
+      (item): item is Record<string, unknown> =>
+        Boolean(item) && typeof item === "object"
+    )
+    .map(sanitizeTransaction);
+
+  return {
+    dashboard,
+    transactions: {
+      transactions: sanitizedTransactions,
+      count: Number(transactions.count ?? 0),
+      page: transactionOptions.page,
+      perPage: transactionOptions.perPage,
+    },
+    active: {
+      transactions: activeTransactions,
+      count: Number(active.count ?? activeTransactions.length),
+    },
+  };
+}
+
 export async function getDashboardData(
   config: CmsConfig,
   startDate: string,

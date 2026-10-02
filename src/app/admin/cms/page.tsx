@@ -335,10 +335,11 @@ export default function CmsOperatorDashboard() {
               <tbody className="divide-y divide-white/5">
                 {transactions.map((transaction) => {
                   const isActive =
-                    activeTransactionIds.has(transaction.id) ||
-                    activeTransactionIds.has(transaction.transactionId) ||
-                    (transaction.connectorId != null &&
-                      activeTransactionIds.has(`${transaction.chargerId}:${transaction.connectorId}`));
+                    transaction.stoppedAt == null &&
+                    (activeTransactionIds.has(transaction.id) ||
+                      activeTransactionIds.has(transaction.transactionId) ||
+                      (transaction.connectorId != null &&
+                        activeTransactionIds.has(`${transaction.chargerId}:${transaction.connectorId}`)));
 
                   return (
                     <tr

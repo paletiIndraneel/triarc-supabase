@@ -17,9 +17,7 @@ export default function Navbar() {
     };
 
     handleScroll();
-
     window.addEventListener("scroll", handleScroll, { passive: true });
-
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -63,6 +61,10 @@ export default function Navbar() {
               {navCta.label}
             </Link>
 
+            <div className="hidden lg:block">
+              <LogoutButton compact />
+            </div>
+
             <button
               type="button"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:border-emerald-300/40 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 lg:hidden"
@@ -95,6 +97,9 @@ export default function Navbar() {
               >
                 {navCta.label}
               </Link>
+              <div className="mt-1">
+                <LogoutButton compact />
+              </div>
             </div>
           </div>
         ) : null}

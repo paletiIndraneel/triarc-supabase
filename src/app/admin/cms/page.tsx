@@ -196,6 +196,57 @@ function getDateRangeIST(preset: DatePreset) {
   }
 }
 
+function buildLocalDashboard(base: Dashboard | null, transactions: Transaction[]): Dashboard | null {
+  if (!base) return null;
+
+  const chargers = new Set(
+    transactions.map((transaction) => transaction.chargerId).filter(Boolean)
+  );
+  const locations = new Set(
+    transactions.map((transaction) => transaction.location).filter(Boolean)
+  );
+  const totalEnergy = transactions.reduce(
+    (sum, transaction) => sum + (transaction.energyKwh ?? 0) * 1000,
+    0
+  );
+  const totalRevenue = transactions.reduce(
+    (sum, transaction) => sum + (transaction.tariffAmount ?? 0),
+    0
+  );
+  const totalTime = transactions.reduce((sum, transaction) => {
+    if (!transaction.startedAt || !transaction.stoppedAt) return sum;
+    const seconds =
+      (new Date(transaction.stoppedAt).getTime() -
+        new Date(transaction.startedAt).getTime()) /
+      1000;
+    return sum + (Number.isFinite(seconds) ? Math.max(0, seconds) : 0);
+  }, 0);
+
+  return {
+    ...base,
+    summary: {
+      ...base.summary,
+      transactionCount: transactions.length,
+      chargerCount: chargers.size,
+      transactionDetails: {
+        ...(base.summary.transactionDetails &&
+        typeof base.summary.transactionDetails === "object"
+          ? (base.summary.transactionDetails as Record<string, unknown>)
+          : {}),
+        totalEnergy,
+        totalRevenue,
+        totalTime,
+      },
+    },
+    locations: {
+      ...(base.locations && typeof base.locations === "object"
+        ? base.locations
+        : {}),
+      localCount: locations.size,
+    },
+  };
+}
+
 function collectionLength(value: unknown): number {
   if (Array.isArray(value)) return value.length;
   if (!value || typeof value !== "object") return 0;
@@ -346,8 +397,13 @@ export default function CmsOperatorDashboard() {
           )
       );
 
-      if (dashboardData) setDashboard(dashboardData);
-      setTransactions([...liveTransactions, ...filteredTransactions]);
+      const visibleTransactions = [...liveTransactions, ...filteredTransactions];
+      const nextDashboard = dashboardData
+        ? buildLocalDashboard(dashboardData, filteredTransactions)
+        : buildLocalDashboard(dashboard, filteredTransactions);
+
+      if (nextDashboard) setDashboard(nextDashboard);
+      setTransactions(visibleTransactions);
       setCount(filteredTransactions.length + liveTransactions.length);
 
       if (activeWasFetched) {
@@ -379,7 +435,10 @@ export default function CmsOperatorDashboard() {
     typeof summary.transactionDetails === "object"
       ? (summary.transactionDetails as Record<string, unknown>)
       : {};
-  const locationCount = collectionLength(dashboard?.locations);
+  const locationCount =
+    typeof (dashboard?.locations as Record<string, unknown> | undefined)?.localCount === "number"
+      ? Number((dashboard?.locations as Record<string, unknown>).localCount)
+      : collectionLength(dashboard?.locations);
 
   function selectDatePreset(preset: DatePreset) {
     setDatePreset(preset);

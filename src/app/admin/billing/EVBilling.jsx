@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Plus, Trash2, RefreshCw, X } from 'lucide-react';
+import { Download, Plus, Trash2, RefreshCw, X, ArrowLeft } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/supabase/billing';
 import { useToast } from '@/components/BillingToast';

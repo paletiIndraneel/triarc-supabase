@@ -188,13 +188,9 @@ export default function CmsOperatorDashboard() {
       setActive(activeData.count ?? currentActiveTransactions.length);
       setActiveTransactionIds(
         new Set(
-          currentActiveTransactions.flatMap((transaction) => [
-            transaction.id,
-            transaction.transactionId,
-            transaction.connectorId != null
-              ? `${transaction.chargerId}:${transaction.connectorId}`
-              : "",
-          ].filter(Boolean))
+          currentActiveTransactions.flatMap((transaction) =>
+            [transaction.id, transaction.transactionId].filter(Boolean)
+          )
         )
       );
     } catch (error) {
@@ -337,9 +333,7 @@ export default function CmsOperatorDashboard() {
                   const isActive =
                     transaction.stoppedAt == null &&
                     (activeTransactionIds.has(transaction.id) ||
-                      activeTransactionIds.has(transaction.transactionId) ||
-                      (transaction.connectorId != null &&
-                        activeTransactionIds.has(`${transaction.chargerId}:${transaction.connectorId}`)));
+                      activeTransactionIds.has(transaction.transactionId));
 
                   return (
                     <tr

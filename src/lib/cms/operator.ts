@@ -89,10 +89,9 @@ async function login(config: CmsConfig): Promise<string> {
         );
         return login(config);
       } catch (error) {
-        const detail =
-          error instanceof Error ? error.message : "Unable to clear server sessions.";
+        console.error("[cms] ChargeMOD device limit cleanup failed", error);
         throw new Error(
-          `ChargeMOD device limit reached. TriArc could not automatically clear the existing server sessions. Please log out an old device in ChargeMOD and try again. ${detail}`
+          "ChargeMOD device limit reached. Please free a slot and try again."
         );
       }
     }

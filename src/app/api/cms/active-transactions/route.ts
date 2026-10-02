@@ -41,15 +41,16 @@ export async function GET() {
   try {
     const raw = await getActiveTransactions(config);
     const result = Array.isArray(raw.result) ? raw.result : [];
+    const transactions = result
+      .filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object"
+      )
+      .map(sanitizeTransaction);
 
     return NextResponse.json({
-      transactions: result
-        .filter(
-          (item): item is Record<string, unknown> =>
-            Boolean(item) && typeof item === "object"
-        )
-        .map(sanitizeTransaction),
-      count: Number(raw.count ?? result.length),
+      transactions,
+      count: Number(raw.count ?? transactions.length),
     });
   } catch (error) {
     console.error("[cms/active-transactions]", error);

@@ -46,6 +46,9 @@
     "sharp@0.34.5": true,
     "unrs-resolver@1.12.2": true,
     "esbuild@0.28.1": true,
-    "workerd@1.20260915.1": true
+    "workerd@1.20260915.1": true,
+    "core-js": true,
+    "esbuild": true,
+    "workerd": true
   }
 }

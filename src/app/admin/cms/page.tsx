@@ -26,6 +26,7 @@ type Transaction = {
   stationType: string | null;
   stopReason: string | null;
   energyKwh: number | null;
+  tariffAmount: number | null;
   vehicleNumber: string | null;
 };
 
@@ -333,6 +334,8 @@ export default function CmsOperatorDashboard() {
         activeData = data.active ?? {};
       }
 
+      const activeWasFetched =
+        activeData.transactions !== undefined || activeData.count !== undefined;
       const currentActiveTransactions = activeData.transactions ?? [];
       const liveTransactions = currentActiveTransactions.filter(
         (activeTransaction) =>
@@ -346,14 +349,17 @@ export default function CmsOperatorDashboard() {
       if (dashboardData) setDashboard(dashboardData);
       setTransactions([...liveTransactions, ...filteredTransactions]);
       setCount(filteredTransactions.length + liveTransactions.length);
-      setActive(activeData.count ?? currentActiveTransactions.length);
-      setActiveTransactionIds(
-        new Set(
-          currentActiveTransactions.flatMap((transaction) =>
-            [transaction.id, transaction.transactionId].filter(Boolean)
+
+      if (activeWasFetched) {
+        setActive(activeData.count ?? currentActiveTransactions.length);
+        setActiveTransactionIds(
+          new Set(
+            currentActiveTransactions.flatMap((transaction) =>
+              [transaction.id, transaction.transactionId].filter(Boolean)
+            )
           )
-        )
-      );
+        );
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CMS request failed.");
     } finally {

@@ -57,6 +57,24 @@ function formatDate(value: string | null) {
   });
 }
 
+function collectionLength(value: unknown): number {
+  if (Array.isArray(value)) return value.length;
+  if (!value || typeof value !== "object") return 0;
+
+  const object = value as Record<string, unknown>;
+
+  for (const key of ["result", "data", "locations", "items", "list"]) {
+    const nested = object[key];
+    if (Array.isArray(nested)) return nested.length;
+    if (nested && typeof nested === "object") {
+      const count = collectionLength(nested);
+      if (count > 0) return count;
+    }
+  }
+
+  return 0;
+}
+
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -117,6 +135,7 @@ export default function CmsOperatorDashboard() {
     typeof summary.transactionDetails === "object"
       ? (summary.transactionDetails as Record<string, unknown>)
       : {};
+  const locationCount = collectionLength(dashboard?.locations);
 
   return (
     <main className="min-h-screen bg-[#03110d] px-6 py-12 text-white sm:py-16">
@@ -158,7 +177,7 @@ export default function CmsOperatorDashboard() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Transactions" value={String(summary.transactionCount ?? 0)} />
           <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
-          <Metric label="Locations" value={String(Array.isArray(dashboard?.locations?.result) ? dashboard?.locations?.result.length : 0)} />
+          <Metric label="Locations" value={String(locationCount)} />
           <Metric label="Active now" value={String(active)} accent />
           <Metric
             label="Total energy"

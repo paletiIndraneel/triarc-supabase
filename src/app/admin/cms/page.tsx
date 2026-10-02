@@ -60,22 +60,73 @@ function formatDate(value: string | null) {
   });
 }
 
-function getTodayRangeIST() {
-  const now = new Date();
+type DatePreset =
+  | "today"
+  | "yesterday"
+  | "this-week"
+  | "last-week"
+  | "this-month"
+  | "last-month";
+
+function getISTCalendarDate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(now);
+  }).formatToParts(date);
 
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  const date = `${values.year}-${values.month}-${values.day}`;
+  return new Date(
+    `${values.year}-${values.month}-${values.day}T00:00:00+05:30`
+  );
+}
 
-  return {
-    startDate: `${date}T00:00:00+05:30`,
-    endDate: now.toISOString(),
-  };
+function getDateRangeIST(preset: DatePreset) {
+  const today = getISTCalendarDate();
+  const day = 24 * 60 * 60 * 1000;
+  const startOfWeek = new Date(today.getTime() - ((today.getDay() + 6) % 7) * day);
+  const startOfLastWeek = new Date(startOfWeek.getTime() - 7 * day);
+  const startOfMonth = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1) - 330 * 60 * 1000
+  );
+  const startOfLastMonth = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1) - 330 * 60 * 1000
+  );
+
+  switch (preset) {
+    case "yesterday":
+      return {
+        startDate: new Date(today.getTime() - day).toISOString(),
+        endDate: today.toISOString(),
+      };
+    case "this-week":
+      return {
+        startDate: startOfWeek.toISOString(),
+        endDate: new Date(today.getTime() + day).toISOString(),
+      };
+    case "last-week":
+      return {
+        startDate: startOfLastWeek.toISOString(),
+        endDate: startOfWeek.toISOString(),
+      };
+    case "this-month":
+      return {
+        startDate: startOfMonth.toISOString(),
+        endDate: new Date(today.getTime() + day).toISOString(),
+      };
+    case "last-month":
+      return {
+        startDate: startOfLastMonth.toISOString(),
+        endDate: startOfMonth.toISOString(),
+      };
+    case "today":
+    default:
+      return {
+        startDate: today.toISOString(),
+        endDate: new Date().toISOString(),
+      };
+  }
 }
 
 function collectionLength(value: unknown): number {
@@ -139,7 +190,7 @@ export default function CmsOperatorDashboard() {
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [todayOnly, setTodayOnly] = useState(true);
+  const [datePreset, setDatePreset] = useState<DatePreset>("today");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -148,16 +199,14 @@ export default function CmsOperatorDashboard() {
     setMessage("");
 
     try {
-      const today = todayOnly ? getTodayRangeIST() : null;
+      const dateRange = getDateRangeIST(datePreset);
       const transactionParams = new URLSearchParams({
         page: String(page),
         perPage: "25",
       });
 
-      if (today) {
-        transactionParams.set("startDate", today.startDate);
-        transactionParams.set("endDate", today.endDate);
-      }
+      transactionParams.set("startDate", dateRange.startDate);
+      transactionParams.set("endDate", dateRange.endDate);
 
       const response = await fetch(
         `/api/cms/operator?${transactionParams.toString()}`,
@@ -209,7 +258,7 @@ export default function CmsOperatorDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [page, todayOnly]);
+  }, [page, datePreset]);
 
   useEffect(() => {
     void load();
@@ -223,15 +272,19 @@ export default function CmsOperatorDashboard() {
       : {};
   const locationCount = collectionLength(dashboard?.locations);
 
-  function selectToday() {
-    setTodayOnly(true);
+  function selectDatePreset(preset: DatePreset) {
+    setDatePreset(preset);
     setPage(1);
   }
 
-  function showAllRecent() {
-    setTodayOnly(false);
-    setPage(1);
-  }
+  const datePresets: Array<{ value: DatePreset; label: string }> = [
+    { value: "today", label: "Today" },
+    { value: "yesterday", label: "Yesterday" },
+    { value: "this-week", label: "This Week" },
+    { value: "last-week", label: "Last Week" },
+    { value: "this-month", label: "This Month" },
+    { value: "last-month", label: "Last Month" },
+  ];
 
   return (
     <main className="min-h-screen bg-[#03110d] px-6 py-12 text-white sm:py-16">
@@ -293,31 +346,24 @@ export default function CmsOperatorDashboard() {
             <div>
               <h2 className="font-bold">Transactions</h2>
               <p className="text-xs text-white/50">
-                {todayOnly ? "Today's transactions" : "Recent transactions"} · {count} matching
+                {datePresets.find((preset) => preset.value === datePreset)?.label} · {count} matching
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={selectToday}
-                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
-                  todayOnly
-                    ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
-                    : "border-white/10 text-white/60 hover:bg-white/5"
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={showAllRecent}
-                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
-                  !todayOnly
-                    ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
-                    : "border-white/10 text-white/60 hover:bg-white/5"
-                }`}
-              >
-                Recent
-              </button>
+              {datePresets.map((preset) => (
+                <button
+                  key={preset.value}
+                  onClick={() => selectDatePreset(preset.value)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                    datePreset === preset.value
+                      ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                      : "border-white/10 text-white/60 hover:bg-white/5"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
               <div className="ml-1 flex items-center gap-2 text-xs text-white/50">
                 <Activity size={14} />
                 Active: {active}

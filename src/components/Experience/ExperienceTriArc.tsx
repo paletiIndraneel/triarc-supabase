@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import Container from "@/components/Container";
 
@@ -106,11 +107,12 @@ export default function ExperienceTriArc() {
             >
               {/* Consistent 16:10 image frame */}
               <div className="relative aspect-[16/10] w-full overflow-hidden">
-                <img
+                <Image
                   src={solution.image}
                   alt={solution.alt}
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-105"
+                  fill
+                  sizes="(max-width: 640px) 84vw, (max-width: 1024px) 48vw, 32vw"
+                  className="object-cover object-center transition duration-700 group-hover:scale-105"
                 />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-[#071A14] via-transparent to-transparent opacity-80" />

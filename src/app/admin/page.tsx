@@ -50,9 +50,9 @@ export default async function AdminPage() {
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <GlassCard className="p-6">
             <ShieldCheck className="text-emerald-300" size={22} />
-            <h2 className="mt-3 text-lg font-bold text-white">EV Billing & Inventory</h2>
+            <h2 className="mt-3 text-lg font-bold text-white">Billing</h2>
             <p className="mt-2 text-sm leading-6 text-white/60">
-              Create EV billing, manage invoices, customers, billing items, and the Asset Register.
+              Create bills, manage invoices, customers, billing items, and the Asset Register.
             </p>
             <Link
               href="/admin/billing"

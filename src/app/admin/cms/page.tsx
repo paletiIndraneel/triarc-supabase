@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, RefreshCw } from "lucide-react";
+import { Activity, ArrowLeft, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 
 type Dashboard = {
@@ -128,6 +128,31 @@ function formatDate(value: string | null) {
     timeStyle: "short",
   });
 }
+
+type CmsColumnId =
+  | "vehicleNumber"
+  | "startSoc"
+  | "endSoc"
+  | "startedAt"
+  | "user"
+  | "location"
+  | "charger"
+  | "energy"
+  | "stopReason";
+
+const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> = [
+  { id: "vehicleNumber", label: "Vehicle Number" },
+  { id: "startSoc", label: "Start SoC" },
+  { id: "endSoc", label: "End SoC" },
+  { id: "startedAt", label: "Started" },
+  { id: "user", label: "User" },
+  { id: "location", label: "Location" },
+  { id: "charger", label: "Charger" },
+  { id: "energy", label: "Energy" },
+  { id: "stopReason", label: "Stop reason" },
+];
+
+const DEFAULT_CMS_COLUMNS: CmsColumnId[] = CMS_COLUMNS.map((column) => column.id);
 
 type DatePreset =
   | "today"
@@ -314,6 +339,67 @@ export default function CmsOperatorDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadColumnPreferences() {
+      try {
+        const response = await fetch("/api/admin/preferences", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as { columns?: unknown };
+        if (cancelled || !Array.isArray(data.columns)) return;
+
+        const valid = data.columns.filter(
+          (column): column is CmsColumnId =>
+            typeof column === "string" &&
+            DEFAULT_CMS_COLUMNS.includes(column as CmsColumnId)
+        );
+        setVisibleColumns(valid.length > 0 ? valid : DEFAULT_CMS_COLUMNS);
+      } catch {
+      } finally {
+        if (!cancelled) setColumnsLoaded(true);
+      }
+    }
+
+    void loadColumnPreferences();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function saveColumnPreferences(columns: CmsColumnId[]) {
+    setSavingColumns(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ columns }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Failed to save table preferences.");
+      setVisibleColumns(columns);
+      setColumnEditorOpen(false);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to save table preferences.");
+    } finally {
+      setSavingColumns(false);
+    }
+  }
+
+  function toggleColumn(column: CmsColumnId) {
+    setVisibleColumns((current) =>
+      current.includes(column)
+        ? current.filter((item) => item !== column)
+        : [...current, column]
+    );
+  }
+
+  const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
+  const [columnEditorOpen, setColumnEditorOpen] = useState(false);
+  const [savingColumns, setSavingColumns] = useState(false);
+  const [columnsLoaded, setColumnsLoaded] = useState(false);
+
   const load = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setMessage("");
@@ -474,14 +560,63 @@ export default function CmsOperatorDashboard() {
               ChargeMOD Power Line operational data, proxied securely through TriArc.
             </p>
           </div>
-          <button
-            onClick={() => void load(true)}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-            Refresh
-          </button>
+          <div className="relative flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setColumnEditorOpen((open) => !open)}
+              disabled={!columnsLoaded}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+            >
+              <Settings2 size={16} />
+              Columns
+            </button>
+            <button
+              onClick={() => void load(true)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+              Refresh
+            </button>
+            {columnEditorOpen && (
+              <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border border-white/10 bg-[#071914] p-4 shadow-2xl">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold">Table columns</p>
+                    <p className="text-xs text-white/40">Saved to your admin account.</p>
+                  </div>
+                  <button
+                    onClick={() => setVisibleColumns(DEFAULT_CMS_COLUMNS)}
+                    className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white"
+                  >
+                    <RotateCcw size={13} /> Reset
+                  </button>
+                </div>
+                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {CMS_COLUMNS.map((column) => (
+                    <label key={column.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/5">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns.includes(column.id)}
+                        onChange={() => toggleColumn(column.id)}
+                        className="h-4 w-4 accent-emerald-400"
+                      />
+                      <span className="text-sm">{column.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+                  <span className="text-xs text-white/40">{visibleColumns.length} of {CMS_COLUMNS.length} shown</span>
+                  <button
+                    onClick={() => void saveColumnPreferences(visibleColumns)}
+                    disabled={savingColumns || visibleColumns.length === 0}
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300 disabled:opacity-50"
+                  >
+                    <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {message && (
@@ -542,20 +677,14 @@ export default function CmsOperatorDashboard() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1050px] w-full text-left text-sm">
+            <table className="min-w-[1250px] w-full text-left text-sm">
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>
-                  <th className="px-4 py-3">Vehicle Number</th>
-                   <th className="px-4 py-3">Start SoC</th>
-                   <th className="px-4 py-3">End SoC</th>
-                  <th className="px-4 py-3">Started</th>
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Location</th>
-                  <th className="px-4 py-3">Charger</th>
-                  <th className="px-4 py-3">Energy</th>
-                  <th className="px-4 py-3">Stop reason</th>
-                </tr>
-              </thead>
+                  {visibleColumns.map((columnId) => {
+                    const column = CMS_COLUMNS.find((item) => item.id === columnId);
+                    return column ? <th key={column.id} className="px-4 py-3">{column.label}</th> : null;
+                  })}
+                </tr>            </thead>
               <tbody className="divide-y divide-white/5">
                 {pagedTransactions.map((transaction) => {
                   const isActive =
@@ -572,46 +701,40 @@ export default function CmsOperatorDashboard() {
                           : "hover:bg-white/[0.02]"
                       }
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-emerald-200">
-                        {transaction.vehicleNumber || "—"}
-                        {isActive && (
-                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
-                            Active
-                          </span>
-                        )}
-                      </td>
-                       <td className="px-4 py-3">{transaction.startSoc == null ? "—" : `${transaction.startSoc}%`}</td>
-                       <td className="px-4 py-3">{transaction.endSoc == null ? "—" : `${transaction.endSoc}%`}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-white/70">
-                        {formatDate(transaction.startedAt)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>{displayUserName(transaction.userName)}</div>
-                        {transaction.mobile && (
-                          <div className="text-xs text-white/40">{transaction.mobile}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-white/70">
-                        {displayLocation(transaction.location)}
-                      </td>
-                      <td className="px-4 py-3 text-white/70">
-                        {displayCharger(transaction.chargerName)}
-                      </td>
-                      <td className="px-4 py-3 font-semibold">
-                        {transaction.energyKwh == null
-                          ? "—"
-                          : `${transaction.energyKwh.toFixed(2)} kWh`}
-                      </td>
-                      <td className="px-4 py-3 text-white/60">
-                        {transaction.stopReason ?? "—"}
-                      </td>
-                    </tr>
+                      {visibleColumns.includes("vehicleNumber") && (
+                        <td className="px-4 py-3 font-mono text-xs text-emerald-200">
+                          {transaction.vehicleNumber || "—"}
+                          {isActive && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+                              Active
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {visibleColumns.includes("startSoc") && <td className="px-4 py-3">{transaction.startSoc == null ? "—" : `${transaction.startSoc}%`}</td>}
+                      {visibleColumns.includes("endSoc") && <td className="px-4 py-3">{transaction.endSoc == null ? "—" : `${transaction.endSoc}%`}</td>}
+                      {visibleColumns.includes("startedAt") && <td className="px-4 py-3 whitespace-nowrap text-white/70">{formatDate(transaction.startedAt)}</td>}
+                      {visibleColumns.includes("user") && (
+                        <td className="px-4 py-3">
+                          <div>{displayUserName(transaction.userName)}</div>
+                          {transaction.mobile && <div className="text-xs text-white/40">{transaction.mobile}</div>}
+                        </td>
+                      )}
+                      {visibleColumns.includes("location") && <td className="px-4 py-3 text-white/70">{displayLocation(transaction.location)}</td>}
+                      {visibleColumns.includes("charger") && <td className="px-4 py-3 text-white/70">{displayCharger(transaction.chargerName)}</td>}
+                      {visibleColumns.includes("energy") && (
+                        <td className="px-4 py-3 font-semibold">
+                          {transaction.energyKwh == null ? "—" : `${transaction.energyKwh.toFixed(2)} kWh`}
+                        </td>
+                      )}
+                      {visibleColumns.includes("stopReason") && <td className="px-4 py-3 text-white/60">{transaction.stopReason ?? "—"}</td>}
+                    </tr>>
                   );
                 })}
                 {!loading && transactions.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-white/40">
+                    <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-white/40">
                       No transactions returned for the current period.
                     </td>
                   </tr>

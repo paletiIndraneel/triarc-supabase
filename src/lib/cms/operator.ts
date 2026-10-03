@@ -599,6 +599,10 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
       startValue !== null && stopValue !== null
         ? Math.max(0, stopValue - startValue) / 1000
         : null,
+    startSoc: toNumber(raw.startSoc ?? raw.startSoC ?? raw.startSOC),
+    endSoc: toNumber(
+      raw.endSoc ?? raw.endSoC ?? raw.endSOC ?? raw.stopSoc ?? raw.stopSoC ?? raw.stopSOC
+    ),
     vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
     vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
     tariffAmount: toNumber(raw.tariffAmount),

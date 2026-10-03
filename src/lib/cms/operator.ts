@@ -22,6 +22,7 @@ let cachedToken: CachedToken | null = null;
 let cachedContext: CmsContext | null = null;
 let tokenRefreshPromise: Promise<string> | null = null;
 let contextDiscoveryPromise: Promise<CmsContext> | null = null;
+let cachedAllowedLocationIds: number[] | null = null;
 
 const TOKEN_TTL_MS = 45 * 60 * 1000;
 const TOKEN_REFRESH_SKEW_MS = 2 * 60 * 1000;
@@ -52,9 +53,7 @@ async function login(config: CmsConfig): Promise<string> {
   if (
     !config.apiUrl ||
     !config.username ||
-    !config.password ||
-    !Number.isFinite(config.locationId) ||
-    config.locationId <= 0
+    !config.password
   ) {
     throw new Error("CMS runtime configuration is incomplete.");
   }
@@ -103,6 +102,8 @@ async function login(config: CmsConfig): Promise<string> {
 
   const payload = await response.json();
   const token = findToken(payload);
+  const discoveredLocationIds = findLocationIds(payload);
+  cachedAllowedLocationIds = discoveredLocationIds.length > 0 ? discoveredLocationIds : null;
 
   if (!token) {
     throw new Error("CMS login succeeded but no bearer token was returned.");
@@ -191,6 +192,47 @@ function getTokenExpiry(token: string): number | null {
   }
 }
 
+function findLocationIds(value: unknown): number[] {
+  const found = new Set<number>();
+
+  function visit(current: unknown) {
+    if (!current || typeof current !== "object") return;
+
+    if (Array.isArray(current)) {
+      current.forEach(visit);
+      return;
+    }
+
+    const object = current as Record<string, unknown>;
+
+    for (const key of ["allowedLocations", "allowedLocationIds", "locationIds"]) {
+      const candidate = object[key];
+      if (Array.isArray(candidate)) {
+        for (const item of candidate) {
+          const id =
+            typeof item === "number"
+              ? item
+              : typeof item === "string"
+                ? Number(item)
+                : item && typeof item === "object"
+                  ? Number(
+                      (item as Record<string, unknown>).locationId ??
+                        (item as Record<string, unknown>)._id
+                    )
+                  : NaN;
+
+          if (Number.isFinite(id) && id > 0) found.add(id);
+        }
+      }
+    }
+
+    Object.values(object).forEach(visit);
+  }
+
+  visit(value);
+  return Array.from(found);
+}
+
 function findToken(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
 
@@ -237,6 +279,7 @@ function invalidateToken(token: string) {
     cachedToken = null;
     cachedContext = null;
     contextDiscoveryPromise = null;
+    cachedAllowedLocationIds = null;
   }
 }
 
@@ -366,6 +409,48 @@ async function getCmsContext(config: CmsConfig): Promise<CmsContext> {
   return discoverContext(config);
 }
 
+async function getAllowedLocationIds(
+  config: CmsConfig,
+  context: CmsContext
+): Promise<number[]> {
+  if (cachedAllowedLocationIds?.length) return cachedAllowedLocationIds;
+
+  try {
+    const response = await cmsPost<Record<string, unknown>>(
+      config,
+      context,
+      `/location/all-locations/?organizationId=${context.organizationId}&projectId=${context.projectId}&offset=1&limit=100&location=&other=`,
+      { allowedLocations: [] }
+    );
+
+    const ids = findLocationIds(response);
+    if (ids.length > 0) {
+      cachedAllowedLocationIds = ids;
+      return ids;
+    }
+
+    const result = Array.isArray(response.result) ? response.result : [];
+    const resultIds = result
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+      .map((item) => Number(item.locationId))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+    if (resultIds.length > 0) {
+      cachedAllowedLocationIds = Array.from(new Set(resultIds));
+      return cachedAllowedLocationIds;
+    }
+  } catch (error) {
+    console.warn("[cms] Dynamic location discovery failed; using configured location.", error);
+  }
+
+  if (Number.isFinite(config.locationId) && config.locationId > 0) {
+    cachedAllowedLocationIds = [config.locationId];
+    return cachedAllowedLocationIds;
+  }
+
+  throw new Error("CMS locations could not be discovered. Configure CMS_API_LOCATION_ID as a fallback.");
+}
+
 export async function getOperatorData(
   config: CmsConfig,
   transactionOptions: {
@@ -453,9 +538,10 @@ export async function getDashboardData(
   endDate: string
 ) {
   const context = await getCmsContext(config);
+  const allowedLocations = await getAllowedLocationIds(config, context);
 
   const body = {
-    allowedLocations: [config.locationId],
+    allowedLocations,
     filterDate: { startDate, endDate },
     searchValue: {},
     allowedCustomers: [],
@@ -484,7 +570,7 @@ export async function getDashboardData(
       {
         organizationId: context.organizationId,
         projectId: context.projectId,
-        allowedLocations: [config.locationId],
+        allowedLocations,
       }
     ),
     cmsPost<Record<string, unknown>>(
@@ -494,7 +580,7 @@ export async function getDashboardData(
       {
         organizationId: context.organizationId,
         projectId: context.projectId,
-        allowedLocations: [config.locationId],
+        allowedLocations,
       }
     ),
   ]);
@@ -527,6 +613,7 @@ export async function getTransactions(
   }
 ) {
   const context = await getCmsContext(config);
+  const allowedLocations = await getAllowedLocationIds(config, context);
 
   return cmsPost<Record<string, unknown>>(
     config,
@@ -545,7 +632,7 @@ export async function getTransactions(
         searchField: options.searchField ?? "",
         searchKey: options.searchKey ?? "",
       },
-      allowedLocations: [config.locationId],
+      allowedLocations,
       transactionType: null,
       sortType: -1,
       solarType: "",
@@ -556,6 +643,7 @@ export async function getTransactions(
 
 export async function getActiveTransactions(config: CmsConfig) {
   const context = await getCmsContext(config);
+  const allowedLocations = await getAllowedLocationIds(config, context);
 
   return cmsPost<Record<string, unknown>>(
     config,
@@ -566,7 +654,7 @@ export async function getActiveTransactions(config: CmsConfig) {
       projectId: context.projectId,
       perPageCount: 25,
       pageNumber: 1,
-      allowedLocations: [config.locationId],
+      allowedLocations,
       searchValue: { searchField: "", searchKey: "" },
       sortType: -1,
       solarType: "",

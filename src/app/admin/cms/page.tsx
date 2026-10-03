@@ -439,13 +439,15 @@ export default function CmsOperatorDashboard() {
   function reorderTableColumn(dragged: CmsColumnId, target: CmsColumnId) {
     if (dragged === target) return;
 
-    const fromIndex = draftColumns.indexOf(dragged);
-    const toIndex = draftColumns.indexOf(target);
+    const fromIndex = visibleColumns.indexOf(dragged);
+    const toIndex = visibleColumns.indexOf(target);
     if (fromIndex < 0 || toIndex < 0) return;
 
-    const next = [...draftColumns];
+    const next = [...visibleColumns];
     next.splice(fromIndex, 1);
     next.splice(toIndex, 0, dragged);
+
+    setVisibleColumns(next);
     setDraftColumns(next);
   }
 
@@ -797,7 +799,7 @@ export default function CmsOperatorDashboard() {
           <div className="overflow-x-auto">
             <table className="min-w-[1250px] w-full text-left text-sm">
               <caption className="border-b border-white/10 px-5 py-2 text-left text-[11px] normal-case tracking-normal text-white/35">
-                Select fields and drag the selected columns below to set their order.
+                Select fields and drag the selected columns below to set their order. You can also drag the table headers. Click Save to store the order.
               </caption>
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>

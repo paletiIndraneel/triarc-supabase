@@ -938,7 +938,7 @@ export default function CmsOperatorDashboard() {
                 Previous
               </button>
               <button
-                disabled={page >= Math.max(1, Math.ceil(count / 25)) || loading}
+                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading}
                 onClick={() => setPage((value) => value + 1)}
                 className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-30"
               >

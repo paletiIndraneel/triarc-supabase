@@ -338,6 +338,12 @@ export default function CmsOperatorDashboard() {
   const [datePreset, setDatePreset] = useState<DatePreset>("today");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
+  const [columnEditorOpen, setColumnEditorOpen] = useState(false);
+  const [savingColumns, setSavingColumns] = useState(false);
+  const [columnsLoaded, setColumnsLoaded] = useState(false);
+
+
 
   useEffect(() => {
     let cancelled = false;
@@ -394,11 +400,6 @@ export default function CmsOperatorDashboard() {
         : [...current, column]
     );
   }
-
-  const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
-  const [columnEditorOpen, setColumnEditorOpen] = useState(false);
-  const [savingColumns, setSavingColumns] = useState(false);
-  const [columnsLoaded, setColumnsLoaded] = useState(false);
 
   const load = useCallback(async (forceRefresh = false) => {
     setLoading(true);

@@ -685,7 +685,8 @@ export default function CmsOperatorDashboard() {
                     const column = CMS_COLUMNS.find((item) => item.id === columnId);
                     return column ? <th key={column.id} className="px-4 py-3">{column.label}</th> : null;
                   })}
-                </tr>            </thead>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-white/5">
                 {pagedTransactions.map((transaction) => {
                   const isActive =
@@ -730,7 +731,7 @@ export default function CmsOperatorDashboard() {
                         </td>
                       )}
                       {visibleColumns.includes("stopReason") && <td className="px-4 py-3 text-white/60">{transaction.stopReason ?? "—"}</td>}
-                    </tr>>
+                    </tr>
                   );
                 })}
                 {!loading && transactions.length === 0 && (

@@ -4,15 +4,29 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_COLUMNS = [
-  "vehicleNumber",
+  "id",
+  "transactionId",
+  "chargerId",
+  "connectorId",
+  "startedAt",
+  "stoppedAt",
+  "userName",
+  "mobile",
+  "userType",
+  "tagReference",
+  "location",
+  "locationId",
+  "chargerName",
+  "stationType",
+  "stopReason",
+  "energyKwh",
   "startSoc",
   "endSoc",
-  "startedAt",
-  "user",
-  "location",
-  "charger",
-  "energy",
-  "stopReason",
+  "vehicleName",
+  "vehicleNumber",
+  "tariffAmount",
+  "vat",
+  "invoiceAvailable",
 ];
 
 async function getAdminUser() {

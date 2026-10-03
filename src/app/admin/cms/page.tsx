@@ -779,7 +779,6 @@ export default function CmsOperatorDashboard() {
                         ].join(" ")}
                         title="Drag to reorder column"
                       >
-                        <span className="mr-2 text-white/30">⋮⋮</span>
                         {column.label}
                       </th>
                     );

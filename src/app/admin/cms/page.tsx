@@ -370,7 +370,7 @@ export default function CmsOperatorDashboard() {
         const valid = data.columns.filter(
           (column): column is CmsColumnId =>
             typeof column === "string" &&
-            DEFAULT_CMS_COLUMNS.includes(column as CmsColumnId)
+            CMS_COLUMN_IDS.includes(column as CmsColumnId)
         );
         const nextColumns = valid.length > 0 ? valid : DEFAULT_CMS_COLUMNS;
         setVisibleColumns(nextColumns);
@@ -414,6 +414,21 @@ export default function CmsOperatorDashboard() {
         ? current.filter((item) => item !== column)
         : [...current, column]
     );
+  }
+
+  function moveColumn(dragged: CmsColumnId, target: CmsColumnId) {
+    if (dragged === target) return;
+
+    setDraftColumns((current) => {
+      if (!current.includes(dragged) || !current.includes(target)) return current;
+
+      const next = [...current];
+      const fromIndex = next.indexOf(dragged);
+      const toIndex = next.indexOf(target);
+      next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, dragged);
+      return next;
+    });
   }
 
   function openColumnEditor() {
@@ -621,7 +636,7 @@ export default function CmsOperatorDashboard() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Table columns</p>
-                    <p className="text-xs text-white/40">Select the sanitized transaction fields.</p>
+                    <p className="text-xs text-white/40">Select fields and drag selected fields to reorder them.</p>
                   </div>
                   <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
                 </div>
@@ -632,12 +647,38 @@ export default function CmsOperatorDashboard() {
                   <span className="text-xs text-white/40">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
                 </div>
                 <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                  {CMS_COLUMNS.map((column) => (
-                    <label key={column.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/5">
-                      <input type="checkbox" checked={draftColumns.includes(column.id)} onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-emerald-400" />
-                      <span className="font-mono text-xs">{column.label}</span>
-                    </label>
-                  ))}
+                  {CMS_COLUMN_IDS.map((columnId) => {
+                    const column = CMS_COLUMNS.find((item) => item.id === columnId);
+                    if (!column) return null;
+                    const selected = draftColumns.includes(column.id);
+                    return (
+                      <div
+                        key={column.id}
+                        draggable={selected}
+                        onDragStart={(event) => {
+                          if (selected) event.dataTransfer.setData("text/cms-column", column.id);
+                        }}
+                        onDragOver={(event) => {
+                          if (selected) event.preventDefault();
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId;
+                          if (dragged) moveColumn(dragged, column.id);
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-white/5"
+                      >
+                        <span className={selected ? "cursor-grab text-white/40" : "text-white/20"} title={selected ? "Drag to reorder" : undefined}>⋮⋮</span>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleColumn(column.id)}
+                          className="h-4 w-4 accent-emerald-400"
+                        />
+                        <span className="font-mono text-xs">{column.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
                   <button onClick={closeColumnEditor} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/5">Cancel</button>

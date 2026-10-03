@@ -544,6 +544,8 @@ export default function CmsOperatorDashboard() {
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>
                   <th className="px-4 py-3">Vehicle Number</th>
+                   <th className="px-4 py-3">Start SoC</th>
+                   <th className="px-4 py-3">End SoC</th>
                   <th className="px-4 py-3">Started</th>
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Location</th>
@@ -577,6 +579,8 @@ export default function CmsOperatorDashboard() {
                           </span>
                         )}
                       </td>
+                       <td className="px-4 py-3">{transaction.startSoc == null ? "—" : `${transaction.startSoc}%`}</td>
+                       <td className="px-4 py-3">{transaction.endSoc == null ? "—" : `${transaction.endSoc}%`}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-white/70">
                         {formatDate(transaction.startedAt)}
                       </td>
@@ -605,7 +609,7 @@ export default function CmsOperatorDashboard() {
                 })}
                 {!loading && transactions.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-white/40">
+                    <td colSpan={9} className="px-4 py-12 text-center text-white/40">
                       No transactions returned for the current period.
                     </td>
                   </tr>

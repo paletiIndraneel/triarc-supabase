@@ -750,7 +750,7 @@ export default function CmsOperatorDashboard() {
                 {!loading && transactions.length === 0 && (
                   <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-white/40">No transactions returned for the current period.</td></tr>
                 )}
-              </tbody>      </tbody>
+              </tbody>
             </table>
           </div>
 

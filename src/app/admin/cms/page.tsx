@@ -354,6 +354,7 @@ export default function CmsOperatorDashboard() {
   const [savingColumns, setSavingColumns] = useState(false);
   const [columnsLoaded, setColumnsLoaded] = useState(false);
   const columnEditorRef = useRef<HTMLDivElement>(null);
+  const [draggedTableColumn, setDraggedTableColumn] = useState<CmsColumnId | null>(null);
 
 
 
@@ -416,19 +417,20 @@ export default function CmsOperatorDashboard() {
     );
   }
 
-  function moveColumn(dragged: CmsColumnId, target: CmsColumnId) {
+  function reorderTableColumn(dragged: CmsColumnId, target: CmsColumnId) {
     if (dragged === target) return;
 
-    setDraftColumns((current) => {
-      if (!current.includes(dragged) || !current.includes(target)) return current;
+    const fromIndex = visibleColumns.indexOf(dragged);
+    const toIndex = visibleColumns.indexOf(target);
+    if (fromIndex < 0 || toIndex < 0) return;
 
-      const next = [...current];
-      const fromIndex = next.indexOf(dragged);
-      const toIndex = next.indexOf(target);
-      next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, dragged);
-      return next;
-    });
+    const next = [...visibleColumns];
+    next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, dragged);
+
+    setVisibleColumns(next);
+    setDraftColumns(next);
+    void saveColumnPreferences(next);
   }
 
   function openColumnEditor() {
@@ -636,7 +638,7 @@ export default function CmsOperatorDashboard() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Table columns</p>
-                    <p className="text-xs text-white/40">Select fields and drag selected fields to reorder them.</p>
+                    <p className="text-xs text-white/40">Select which fields appear in the table. Drag the table headers to reorder them.</p>
                   </div>
                   <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
                 </div>
@@ -652,23 +654,10 @@ export default function CmsOperatorDashboard() {
                     if (!column) return null;
                     const selected = draftColumns.includes(column.id);
                     return (
-                      <div
+                      <label
                         key={column.id}
-                        draggable={selected}
-                        onDragStart={(event) => {
-                          if (selected) event.dataTransfer.setData("text/cms-column", column.id);
-                        }}
-                        onDragOver={(event) => {
-                          if (selected) event.preventDefault();
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId;
-                          if (dragged) moveColumn(dragged, column.id);
-                        }}
                         className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-white/5"
                       >
-                        <span className={selected ? "cursor-grab text-white/40" : "text-white/20"} title={selected ? "Drag to reorder" : undefined}>⋮⋮</span>
                         <input
                           type="checkbox"
                           checked={selected}
@@ -676,7 +665,7 @@ export default function CmsOperatorDashboard() {
                           className="h-4 w-4 accent-emerald-400"
                         />
                         <span className="font-mono text-xs">{column.label}</span>
-                      </div>
+                      </label>
                     );
                   })}
                 </div>
@@ -749,11 +738,51 @@ export default function CmsOperatorDashboard() {
 
           <div className="overflow-x-auto">
             <table className="min-w-[1250px] w-full text-left text-sm">
+              <caption className="border-b border-white/10 px-5 py-2 text-left text-[11px] normal-case tracking-normal text-white/35">
+                Drag any column header to rearrange the table. The new order is saved automatically.
+              </caption>
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>
                   {visibleColumns.map((columnId) => {
                     const column = CMS_COLUMNS.find((item) => item.id === columnId);
-                    return column ? <th key={column.id} className="whitespace-nowrap px-4 py-3">{column.label}</th> : null;
+                    if (!column) return null;
+
+                    return (
+                      <th
+                        key={column.id}
+                        draggable
+                        onDragStart={(event) => {
+                          setDraggedTableColumn(column.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/cms-column", column.id);
+                        }}
+                        onDragEnd={() => setDraggedTableColumn(null)}
+                        onDragOver={(event) => {
+                          if (draggedTableColumn && draggedTableColumn !== column.id) {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "move";
+                          }
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const dragged =
+                            (event.dataTransfer.getData("text/cms-column") as CmsColumnId) ||
+                            draggedTableColumn;
+                          if (dragged) reorderTableColumn(dragged, column.id);
+                          setDraggedTableColumn(null);
+                        }}
+                        className={[
+                          "whitespace-nowrap px-4 py-3 select-none",
+                          draggedTableColumn === column.id
+                            ? "bg-emerald-300/10 text-emerald-200"
+                            : "cursor-grab active:cursor-grabbing",
+                        ].join(" ")}
+                        title="Drag to reorder column"
+                      >
+                        <span className="mr-2 text-white/30">⋮⋮</span>
+                        {column.label}
+                      </th>
+                    );
                   })}
                 </tr>
               </thead>

@@ -151,8 +151,17 @@ const CMS_COLUMN_IDS: CmsColumnId[] = [
 const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> =
   CMS_COLUMN_IDS.map((id) => ({ id, label: id }));
 
-// The currently supported full sanitized field set is the default selection.
-const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [...CMS_COLUMN_IDS];
+const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [
+  "vehicleNumber",
+  "startSoc",
+  "endSoc",
+  "startedAt",
+  "userName",
+  "location",
+  "chargerName",
+  "energyKwh",
+  "stopReason",
+];
 
 type DatePreset =
   | "today"

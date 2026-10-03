@@ -440,15 +440,15 @@ async function getAllowedLocationIds(
       return cachedAllowedLocationIds;
     }
   } catch (error) {
-    console.warn("[cms] Dynamic location discovery failed; using configured location.", error);
+    console.error("[cms] ChargeMOD location discovery failed.", error);
+    throw new Error(
+      "ChargeMOD locations could not be retrieved. No allowed location IDs were returned, so TriArc stopped instead of using a stale or configured location ID."
+    );
   }
 
-  if (Number.isFinite(config.locationId) && config.locationId > 0) {
-    cachedAllowedLocationIds = [config.locationId];
-    return cachedAllowedLocationIds;
-  }
-
-  throw new Error("CMS locations could not be discovered. Configure CMS_API_LOCATION_ID as a fallback.");
+  throw new Error(
+    "ChargeMOD locations could not be retrieved. No allowed location IDs were returned, so TriArc stopped instead of using a stale or configured location ID."
+  );
 }
 
 export async function getOperatorData(

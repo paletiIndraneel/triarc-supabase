@@ -797,7 +797,7 @@ export default function CmsOperatorDashboard() {
           <div className="overflow-x-auto">
             <table className="min-w-[1250px] w-full text-left text-sm">
               <caption className="border-b border-white/10 px-5 py-2 text-left text-[11px] normal-case tracking-normal text-white/35">
-                Select fields and drag the selected columns below to set their order. Click Save to apply and store the order.
+                Select fields and drag the selected columns below to set their order.
               </caption>
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>

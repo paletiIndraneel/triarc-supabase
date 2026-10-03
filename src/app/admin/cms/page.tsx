@@ -36,6 +36,19 @@ type Transaction = {
   tariffAmount: number | null;
   vat: number | null;
   invoiceAvailable: boolean;
+  userId: string | null;
+  vehicleId: string | null;
+  geoLatitude: number | null;
+  geoLongitude: number | null;
+  idTag: string | null;
+  isFree: boolean | null;
+  baseDeductiveAmount: number | null;
+  isAlphaGuaranteed: boolean | null;
+  isTimeBasedTariff: boolean | null;
+  startValue: number | null;
+  stopValue: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
 type TransactionResponse = {
@@ -139,13 +152,19 @@ type CmsColumnId =
   | "id" | "transactionId" | "chargerId" | "connectorId" | "startedAt" | "stoppedAt"
   | "userName" | "mobile" | "userType" | "tagReference" | "location" | "locationId"
   | "chargerName" | "stationType" | "stopReason" | "energyKwh" | "startSoc" | "endSoc"
-  | "vehicleName" | "vehicleNumber" | "tariffAmount" | "vat" | "invoiceAvailable";
+  | "vehicleName" | "vehicleNumber" | "tariffAmount" | "vat" | "invoiceAvailable"
+  | "userId" | "vehicleId" | "geoLatitude" | "geoLongitude" | "idTag" | "isFree"
+  | "baseDeductiveAmount" | "isAlphaGuaranteed" | "isTimeBasedTariff" | "startValue"
+  | "stopValue" | "createdAt" | "updatedAt";
 
 const CMS_COLUMN_IDS: CmsColumnId[] = [
   "id", "transactionId", "chargerId", "connectorId", "startedAt", "stoppedAt",
   "userName", "mobile", "userType", "tagReference", "location", "locationId",
   "chargerName", "stationType", "stopReason", "energyKwh", "startSoc", "endSoc",
   "vehicleName", "vehicleNumber", "tariffAmount", "vat", "invoiceAvailable",
+  "userId", "vehicleId", "geoLatitude", "geoLongitude", "idTag", "isFree",
+  "baseDeductiveAmount", "isAlphaGuaranteed", "isTimeBasedTariff", "startValue",
+  "stopValue", "createdAt", "updatedAt",
 ];
 
 const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> =
@@ -420,17 +439,14 @@ export default function CmsOperatorDashboard() {
   function reorderTableColumn(dragged: CmsColumnId, target: CmsColumnId) {
     if (dragged === target) return;
 
-    const fromIndex = visibleColumns.indexOf(dragged);
-    const toIndex = visibleColumns.indexOf(target);
+    const fromIndex = draftColumns.indexOf(dragged);
+    const toIndex = draftColumns.indexOf(target);
     if (fromIndex < 0 || toIndex < 0) return;
 
-    const next = [...visibleColumns];
+    const next = [...draftColumns];
     next.splice(fromIndex, 1);
     next.splice(toIndex, 0, dragged);
-
-    setVisibleColumns(next);
     setDraftColumns(next);
-    void saveColumnPreferences(next);
   }
 
   function openColumnEditor() {
@@ -648,26 +664,68 @@ export default function CmsOperatorDashboard() {
                   </button>
                   <span className="text-xs text-white/40">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
                 </div>
-                <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-                  {CMS_COLUMN_IDS.map((columnId) => {
-                    const column = CMS_COLUMNS.find((item) => item.id === columnId);
-                    if (!column) return null;
-                    const selected = draftColumns.includes(column.id);
-                    return (
-                      <label
-                        key={column.id}
-                        className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-white/5"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() => toggleColumn(column.id)}
-                          className="h-4 w-4 accent-emerald-400"
-                        />
-                        <span className="font-mono text-xs">{column.label}</span>
-                      </label>
-                    );
-                  })}
+                <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-300/70">
+                      Selected · drag to reorder
+                    </p>
+                    <div className="space-y-1">
+                      {draftColumns.map((columnId) => {
+                        const column = CMS_COLUMNS.find((item) => item.id === columnId);
+                        if (!column) return null;
+                        return (
+                          <div
+                            key={column.id}
+                            draggable
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData("text/cms-column", column.id);
+                            }}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId;
+                              if (dragged) reorderTableColumn(dragged, column.id);
+                            }}
+                            className="flex cursor-grab items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-2 active:cursor-grabbing"
+                          >
+                            <input
+                              type="checkbox"
+                              checked
+                              onChange={() => toggleColumn(column.id)}
+                              className="h-4 w-4 accent-emerald-400"
+                            />
+                            <span className="font-mono text-xs">{column.label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border-t border-white/10 pt-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                      Available
+                    </p>
+                    <div className="space-y-1">
+                      {CMS_COLUMN_IDS.filter((columnId) => !draftColumns.includes(columnId)).map((columnId) => {
+                        const column = CMS_COLUMNS.find((item) => item.id === columnId);
+                        if (!column) return null;
+                        return (
+                          <label
+                            key={column.id}
+                            className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-white/5"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              onChange={() => toggleColumn(column.id)}
+                              className="h-4 w-4 accent-emerald-400"
+                            />
+                            <span className="font-mono text-xs">{column.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
                   <button onClick={closeColumnEditor} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/5">Cancel</button>
@@ -739,7 +797,7 @@ export default function CmsOperatorDashboard() {
           <div className="overflow-x-auto">
             <table className="min-w-[1250px] w-full text-left text-sm">
               <caption className="border-b border-white/10 px-5 py-2 text-left text-[11px] normal-case tracking-normal text-white/35">
-                Drag any column header to rearrange the table. The new order is saved automatically.
+                Select fields and drag the selected columns below to set their order. Click Save to apply and store the order.
               </caption>
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
                 <tr>
@@ -815,15 +873,28 @@ export default function CmsOperatorDashboard() {
                           {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
-                          {columnId === "vehicleNumber" && (
-                            <>
-                              <span className="font-mono text-emerald-200">{transaction.vehicleNumber || "—"}</span>
-                              {isActive && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />Active</span>}
-                            </>
-                          )}
+                          {columnId === "vehicleNumber" && <span className="font-mono text-emerald-200">{transaction.vehicleNumber || "—"}</span>}
                           {columnId === "tariffAmount" && (transaction.tariffAmount ?? "—")}
                           {columnId === "vat" && (transaction.vat ?? "—")}
                           {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}
+                          {columnId === "userId" && (transaction.userId ?? "—")}
+                          {columnId === "vehicleId" && (transaction.vehicleId ?? "—")}
+                          {columnId === "geoLatitude" && (transaction.geoLatitude ?? "—")}
+                          {columnId === "geoLongitude" && (transaction.geoLongitude ?? "—")}
+                          {columnId === "idTag" && (transaction.idTag ?? "—")}
+                          {columnId === "isFree" && (transaction.isFree == null ? "—" : transaction.isFree ? "true" : "false")}
+                          {columnId === "baseDeductiveAmount" && (transaction.baseDeductiveAmount ?? "—")}
+                          {columnId === "isAlphaGuaranteed" && (transaction.isAlphaGuaranteed == null ? "—" : transaction.isAlphaGuaranteed ? "true" : "false")}
+                          {columnId === "isTimeBasedTariff" && (transaction.isTimeBasedTariff == null ? "—" : transaction.isTimeBasedTariff ? "true" : "false")}
+                          {columnId === "startValue" && (transaction.startValue ?? "—")}
+                          {columnId === "stopValue" && (transaction.stopValue ?? "—")}
+                          {columnId === "createdAt" && formatDate(transaction.createdAt)}
+                          {columnId === "updatedAt" && formatDate(transaction.updatedAt)}
+                          {columnId === visibleColumns[0] && isActive && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />Active
+                            </span>
+                          )}
                         </td>
                       ))}
                     </tr>

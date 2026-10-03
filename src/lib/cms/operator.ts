@@ -696,6 +696,27 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     tariffAmount: toNumber(raw.tariffAmount),
     vat: toNumber(raw.vat),
     invoiceAvailable: Boolean(raw.invoiceAvailable),
+    userId: raw.userId ? String(raw.userId) : null,
+    vehicleId: raw.vehicleId ? String(raw.vehicleId) : null,
+    geoLatitude:
+      raw.geoLocation && typeof raw.geoLocation === "object" && Array.isArray((raw.geoLocation as Record<string, unknown>).coordinates)
+        ? toNumber((raw.geoLocation as Record<string, unknown>).coordinates[1])
+        : null,
+    geoLongitude:
+      raw.geoLocation && typeof raw.geoLocation === "object" && Array.isArray((raw.geoLocation as Record<string, unknown>).coordinates)
+        ? toNumber((raw.geoLocation as Record<string, unknown>).coordinates[0])
+        : null,
+    idTag: raw.idTag ? String(raw.idTag) : null,
+    isFree: typeof raw.isFree === "boolean" ? raw.isFree : null,
+    baseDeductiveAmount: toNumber(raw.baseDeductiveAmount),
+    isAlphaGuaranteed:
+      typeof raw.isAlphaGuaranteed === "boolean" ? raw.isAlphaGuaranteed : null,
+    isTimeBasedTariff:
+      typeof raw.isTimeBasedTariff === "boolean" ? raw.isTimeBasedTariff : null,
+    startValue,
+    stopValue,
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : null,
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : null,
   };
 }
 

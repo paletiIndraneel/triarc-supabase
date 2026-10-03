@@ -141,14 +141,18 @@ type CmsColumnId =
   | "chargerName" | "stationType" | "stopReason" | "energyKwh" | "startSoc" | "endSoc"
   | "vehicleName" | "vehicleNumber" | "tariffAmount" | "vat" | "invoiceAvailable";
 
-const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> = [
+const CMS_COLUMN_IDS: CmsColumnId[] = [
   "id", "transactionId", "chargerId", "connectorId", "startedAt", "stoppedAt",
   "userName", "mobile", "userType", "tagReference", "location", "locationId",
   "chargerName", "stationType", "stopReason", "energyKwh", "startSoc", "endSoc",
   "vehicleName", "vehicleNumber", "tariffAmount", "vat", "invoiceAvailable",
-].map((id) => ({ id, label: id }));
+];
 
-const DEFAULT_CMS_COLUMNS: CmsColumnId[] = CMS_COLUMNS.map((column) => column.id);
+const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> =
+  CMS_COLUMN_IDS.map((id) => ({ id, label: id }));
+
+// The currently supported full sanitized field set is the default selection.
+const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [...CMS_COLUMN_IDS];
 
 type DatePreset =
   | "today"

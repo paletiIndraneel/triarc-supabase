@@ -328,6 +328,7 @@ function displayCharger(value: string) {
   return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
 }
 
+// Deployment trigger: no runtime behavior change.
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);

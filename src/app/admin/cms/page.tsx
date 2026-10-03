@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Activity, ArrowLeft, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
@@ -21,15 +21,21 @@ type Transaction = {
   stoppedAt: string | null;
   userName: string;
   mobile: string | null;
+  userType: string | null;
+  tagReference: string | null;
   location: string;
+  locationId: number | null;
   chargerName: string;
   stationType: string | null;
   stopReason: string | null;
   energyKwh: number | null;
   startSoc: number | null;
   endSoc: number | null;
-  tariffAmount: number | null;
+  vehicleName: string | null;
   vehicleNumber: string | null;
+  tariffAmount: number | null;
+  vat: number | null;
+  invoiceAvailable: boolean;
 };
 
 type TransactionResponse = {
@@ -130,27 +136,17 @@ function formatDate(value: string | null) {
 }
 
 type CmsColumnId =
-  | "vehicleNumber"
-  | "startSoc"
-  | "endSoc"
-  | "startedAt"
-  | "user"
-  | "location"
-  | "charger"
-  | "energy"
-  | "stopReason";
+  | "id" | "transactionId" | "chargerId" | "connectorId" | "startedAt" | "stoppedAt"
+  | "userName" | "mobile" | "userType" | "tagReference" | "location" | "locationId"
+  | "chargerName" | "stationType" | "stopReason" | "energyKwh" | "startSoc" | "endSoc"
+  | "vehicleName" | "vehicleNumber" | "tariffAmount" | "vat" | "invoiceAvailable";
 
 const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> = [
-  { id: "vehicleNumber", label: "Vehicle Number" },
-  { id: "startSoc", label: "Start SoC" },
-  { id: "endSoc", label: "End SoC" },
-  { id: "startedAt", label: "Started" },
-  { id: "user", label: "User" },
-  { id: "location", label: "Location" },
-  { id: "charger", label: "Charger" },
-  { id: "energy", label: "Energy" },
-  { id: "stopReason", label: "Stop reason" },
-];
+  "id", "transactionId", "chargerId", "connectorId", "startedAt", "stoppedAt",
+  "userName", "mobile", "userType", "tagReference", "location", "locationId",
+  "chargerName", "stationType", "stopReason", "energyKwh", "startSoc", "endSoc",
+  "vehicleName", "vehicleNumber", "tariffAmount", "vat", "invoiceAvailable",
+].map((id) => ({ id, label: id }));
 
 const DEFAULT_CMS_COLUMNS: CmsColumnId[] = CMS_COLUMNS.map((column) => column.id);
 
@@ -340,9 +336,11 @@ export default function CmsOperatorDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
+  const [draftColumns, setDraftColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
   const [columnEditorOpen, setColumnEditorOpen] = useState(false);
   const [savingColumns, setSavingColumns] = useState(false);
   const [columnsLoaded, setColumnsLoaded] = useState(false);
+  const columnEditorRef = useRef<HTMLDivElement>(null);
 
 
 
@@ -361,7 +359,9 @@ export default function CmsOperatorDashboard() {
             typeof column === "string" &&
             DEFAULT_CMS_COLUMNS.includes(column as CmsColumnId)
         );
-        setVisibleColumns(valid.length > 0 ? valid : DEFAULT_CMS_COLUMNS);
+        const nextColumns = valid.length > 0 ? valid : DEFAULT_CMS_COLUMNS;
+        setVisibleColumns(nextColumns);
+        setDraftColumns(nextColumns);
       } catch {
       } finally {
         if (!cancelled) setColumnsLoaded(true);
@@ -386,6 +386,7 @@ export default function CmsOperatorDashboard() {
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Failed to save table preferences.");
       setVisibleColumns(columns);
+      setDraftColumns(columns);
       setColumnEditorOpen(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to save table preferences.");
@@ -395,12 +396,35 @@ export default function CmsOperatorDashboard() {
   }
 
   function toggleColumn(column: CmsColumnId) {
-    setVisibleColumns((current) =>
+    setDraftColumns((current) =>
       current.includes(column)
         ? current.filter((item) => item !== column)
         : [...current, column]
     );
   }
+
+  function openColumnEditor() {
+    setDraftColumns(visibleColumns);
+    setColumnEditorOpen((open) => !open);
+  }
+
+  function closeColumnEditor() {
+    setDraftColumns(visibleColumns);
+    setColumnEditorOpen(false);
+  }
+
+  useEffect(() => {
+    if (!columnEditorOpen) return;
+
+    function handleOutsideClick(event: MouseEvent) {
+      if (columnEditorRef.current && !columnEditorRef.current.contains(event.target as Node)) {
+        closeColumnEditor();
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [columnEditorOpen, visibleColumns]);
 
   const load = useCallback(async (forceRefresh = false) => {
     setLoading(true);
@@ -562,9 +586,9 @@ export default function CmsOperatorDashboard() {
               ChargeMOD Power Line operational data, proxied securely through TriArc.
             </p>
           </div>
-          <div className="relative flex flex-wrap items-center gap-2">
+          <div ref={columnEditorRef} className="relative flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setColumnEditorOpen((open) => !open)}
+              onClick={openColumnEditor}
               disabled={!columnsLoaded}
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
             >
@@ -580,45 +604,36 @@ export default function CmsOperatorDashboard() {
               Refresh
             </button>
             {columnEditorOpen && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border border-white/10 bg-[#071914] p-4 shadow-2xl">
+              <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-white/10 bg-[#071914] p-4 shadow-2xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Table columns</p>
-                    <p className="text-xs text-white/40">Saved to your admin account.</p>
+                    <p className="text-xs text-white/40">Select the sanitized transaction fields.</p>
                   </div>
-                  <button
-                    onClick={() => setVisibleColumns(DEFAULT_CMS_COLUMNS)}
-                    className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white"
-                  >
+                  <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
+                </div>
+                <div className="mb-3 flex items-center justify-between">
+                  <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white">
                     <RotateCcw size={13} /> Reset
                   </button>
+                  <span className="text-xs text-white/40">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
                 </div>
                 <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                   {CMS_COLUMNS.map((column) => (
                     <label key={column.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/5">
-                      <input
-                        type="checkbox"
-                        checked={visibleColumns.includes(column.id)}
-                        onChange={() => toggleColumn(column.id)}
-                        className="h-4 w-4 accent-emerald-400"
-                      />
-                      <span className="text-sm">{column.label}</span>
+                      <input type="checkbox" checked={draftColumns.includes(column.id)} onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-emerald-400" />
+                      <span className="font-mono text-xs">{column.label}</span>
                     </label>
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-                  <span className="text-xs text-white/40">{visibleColumns.length} of {CMS_COLUMNS.length} shown</span>
-                  <button
-                    onClick={() => void saveColumnPreferences(visibleColumns)}
-                    disabled={savingColumns || visibleColumns.length === 0}
-                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300 disabled:opacity-50"
-                  >
+                <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
+                  <button onClick={closeColumnEditor} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/5">Cancel</button>
+                  <button onClick={() => void saveColumnPreferences(draftColumns)} disabled={savingColumns || draftColumns.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300 disabled:opacity-50">
                     <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            )}          </div>
         </div>
 
         {message && (
@@ -684,7 +699,7 @@ export default function CmsOperatorDashboard() {
                 <tr>
                   {visibleColumns.map((columnId) => {
                     const column = CMS_COLUMNS.find((item) => item.id === columnId);
-                    return column ? <th key={column.id} className="px-4 py-3">{column.label}</th> : null;
+                    return column ? <th key={column.id} className="whitespace-nowrap px-4 py-3">{column.label}</th> : null;
                   })}
                 </tr>
               </thead>
@@ -696,53 +711,46 @@ export default function CmsOperatorDashboard() {
                       activeTransactionIds.has(transaction.transactionId));
 
                   return (
-                    <tr
-                      key={transaction.id}
-                      className={
-                        isActive
-                          ? "bg-emerald-400/10 ring-1 ring-inset ring-emerald-300/30 hover:bg-emerald-400/15"
-                          : "hover:bg-white/[0.02]"
-                      }
-                    >
-                      {visibleColumns.includes("vehicleNumber") && (
-                        <td className="px-4 py-3 font-mono text-xs text-emerald-200">
-                          {transaction.vehicleNumber || "—"}
-                          {isActive && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
-                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
-                              Active
-                            </span>
+                    <tr key={transaction.id} className={isActive ? "bg-emerald-400/10 ring-1 ring-inset ring-emerald-300/30 hover:bg-emerald-400/15" : "hover:bg-white/[0.02]"}>
+                      {visibleColumns.map((columnId) => (
+                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-white/70">
+                          {columnId === "id" && transaction.id}
+                          {columnId === "transactionId" && transaction.transactionId}
+                          {columnId === "chargerId" && transaction.chargerId}
+                          {columnId === "connectorId" && (transaction.connectorId ?? "—")}
+                          {columnId === "startedAt" && formatDate(transaction.startedAt)}
+                          {columnId === "stoppedAt" && formatDate(transaction.stoppedAt)}
+                          {columnId === "userName" && displayUserName(transaction.userName)}
+                          {columnId === "mobile" && (transaction.mobile ?? "—")}
+                          {columnId === "userType" && (transaction.userType ?? "—")}
+                          {columnId === "tagReference" && (transaction.tagReference ?? "—")}
+                          {columnId === "location" && displayLocation(transaction.location)}
+                          {columnId === "locationId" && (transaction.locationId ?? "—")}
+                          {columnId === "chargerName" && displayCharger(transaction.chargerName)}
+                          {columnId === "stationType" && (transaction.stationType ?? "—")}
+                          {columnId === "stopReason" && (transaction.stopReason ?? "—")}
+                          {columnId === "energyKwh" && (transaction.energyKwh == null ? "—" : `${transaction.energyKwh.toFixed(2)} kWh`)}
+                          {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
+                          {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
+                          {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
+                          {columnId === "vehicleNumber" && (
+                            <>
+                              <span className="font-mono text-emerald-200">{transaction.vehicleNumber || "—"}</span>
+                              {isActive && <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />Active</span>}
+                            </>
                           )}
+                          {columnId === "tariffAmount" && (transaction.tariffAmount ?? "—")}
+                          {columnId === "vat" && (transaction.vat ?? "—")}
+                          {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}
                         </td>
-                      )}
-                      {visibleColumns.includes("startSoc") && <td className="px-4 py-3">{transaction.startSoc == null ? "—" : `${transaction.startSoc}%`}</td>}
-                      {visibleColumns.includes("endSoc") && <td className="px-4 py-3">{transaction.endSoc == null ? "—" : `${transaction.endSoc}%`}</td>}
-                      {visibleColumns.includes("startedAt") && <td className="px-4 py-3 whitespace-nowrap text-white/70">{formatDate(transaction.startedAt)}</td>}
-                      {visibleColumns.includes("user") && (
-                        <td className="px-4 py-3">
-                          <div>{displayUserName(transaction.userName)}</div>
-                          {transaction.mobile && <div className="text-xs text-white/40">{transaction.mobile}</div>}
-                        </td>
-                      )}
-                      {visibleColumns.includes("location") && <td className="px-4 py-3 text-white/70">{displayLocation(transaction.location)}</td>}
-                      {visibleColumns.includes("charger") && <td className="px-4 py-3 text-white/70">{displayCharger(transaction.chargerName)}</td>}
-                      {visibleColumns.includes("energy") && (
-                        <td className="px-4 py-3 font-semibold">
-                          {transaction.energyKwh == null ? "—" : `${transaction.energyKwh.toFixed(2)} kWh`}
-                        </td>
-                      )}
-                      {visibleColumns.includes("stopReason") && <td className="px-4 py-3 text-white/60">{transaction.stopReason ?? "—"}</td>}
+                      ))}
                     </tr>
                   );
                 })}
                 {!loading && transactions.length === 0 && (
-                  <tr>
-                    <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-white/40">
-                      No transactions returned for the current period.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-white/40">No transactions returned for the current period.</td></tr>
                 )}
-              </tbody>
+              </tbody>      </tbody>
             </table>
           </div>
 

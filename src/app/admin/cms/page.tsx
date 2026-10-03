@@ -26,6 +26,8 @@ type Transaction = {
   stationType: string | null;
   stopReason: string | null;
   energyKwh: number | null;
+  startSoc: number | null;
+  endSoc: number | null;
   tariffAmount: number | null;
   vehicleNumber: string | null;
 };

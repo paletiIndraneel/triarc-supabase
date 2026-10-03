@@ -548,7 +548,6 @@ export default function CmsOperatorDashboard() {
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Location</th>
                   <th className="px-4 py-3">Charger</th>
-                  <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Energy</th>
                   <th className="px-4 py-3">Stop reason</th>
                 </tr>
@@ -593,7 +592,6 @@ export default function CmsOperatorDashboard() {
                       <td className="px-4 py-3 text-white/70">
                         {displayCharger(transaction.chargerName)}
                       </td>
-                      <td className="px-4 py-3">{transaction.stationType ?? "—"}</td>
                       <td className="px-4 py-3 font-semibold">
                         {transaction.energyKwh == null
                           ? "—"

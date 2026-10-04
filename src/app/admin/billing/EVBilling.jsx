@@ -308,5 +308,6 @@ export default function EVBilling(){
     <label>GST % *<input type="number" min="0" step="0.01" value={inventoryForm.gst_rate} onChange={e=>setInventoryForm({...inventoryForm,gst_rate:e.target.value})}/></label>
     <label>Notes<input value={inventoryForm.notes} onChange={e=>setInventoryForm({...inventoryForm,notes:e.target.value})}/></label>
    </div><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={()=>setInventoryModal(false)}>Cancel</button><button className="btn btn-primary" disabled={inventorySaving}>{inventorySaving?'Saving…':editingInventory?'Save Changes':'Add Item'}</button></div></form></Modal>}
- </div>;
+    </main>
+  </div>;
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, ExternalLink, ShieldCheck } from "lucide-react";
+import { Mail, ExternalLink, ShieldCheck, Boxes } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { createClient } from "@/lib/supabase/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
@@ -33,9 +33,8 @@ export default async function AdminPage() {
   } = await supabase.auth.getUser();
 
   const displayName =
-    user?.user_metadata?.display_name ||
-    user?.email?.split("@")[0] ||
-    "Admin";
+    user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Admin";
+  const role = user?.user_metadata?.role || user?.user_metadata?.user_role || "Role not set";
 
   return (
     <main className="min-h-screen bg-[#03110d] px-6 py-16 sm:py-20">
@@ -43,7 +42,7 @@ export default async function AdminPage() {
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">
-              Welcome {displayName}
+              Welcome {displayName} · {role}
             </h1>
           </div>
         </header>
@@ -53,7 +52,7 @@ export default async function AdminPage() {
             <ShieldCheck className="text-emerald-300" size={22} />
             <h2 className="mt-3 text-lg font-bold text-white">Billing</h2>
             <p className="mt-2 text-sm leading-6 text-white/60">
-              Create bills, manage invoices, customers, billing items, and the Asset Register.
+              Create bills, manage invoices, customers, and billing items.
             </p>
             <Link
               href="/admin/billing"

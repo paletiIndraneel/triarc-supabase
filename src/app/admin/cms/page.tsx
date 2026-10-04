@@ -696,7 +696,7 @@ export default function CmsOperatorDashboard() {
           />
         </div>
 
-        <GlassCard className="mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
+        <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
             <div>
               <h2 className="text-lg font-bold tracking-tight text-slate-900">Transactions</h2>

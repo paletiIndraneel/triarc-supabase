@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -374,6 +375,8 @@ export default function CmsOperatorDashboard() {
   const [savingColumns, setSavingColumns] = useState(false);
   const [columnsLoaded, setColumnsLoaded] = useState(false);
   const columnEditorRef = useRef<HTMLDivElement>(null);
+  const columnMenuRef = useRef<HTMLDivElement>(null);
+  const [columnMenuPosition, setColumnMenuPosition] = useState({ top: 0, right: 0 });
   const [draggedTableColumn, setDraggedTableColumn] = useState<CmsColumnId | null>(null);
 
 
@@ -452,9 +455,23 @@ export default function CmsOperatorDashboard() {
     setDraftColumns(next);
   }
 
+  function updateColumnMenuPosition() {
+    const anchor = columnEditorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    setColumnMenuPosition({
+      top: rect.bottom + 8,
+      right: Math.max(16, window.innerWidth - rect.right),
+    });
+  }
+
   function openColumnEditor() {
     setDraftColumns(visibleColumns);
-    setColumnEditorOpen((open) => !open);
+    setColumnEditorOpen((open) => {
+      const next = !open;
+      if (next) requestAnimationFrame(updateColumnMenuPosition);
+      return next;
+    });
   }
 
   function closeColumnEditor() {
@@ -466,13 +483,27 @@ export default function CmsOperatorDashboard() {
     if (!columnEditorOpen) return;
 
     function handleOutsideClick(event: MouseEvent) {
-      if (columnEditorRef.current && !columnEditorRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        columnEditorRef.current &&
+        !columnEditorRef.current.contains(target) &&
+        columnMenuRef.current &&
+        !columnMenuRef.current.contains(target)
+      ) {
         closeColumnEditor();
       }
     }
 
+    updateColumnMenuPosition();
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    window.addEventListener("resize", updateColumnMenuPosition);
+    window.addEventListener("scroll", updateColumnMenuPosition, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      window.removeEventListener("resize", updateColumnMenuPosition);
+      window.removeEventListener("scroll", updateColumnMenuPosition, true);
+    };
   }, [columnEditorOpen, visibleColumns]);
 
   const load = useCallback(async (forceRefresh = false) => {
@@ -653,8 +684,9 @@ export default function CmsOperatorDashboard() {
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
               Refresh
             </button>
-            {columnEditorOpen && (
-              <div className="absolute right-0 top-full z-[9999] mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+            {columnEditorOpen && typeof document !== "undefined" &&
+              createPortal(
+                <div ref={columnMenuRef} style={{ position: "fixed", top: columnMenuPosition.top, right: columnMenuPosition.right }} className="z-[9999] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Columns & fields</p>
@@ -738,7 +770,7 @@ export default function CmsOperatorDashboard() {
                   </button>
                 </div>
               </div>
-            )}          </div>
+
           </div>
         </section>
 

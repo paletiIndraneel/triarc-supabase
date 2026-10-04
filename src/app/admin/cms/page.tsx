@@ -639,8 +639,8 @@ export default function CmsOperatorDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => void load(true)}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              disabled={loading || Boolean(message)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
               Refresh
@@ -690,7 +690,7 @@ export default function CmsOperatorDashboard() {
                 <span>Date:</span>
                 <select
                   value={datePreset}
-                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)}
+                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)} disabled={Boolean(message)}
                   className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
                   aria-label="Date range"
                 >
@@ -705,7 +705,7 @@ export default function CmsOperatorDashboard() {
                 <span>Rows:</span>
                 <select
                   value={pageSize}
-                  onChange={(event) => selectPageSize(Number(event.target.value))}
+                  onChange={(event) => selectPageSize(Number(event.target.value))} disabled={Boolean(message)}
                   className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
                   aria-label="Transactions per page"
                 >
@@ -717,8 +717,8 @@ export default function CmsOperatorDashboard() {
               <div ref={columnEditorRef} className="relative">
                 <button
                   onClick={openColumnEditor}
-                  disabled={!columnsLoaded}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#e8e8e8] disabled:opacity-50"
+                  disabled={!columnsLoaded || Boolean(message)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#e8e8e8] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Settings2 size={14} />
                   Columns
@@ -902,14 +902,14 @@ export default function CmsOperatorDashboard() {
             </span>
             <div className="flex gap-2">
               <button
-                disabled={page <= 1 || loading}
+                disabled={page <= 1 || loading || Boolean(message)}
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >
                 Previous
               </button>
               <button
-                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading}
+                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading || Boolean(message)}
                 onClick={() => setPage((value) => value + 1)}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >

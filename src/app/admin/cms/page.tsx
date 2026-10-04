@@ -684,8 +684,11 @@ export default function CmsOperatorDashboard() {
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
               Refresh
             </button>
-            {columnEditorOpen && typeof document !== "undefined" &&
-              createPortal(
+
+          </div>
+        </section>
+
+{columnEditorOpen && (
                 <div ref={columnMenuRef} style={{ position: "fixed", top: columnMenuPosition.top, right: columnMenuPosition.right }} className="z-[9999] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
@@ -769,11 +772,9 @@ export default function CmsOperatorDashboard() {
                     <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
                   </button>
                 </div>
-                </div>,
-                document.body
+                </div>
               )}
-          </div>
-        </section>
+
 
         {message && (
           <GlassCard className="mt-6 border-red-400/20 p-5">

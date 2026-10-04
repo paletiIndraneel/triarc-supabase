@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { Activity, ArrowLeft, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
+import { Activity, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
+import AdminHeader from "@/components/admin/AdminHeader";
 
 type Dashboard = {
   summary: Record<string, unknown>;
@@ -623,17 +623,13 @@ export default function CmsOperatorDashboard() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#03110d] px-6 py-12 text-white sm:py-16">
+    <>
+      <AdminHeader />
+      <main className="min-h-screen bg-[#03110d] px-6 pb-12 pt-24 text-white sm:pb-16">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 text-sm text-emerald-300 hover:text-emerald-200"
-            >
-              <ArrowLeft size={16} /> Admin
-            </Link>
-            <h1 className="mt-3 text-3xl font-black sm:text-4xl">
+            <h1 className="text-3xl font-black sm:text-4xl">
               CMS Operator Dashboard
             </h1>
             <p className="mt-2 text-sm text-white/60">
@@ -949,6 +945,7 @@ export default function CmsOperatorDashboard() {
         </GlassCard>
       </div>
     </main>
+    </>
   );
 }
 

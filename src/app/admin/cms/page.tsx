@@ -773,6 +773,7 @@ export default function CmsOperatorDashboard() {
                 </div>
                 </div>
               )}
+          </div>
         </section>
 
 

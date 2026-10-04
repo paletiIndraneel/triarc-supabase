@@ -739,6 +739,7 @@ export default function CmsOperatorDashboard() {
                 </div>
               </div>
             )}          </div>
+          </div>
         </section>
 
         {message && (

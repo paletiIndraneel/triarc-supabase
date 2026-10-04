@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Download, Plus, Trash2, RefreshCw, X, Search, Bell, UserRound } from 'lucide-react';
+import { Download, Plus, Trash2, RefreshCw, X } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/supabase/billing';
 import { useToast } from '@/components/BillingToast';
-import AdminUserBadge from '@/components/admin/AdminUserBadge';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 const TRIARC_STATE = '36';
 const money = n => Number(n || 0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -268,7 +268,7 @@ export default function EVBilling(){
  const deleteInventory=async row=>{if(!window.confirm('Delete billing item '+row.product_name+'?'))return;const {count,error:ce}=await supabase.from('billing_items').select('id',{count:'exact',head:true}).eq('inventory_id',row.id);if(ce)return toast.error(ce.message);if(count)return toast.error('Billing item cannot be deleted because it is used on invoices. Deactivate it instead.');const {error}=await supabase.from('billing_inventory').delete().eq('id',row.id);if(error)return toast.error(error.message);setInventory(x=>x.filter(r=>r.id!==row.id));toast.success('Charging item deleted')};
 
  return <div className="billing-app">
-   <header className="admin-header"><div className="admin-brand"><span className="admin-brand-mark">ϟ</span><span>Triarc EV</span><span className="admin-badge">ADMIN</span></div><nav className="admin-nav"><a href="/admin">CMS Dashboard</a><a href="/admin/billing" className="active">Billing</a><a href="/admin/inventory">Inventory</a><a href="/admin/enquiries">Enquiries</a></nav><div className="admin-tools"><div className="portal-search"><Search size={16}/><span>Search portal...</span></div><Bell size={18}/><AdminUserBadge /></div></header>
+   <AdminHeader />
    <main className="billing-main">
     <div className="billing-heading"><div><h1>Billing</h1><p>Manage EV charging invoices, customers, and billable services.</p></div><div className="heading-actions"><button className="btn btn-secondary" onClick={()=>load()}><RefreshCw size={14}/> Refresh</button><button className="btn btn-primary" onClick={()=>setTab('new')}><Plus size={14}/> New Bill</button></div></div>
     <div className="billing-tabs"><button className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}>Overview</button><button className={tab==='invoices'?'active':''} onClick={()=>setTab('invoices')}>Invoices</button><button className={tab==='customers'?'active':''} onClick={()=>setTab('customers')}>Customers &amp; Accounts</button><button className={tab==='billing-items'?'active':''} onClick={()=>setTab('billing-items')}>Billing Items</button></div>

@@ -686,7 +686,6 @@ export default function CmsOperatorDashboard() {
             </button>
 
           </div>
-        </section>
 
 {columnEditorOpen && (
                 <div ref={columnMenuRef} style={{ position: "fixed", top: columnMenuPosition.top, right: columnMenuPosition.right }} className="z-[9999] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
@@ -774,6 +773,7 @@ export default function CmsOperatorDashboard() {
                 </div>
                 </div>
               )}
+        </section>
 
 
         {message && (

@@ -627,7 +627,7 @@ export default function CmsOperatorDashboard() {
       <AdminHeader />
       <main className="min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <section className="mb-6 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               CMS Dashboard
@@ -640,7 +640,7 @@ export default function CmsOperatorDashboard() {
             <button
               onClick={openColumnEditor}
               disabled={!columnsLoaded}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
             >
               <Settings2 size={16} />
               Columns
@@ -648,29 +648,29 @@ export default function CmsOperatorDashboard() {
             <button
               onClick={() => void load(true)}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
             >
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
               Refresh
             </button>
             {columnEditorOpen && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-white/10 bg-white p-4 shadow-2xl">
+              <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Columns & fields</p>
-                    <p className="text-xs text-slate-400">Add or remove fields from the table, then drag selected fields to set their order.</p>
+                    <p className="text-xs text-slate-500">Add or remove fields from the table, then drag selected fields to set their order.</p>
                   </div>
-                  <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-slate-500 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
+                  <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close columns">×</button>
                 </div>
                 <div className="mb-3 flex items-center justify-between">
                   <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-white">
                     <RotateCcw size={13} /> Reset
                   </button>
-                  <span className="text-xs text-slate-400">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
+                  <span className="text-xs text-slate-500">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
                 </div>
                 <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                   <div>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-300/70">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
                       Selected fields · drag to reorder
                     </p>
                     <div className="space-y-1">
@@ -691,13 +691,13 @@ export default function CmsOperatorDashboard() {
                               const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId;
                               if (dragged) reorderTableColumn(dragged, column.id);
                             }}
-                            className="flex cursor-grab items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2 py-2 active:cursor-grabbing"
+                            className="flex cursor-grab items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 active:cursor-grabbing"
                           >
                             <input
                               type="checkbox"
                               checked
                               onChange={() => toggleColumn(column.id)}
-                              className="h-4 w-4 accent-emerald-400"
+                              className="h-4 w-4 accent-indigo-600"
                             />
                             <span className="font-mono text-xs">{column.label}</span>
                           </div>
@@ -722,7 +722,7 @@ export default function CmsOperatorDashboard() {
                               type="checkbox"
                               checked={false}
                               onChange={() => toggleColumn(column.id)}
-                              className="h-4 w-4 accent-emerald-400"
+                              className="h-4 w-4 accent-indigo-600"
                             />
                             <span className="font-mono text-xs">{column.label}</span>
                           </label>
@@ -738,8 +738,7 @@ export default function CmsOperatorDashboard() {
                   </button>
                 </div>
               </div>
-            )}          </div>
-        </div>
+            )}          </div></section>
 
         {message && (
           <GlassCard className="mt-6 border-red-400/20 p-5">

@@ -16,7 +16,7 @@ export default function AdminUserBadge() {
       if (!mounted) return;
 
       const user = data.user;
-      const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+      const metadata = user?.user_metadata ?? {};
       const displayName =
         typeof metadata.display_name === "string" && metadata.display_name.trim()
           ? metadata.display_name.trim()

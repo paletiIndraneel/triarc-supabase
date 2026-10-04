@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bell, Search, UserCircle } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import EnquiriesTable from "./EnquiriesTable";
 import { createClient } from "@/lib/supabase/server";
+import AdminUserBadge from "@/components/admin/AdminUserBadge";
 
 export const metadata: Metadata = {
   title: "Enquiries",
@@ -57,13 +58,7 @@ export default async function EnquiriesPage() {
               <Bell size={18} />
               <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-violet-600" />
             </button>
-            <div className="hidden items-center gap-2 sm:flex">
-              <UserCircle size={31} className="text-slate-400" />
-              <div className="leading-tight">
-                <div className="text-xs font-semibold text-slate-900">Alex Vance</div>
-                <div className="text-[11px] text-slate-500">Billing Admin</div>
-              </div>
-            </div>
+            <div className="hidden sm:block"><AdminUserBadge /></div>
           </div>
         </div>
       </header>

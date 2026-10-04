@@ -356,7 +356,7 @@ function displayCharger(value: string) {
   return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
 }
 
-// Deployment trigger: no runtime behavior change.
+// CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -661,8 +661,8 @@ export default function CmsOperatorDashboard() {
               <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-white/10 bg-[#071914] p-4 shadow-2xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold">Table columns</p>
-                    <p className="text-xs text-white/40">Select which fields appear in the table. Drag the table headers to reorder them.</p>
+                    <p className="text-sm font-bold">Columns & fields</p>
+                    <p className="text-xs text-white/40">Add or remove fields from the table, then drag selected fields to set their order.</p>
                   </div>
                   <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
                 </div>
@@ -675,7 +675,7 @@ export default function CmsOperatorDashboard() {
                 <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                   <div>
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-300/70">
-                      Selected · drag to reorder
+                      Selected fields · drag to reorder
                     </p>
                     <div className="space-y-1">
                       {draftColumns.map((columnId) => {

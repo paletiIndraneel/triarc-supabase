@@ -769,8 +769,9 @@ export default function CmsOperatorDashboard() {
                     <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
                   </button>
                 </div>
-              </div>
-
+                </div>,
+                document.body
+              )}
           </div>
         </section>
 

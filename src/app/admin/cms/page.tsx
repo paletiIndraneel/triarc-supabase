@@ -627,7 +627,7 @@ export default function CmsOperatorDashboard() {
       <AdminHeader />
       <main className="min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
-        <section className="relative z-30 mb-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
+        <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               CMS Dashboard
@@ -654,7 +654,7 @@ export default function CmsOperatorDashboard() {
               Refresh
             </button>
             {columnEditorOpen && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+              <div className="absolute right-0 top-full z-[9999] mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Columns & fields</p>
@@ -748,7 +748,7 @@ export default function CmsOperatorDashboard() {
           </GlassCard>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative z-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Transactions" value={String(summary.transactionCount ?? 0)} />
           <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
           <Metric label="Locations" value={String(locationCount)} />

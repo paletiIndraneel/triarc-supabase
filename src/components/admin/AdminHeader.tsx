@@ -8,7 +8,7 @@ import AdminUserBadge from "@/components/admin/AdminUserBadge";
 const navItems = [
   { label: "CMS Dashboard", href: "/admin/cms", key: "cms" },
   { label: "Billing", href: "/admin/billing", key: "billing" },
-  { label: "Inventory", href: null, key: "inventory" },
+  { label: "Inventory", href: "/admin/inventory", key: "inventory" },
   { label: "Enquiries", href: "/admin/enquiries", key: "enquiries" },
 ];
 
@@ -19,72 +19,46 @@ export default function AdminHeader() {
       ? "cms"
       : pathname.startsWith("/admin/billing")
         ? "billing"
-        : pathname.startsWith("/admin/enquiries")
-          ? "enquiries"
-          : "";
+        : pathname.startsWith("/admin/inventory")
+          ? "inventory"
+          : pathname.startsWith("/admin/enquiries")
+            ? "enquiries"
+            : "";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-full max-w-[1440px] items-center gap-5 px-6">
-        <Link
-          href="/admin"
-          className="flex shrink-0 items-center gap-2 text-[16px] font-bold tracking-tight text-slate-900"
-        >
+    <header className="sticky top-0 z-20 flex h-16 w-full items-center gap-7 border-b border-[#e8e9f0] bg-white px-7 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
+      <div className="flex min-w-[230px] shrink-0 items-center gap-[9px] whitespace-nowrap font-bold text-[#172033]">
+        <Link href="/admin" className="text-[16px] font-bold tracking-tight text-[#172033]">
           Triarc EV
-          <span className="rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-violet-700">
-            ADMIN
-          </span>
         </Link>
+        <span className="rounded-md bg-[#eeeaff] px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-[#7157d9]">
+          ADMIN
+        </span>
+      </div>
 
-        <nav className="flex h-full items-center gap-1 text-sm font-medium" aria-label="Admin modules">
-          {navItems.map((item) =>
-            item.href ? (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={
-                  active === item.key
-                    ? "rounded-xl bg-violet-600 px-3.5 py-2 font-semibold text-white"
-                    : "rounded-xl px-3.5 py-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                }
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span
-                key={item.key}
-                aria-disabled="true"
-                title="Inventory module is not connected yet"
-                className="cursor-default rounded-xl px-3.5 py-2 text-slate-500"
-              >
-                {item.label}
-              </span>
-            ),
-          )}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-3">
-          <div className="relative hidden xl:block">
-            <Search
-              size={16}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-            <input
-              aria-label="Portal search"
-              placeholder="Search portal..."
-              className="h-9 w-52 rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-violet-300 focus:bg-white"
-            />
-          </div>
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative rounded-lg p-2 text-slate-500 transition hover:bg-slate-100"
+      <nav className="flex h-full flex-1 items-center gap-1" aria-label="Admin modules">
+        {navItems.map((item) => (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={
+              active === item.key
+                ? "rounded-[10px] bg-[#7157d9] px-[14px] py-[9px] text-[13px] font-semibold text-white"
+                : "rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold text-[#667085] transition hover:bg-[#f5f3ff] hover:text-[#5b46c4]"
+            }
           >
-            <Bell size={18} />
-            <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-violet-600" />
-          </button>
-          <AdminUserBadge />
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="flex items-center gap-4 text-[#667085]">
+        <div className="flex h-9 w-[190px] items-center gap-2 rounded-[10px] border border-[#e2e4ec] px-[11px] text-xs text-[#98a2b3]">
+          <Search size={16} />
+          <span>Search portal...</span>
         </div>
+        <Bell size={18} />
+        <AdminUserBadge />
       </div>
     </header>
   );

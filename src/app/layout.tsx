@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/Navbar/Navbar";
+import PublicSiteShell from "@/components/layout/PublicSiteShell";
 import LocalBusinessSchema from "@/components/seo/LocalBusinessSchema";
 import { site } from "@/data/site";
 import "./globals.css";
@@ -64,8 +64,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <LocalBusinessSchema />
-        <Navbar />
-        {children}
+        <PublicSiteShell>{children}</PublicSiteShell>
       </body>
     </html>
   );

@@ -625,15 +625,15 @@ export default function CmsOperatorDashboard() {
   return (
     <>
       <AdminHeader />
-      <main className="min-h-screen bg-[#03110d] px-6 pb-12 pt-24 text-white sm:pb-16">
-      <div className="mx-auto max-w-7xl">
+      <main className="min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
+      <div className="mx-auto w-full max-w-[1440px]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-black sm:text-4xl">
-              CMS Operator Dashboard
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              CMS Dashboard
             </h1>
-            <p className="mt-2 text-sm text-white/60">
-              ChargeMOD Power Line operational data, proxied securely through TriArc.
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+              Operational overview of charging sessions, chargers, locations, energy and revenue from the connected CMS.
             </p>
           </div>
           <div ref={columnEditorRef} className="relative flex flex-wrap items-center gap-2">
@@ -654,19 +654,19 @@ export default function CmsOperatorDashboard() {
               Refresh
             </button>
             {columnEditorOpen && (
-              <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-white/10 bg-[#071914] p-4 shadow-2xl">
+              <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-2xl border border-white/10 bg-white p-4 shadow-2xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold">Columns & fields</p>
-                    <p className="text-xs text-white/40">Add or remove fields from the table, then drag selected fields to set their order.</p>
+                    <p className="text-xs text-slate-400">Add or remove fields from the table, then drag selected fields to set their order.</p>
                   </div>
-                  <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-white/50 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
+                  <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-slate-500 hover:bg-white/10 hover:text-white" aria-label="Close columns">×</button>
                 </div>
                 <div className="mb-3 flex items-center justify-between">
-                  <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white">
+                  <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-white">
                     <RotateCcw size={13} /> Reset
                   </button>
-                  <span className="text-xs text-white/40">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
+                  <span className="text-xs text-slate-400">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
                 </div>
                 <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                   <div>
@@ -706,7 +706,7 @@ export default function CmsOperatorDashboard() {
                     </div>
                   </div>
                   <div className="border-t border-white/10 pt-3">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                       Available
                     </p>
                     <div className="space-y-1">
@@ -732,7 +732,7 @@ export default function CmsOperatorDashboard() {
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-                  <button onClick={closeColumnEditor} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-white/70 hover:bg-white/5">Cancel</button>
+                  <button onClick={closeColumnEditor} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white/5">Cancel</button>
                   <button onClick={() => void saveColumnPreferences(draftColumns)} disabled={savingColumns || draftColumns.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300 disabled:opacity-50">
                     <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
                   </button>
@@ -747,7 +747,7 @@ export default function CmsOperatorDashboard() {
           </GlassCard>
         )}
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Transactions" value={String(summary.transactionCount ?? 0)} />
           <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
           <Metric label="Locations" value={String(locationCount)} />
@@ -768,11 +768,11 @@ export default function CmsOperatorDashboard() {
           />
         </div>
 
-        <GlassCard className="mt-6 overflow-hidden p-0">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+        <GlassCard className="mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
             <div>
-              <h2 className="font-bold">Transactions</h2>
-              <p className="text-xs text-white/50">
+              <h2 className="text-lg font-bold tracking-tight text-slate-900">Recent Transactions</h2>
+              <p className="text-xs text-slate-500">
                 {datePresets.find((preset) => preset.value === datePreset)?.label} · {count} matching
               </p>
             </div>
@@ -784,14 +784,14 @@ export default function CmsOperatorDashboard() {
                   onClick={() => selectDatePreset(preset.value)}
                   className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
                     datePreset === preset.value
-                      ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                      ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-700"
                       : "border-white/10 text-white/60 hover:bg-white/5"
                   }`}
                 >
                   {preset.label}
                 </button>
               ))}
-              <label className="ml-1 flex items-center gap-2 text-xs text-white/50">
+              <label className="ml-1 flex items-center gap-2 text-xs text-slate-500">
                 <span>Rows:</span>
                 <select
                   value={pageSize}
@@ -799,12 +799,12 @@ export default function CmsOperatorDashboard() {
                   className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-white outline-none hover:bg-white/10"
                   aria-label="Transactions per page"
                 >
-                  <option value={25} className="bg-[#071914]">25</option>
-                  <option value={50} className="bg-[#071914]">50</option>
-                  <option value={100} className="bg-[#071914]">100</option>
+                  <option value={25} className="bg-white">25</option>
+                  <option value={50} className="bg-white">50</option>
+                  <option value={100} className="bg-white">100</option>
                 </select>
               </label>
-              <div className="ml-1 flex items-center gap-2 text-xs text-white/50">
+              <div className="ml-1 flex items-center gap-2 text-xs text-slate-500">
                 <Activity size={14} />
                 Active: {active}
               </div>
@@ -812,8 +812,8 @@ export default function CmsOperatorDashboard() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1250px] w-full text-left text-sm">
-              <thead className="bg-white/[0.03] text-xs uppercase tracking-wider text-white/40">
+            <table className="min-w-[1250px] w-full border-collapse text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                 <tr>
                   {visibleColumns.map((columnId) => {
                     const column = CMS_COLUMNS.find((item) => item.id === columnId);
@@ -846,7 +846,7 @@ export default function CmsOperatorDashboard() {
                         className={[
                           "whitespace-nowrap px-4 py-3 select-none",
                           draggedTableColumn === column.id
-                            ? "bg-emerald-300/10 text-emerald-200"
+                            ? "bg-emerald-300/10 text-emerald-700"
                             : "cursor-grab active:cursor-grabbing",
                         ].join(" ")}
                         title="Drag to reorder column"
@@ -857,7 +857,7 @@ export default function CmsOperatorDashboard() {
                   })}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-slate-100">
                 {pagedTransactions.map((transaction) => {
                   const isActive =
                     transaction.stoppedAt == null &&
@@ -865,9 +865,9 @@ export default function CmsOperatorDashboard() {
                       activeTransactionIds.has(transaction.transactionId));
 
                   return (
-                    <tr key={transaction.id} className={isActive ? "bg-emerald-400/10 ring-1 ring-inset ring-emerald-300/30 hover:bg-emerald-400/15" : "hover:bg-white/[0.02]"}>
+                    <tr key={transaction.id} className={isActive ? "bg-emerald-50 hover:bg-emerald-100/70" : "hover:bg-slate-50"}>
                       {visibleColumns.map((columnId) => (
-                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-white/70">
+                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-slate-600">
                           {columnId === "id" && transaction.id}
                           {columnId === "transactionId" && transaction.transactionId}
                           {columnId === "chargerId" && transaction.chargerId}
@@ -887,7 +887,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
-                          {columnId === "vehicleNumber" && <span className="font-mono text-emerald-200">{transaction.vehicleNumber || "—"}</span>}
+                          {columnId === "vehicleNumber" && <span className="font-mono text-emerald-700">{transaction.vehicleNumber || "—"}</span>}
                           {columnId === "tariffAmount" && (transaction.tariffAmount ?? "—")}
                           {columnId === "vat" && (transaction.vat ?? "—")}
                           {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}
@@ -905,7 +905,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "createdAt" && formatDate(transaction.createdAt)}
                           {columnId === "updatedAt" && formatDate(transaction.updatedAt)}
                           {columnId === visibleColumns[0] && isActive && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
                               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />Active
                             </span>
                           )}
@@ -915,28 +915,28 @@ export default function CmsOperatorDashboard() {
                   );
                 })}
                 {!loading && transactions.length === 0 && (
-                  <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-white/40">No transactions returned for the current period.</td></tr>
+                  <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-slate-400">No transactions returned for the current period.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-white/10 px-5 py-4">
-            <span className="text-xs text-white/50">
+          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <span className="text-xs text-slate-500">
               Page {page} of {Math.max(1, Math.ceil(count / pageSize))}
             </span>
             <div className="flex gap-2">
               <button
                 disabled={page <= 1 || loading}
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
-                className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-30"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >
                 Previous
               </button>
               <button
                 disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading}
                 onClick={() => setPage((value) => value + 1)}
-                className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-30"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >
                 Next
               </button>
@@ -949,25 +949,14 @@ export default function CmsOperatorDashboard() {
   );
 }
 
-function Metric({
-  label,
-  value,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
+function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <GlassCard className="p-5">
-      <p className="text-xs uppercase tracking-[0.2em] text-white/40">{label}</p>
-      <p className={`mt-2 text-2xl font-black ${accent ? "text-emerald-300" : "text-white"}`}>
-        {value}
-      </p>
+    <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-tight ${accent ? "text-emerald-600" : "text-slate-900"}`}>{value}</p>
     </GlassCard>
   );
 }
-
 function formatDuration(seconds: number) {
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);

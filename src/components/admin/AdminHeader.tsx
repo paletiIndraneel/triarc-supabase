@@ -4,13 +4,7 @@ import Link from "next/link";
 import { Bell, Search } from "lucide-react";
 import { usePathname } from "next/navigation";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
-
-const navItems = [
-  { label: "CMS Dashboard", href: "/admin/cms", key: "cms" },
-  { label: "Billing", href: "/admin/billing", key: "billing" },
-  { label: "Inventory", href: "/admin/inventory", key: "inventory" },
-  { label: "Enquiries", href: "/admin/enquiries", key: "enquiries" },
-];
+import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNavigation";
 
 export default function AdminHeader() {
   const pathname = usePathname();
@@ -37,7 +31,7 @@ export default function AdminHeader() {
       </div>
 
       <nav className="flex h-full flex-1 items-center gap-1" aria-label="Admin modules">
-        {navItems.map((item) => (
+        {ADMIN_NAV_ITEMS.map((item) => (
           <Link
             key={item.key}
             href={item.href}

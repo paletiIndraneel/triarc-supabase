@@ -738,7 +738,8 @@ export default function CmsOperatorDashboard() {
                   </button>
                 </div>
               </div>
-            )}          </div></section>
+            )}          </div>
+        </section>
 
         {message && (
           <GlassCard className="mt-6 border-red-400/20 p-5">

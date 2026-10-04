@@ -44,7 +44,7 @@ export default function AdminHeader() {
             className={
               active === item.key
                 ? "rounded-[10px] bg-[#7157d9] px-[14px] py-[9px] text-[13px] font-semibold text-white"
-                : "rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold text-[#667085] transition hover:bg-[#f5f3ff] hover:text-[#5b46c4]"
+                : "rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold text-[#172033] transition hover:bg-[#f5f3ff] hover:text-[#5b46c4]"
             }
           >
             {item.label}

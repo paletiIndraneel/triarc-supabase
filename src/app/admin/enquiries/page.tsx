@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Mail, Phone, RefreshCw } from "lucide-react";
-import GlassCard from "@/components/ui/GlassCard";
+import { Bell, Search, UserCircle } from "lucide-react";
+import EnquiriesTable from "./EnquiriesTable";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -15,128 +15,66 @@ type Enquiry = {
   email: string;
   phone: string | null;
   message: string;
+  status: "New" | "Contacted" | "Closed";
   created_at: string;
 };
 
 export default async function EnquiriesPage() {
   const supabase = await createClient();
 
-  const { data: enquiries, error } = await supabase
+  const { data, error } = await supabase
     .from("enquiries")
-    .select("id, name, email, phone, message, created_at")
+    .select("id, name, email, phone, message, status, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
     console.error("[admin/enquiries] Failed to load enquiries:", error);
   }
 
-  const rows = (enquiries ?? []) as Enquiry[];
+  const rows = (data ?? []) as Enquiry[];
 
   return (
     <main className="min-h-screen bg-[#f8f9ff] text-slate-900">
-      <header className="h-16 border-b border-slate-200 bg-white">
-        <div className="mx-auto flex h-full max-w-[1400px] items-center px-6">
-          <Link href="/admin" className="mr-8 text-lg font-bold tracking-tight text-slate-900">
-            Triarc EV ADMIN
+      <header className="fixed inset-x-0 top-0 z-40 h-16 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-full max-w-[1440px] items-center gap-5 px-6">
+          <Link href="/admin" className="flex shrink-0 items-center gap-2 text-[17px] font-bold tracking-tight text-slate-900">
+            Triarc EV
+            <span className="rounded-md bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-white">ADMIN</span>
           </Link>
-          <nav className="flex h-full items-center gap-7 text-sm font-medium">
-            <Link href="/admin/cms" className="text-slate-500 hover:text-slate-900">CMS Dashboard</Link>
-            <Link href="/admin/billing" className="text-slate-500 hover:text-slate-900">Billing</Link>
-            <Link href="/admin/enquiries" className="relative flex h-full items-center font-semibold text-violet-700">
-              Enquiries
-              <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-violet-600" />
-            </Link>
+
+          <nav className="flex h-full items-center gap-1 text-sm font-medium">
+            <Link href="/admin/cms" className="rounded-xl px-3.5 py-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">CMS Dashboard</Link>
+            <Link href="/admin/billing" className="rounded-xl px-3.5 py-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">Billing</Link>
+            <span className="rounded-xl bg-violet-100 px-3.5 py-2 font-semibold text-violet-800">Enquiries</span>
           </nav>
-          <div className="ml-auto text-sm text-slate-500">Admin</div>
+
+          <div className="ml-auto flex items-center gap-4">
+            <div className="relative hidden xl:block">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input aria-label="Portal search" placeholder="Search portal..." className="h-9 w-52 rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-700 outline-none focus:border-violet-300 focus:bg-white" />
+            </div>
+            <button type="button" aria-label="Notifications" className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100">
+              <Bell size={18} />
+              <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-violet-600" />
+            </button>
+            <div className="hidden items-center gap-2 sm:flex">
+              <UserCircle size={31} className="text-slate-400" />
+              <div className="leading-tight">
+                <div className="text-xs font-semibold text-slate-900">Alex Vance</div>
+                <div className="text-[11px] text-slate-500">Billing Admin</div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1400px] px-6 py-8">
-        <Link href="/admin" className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900">
-          <ArrowLeft size={16} />
-          Admin
-        </Link>
-
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">Enquiries</h1>
-            <p className="mt-1 text-sm text-slate-500">Messages submitted through the Visit Us form.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            <RefreshCw size={15} />
-            Refresh
-          </button>
+      <div className="mx-auto max-w-[1440px] px-6 pb-12 pt-24">
+        <div className="mb-7">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Enquiries</h1>
+          <p className="mt-1 text-sm text-slate-500">View and manage enquiries submitted through the Triarc website.</p>
         </div>
 
-        {error ? (
-          <GlassCard className="mt-7 border border-red-200 bg-white p-6 shadow-sm">
-            <p className="text-sm text-red-600">Unable to load enquiries right now. Please try again.</p>
-          </GlassCard>
-        ) : rows.length === 0 ? (
-          <GlassCard className="mt-7 border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm text-slate-500">No contact enquiries yet.</p>
-          </GlassCard>
-        ) : (
-          <div className="mt-7 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50">
-                  <tr>
-                    <th className="px-5 py-3.5 font-semibold text-slate-600">Name</th>
-                    <th className="px-5 py-3.5 font-semibold text-slate-600">Message</th>
-                    <th className="px-5 py-3.5 font-semibold text-slate-600">Phone</th>
-                    <th className="px-5 py-3.5 font-semibold text-slate-600">Email</th>
-                    <th className="px-5 py-3.5 font-semibold text-slate-600">Submitted</th>
-                    <th className="px-5 py-3.5 text-right font-semibold text-slate-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {rows.map((enquiry) => (
-                    <tr key={enquiry.id} className="align-top hover:bg-slate-50/70">
-                      <td className="px-5 py-4 font-semibold text-slate-900">{enquiry.name}</td>
-                      <td className="max-w-[360px] px-5 py-4 text-slate-600">
-                        <p className="whitespace-pre-wrap leading-6">{enquiry.message}</p>
-                      </td>
-                      <td className="px-5 py-4 text-slate-600">
-                        {enquiry.phone ? (
-                          <a href={`tel:${enquiry.phone}`} className="hover:text-violet-700">{enquiry.phone}</a>
-                        ) : "—"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <a href={`mailto:${enquiry.email}`} className="inline-flex items-center gap-1.5 text-violet-700 hover:text-violet-900">
-                          <Mail size={14} />
-                          {enquiry.email}
-                        </a>
-                      </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-500">
-                        {new Date(enquiry.created_at).toLocaleString("en-IN", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <a href={`mailto:${enquiry.email}`} aria-label="Email enquiry" className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700">
-                            <Mail size={15} />
-                          </a>
-                          {enquiry.phone && (
-                            <a href={`tel:${enquiry.phone}`} aria-label="Call enquiry" className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700">
-                              <Phone size={15} />
-                            </a>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <EnquiriesTable enquiries={rows} error={!!error} />
       </div>
     </main>
   );

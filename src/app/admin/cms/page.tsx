@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
-import AdminHeader from "@/components/admin/AdminHeader";
 
 type Dashboard = {
   summary: Record<string, unknown>;
@@ -624,7 +623,6 @@ export default function CmsOperatorDashboard() {
 
   return (
     <>
-      <AdminHeader />
       <main className="min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
         <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -188,8 +187,7 @@ type DatePreset =
   | "yesterday"
   | "this-week"
   | "last-week"
-  | "this-month"
-  | "last-month";
+  | "this-month";
 
 function getISTCalendarDate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -213,9 +211,6 @@ function getDateRangeIST(preset: DatePreset) {
   const startOfMonth = new Date(
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1) - 330 * 60 * 1000
   );
-  const startOfLastMonth = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1) - 330 * 60 * 1000
-  );
 
   switch (preset) {
     case "yesterday":
@@ -237,11 +232,6 @@ function getDateRangeIST(preset: DatePreset) {
       return {
         startDate: startOfMonth.toISOString(),
         endDate: new Date(today.getTime() + day).toISOString(),
-      };
-    case "last-month":
-      return {
-        startDate: startOfLastMonth.toISOString(),
-        endDate: startOfMonth.toISOString(),
       };
     case "today":
     default:
@@ -650,7 +640,6 @@ export default function CmsOperatorDashboard() {
     { value: "this-week", label: "This Week" },
     { value: "last-week", label: "Last Week" },
     { value: "this-month", label: "This Month" },
-    { value: "last-month", label: "Last Month" },
   ];
 
   return (
@@ -667,15 +656,7 @@ export default function CmsOperatorDashboard() {
               Operational overview of charging sessions, chargers, locations, energy and revenue from the connected CMS.
             </p>
           </div>
-          <div ref={columnEditorRef} className="relative flex flex-wrap items-center gap-2">
-            <button
-              onClick={openColumnEditor}
-              disabled={!columnsLoaded}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-            >
-              <Settings2 size={16} />
-              Columns
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => void load(true)}
               disabled={loading}
@@ -684,97 +665,8 @@ export default function CmsOperatorDashboard() {
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
               Refresh
             </button>
-
           </div>
-
-{columnEditorOpen && (
-                <div ref={columnMenuRef} style={{ position: "fixed", top: columnMenuPosition.top, right: columnMenuPosition.right }} className="z-[9999] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold">Columns & fields</p>
-                    <p className="text-xs text-slate-500">Add or remove fields from the table, then drag selected fields to set their order.</p>
-                  </div>
-                  <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close columns">×</button>
-                </div>
-                <div className="mb-3 flex items-center justify-between">
-                  <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-white">
-                    <RotateCcw size={13} /> Reset
-                  </button>
-                  <span className="text-xs text-slate-500">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
-                </div>
-                <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
-                  <div>
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                      Selected fields · drag to reorder
-                    </p>
-                    <div className="space-y-1">
-                      {draftColumns.map((columnId) => {
-                        const column = CMS_COLUMNS.find((item) => item.id === columnId);
-                        if (!column) return null;
-                        return (
-                          <div
-                            key={column.id}
-                            draggable
-                            onDragStart={(event) => {
-                              event.dataTransfer.effectAllowed = "move";
-                              event.dataTransfer.setData("text/cms-column", column.id);
-                            }}
-                            onDragOver={(event) => event.preventDefault()}
-                            onDrop={(event) => {
-                              event.preventDefault();
-                              const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId;
-                              if (dragged) reorderTableColumn(dragged, column.id);
-                            }}
-                            className="flex cursor-grab items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 active:cursor-grabbing"
-                          >
-                            <input
-                              type="checkbox"
-                              checked
-                              onChange={() => toggleColumn(column.id)}
-                              className="h-4 w-4 accent-indigo-600"
-                            />
-                            <span className="font-mono text-xs">{column.label}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="border-t border-white/10 pt-3">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Available
-                    </p>
-                    <div className="space-y-1">
-                      {CMS_COLUMN_IDS.filter((columnId) => !draftColumns.includes(columnId)).map((columnId) => {
-                        const column = CMS_COLUMNS.find((item) => item.id === columnId);
-                        if (!column) return null;
-                        return (
-                          <label
-                            key={column.id}
-                            className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-white/5"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={false}
-                              onChange={() => toggleColumn(column.id)}
-                              className="h-4 w-4 accent-indigo-600"
-                            />
-                            <span className="font-mono text-xs">{column.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-                  <button onClick={closeColumnEditor} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-white/5">Cancel</button>
-                  <button onClick={() => void saveColumnPreferences(draftColumns)} disabled={savingColumns || draftColumns.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-black hover:bg-emerald-300 disabled:opacity-50">
-                    <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
-                  </button>
-                </div>
-                </div>
-              )}
-          </div>
-        </section>
+        </div></section>
 
 
         {message && (
@@ -807,27 +699,29 @@ export default function CmsOperatorDashboard() {
         <GlassCard className="mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
             <div>
-              <h2 className="text-lg font-bold tracking-tight text-slate-900">Recent Transactions</h2>
+              <h2 className="text-lg font-bold tracking-tight text-slate-900">Transactions</h2>
               <p className="text-xs text-slate-500">
                 {datePresets.find((preset) => preset.value === datePreset)?.label} · {count} matching
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {datePresets.map((preset) => (
-                <button
-                  key={preset.value}
-                  onClick={() => selectDatePreset(preset.value)}
-                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
-                    datePreset === preset.value
-                      ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-700"
-                      : "border-white/10 text-white/60 hover:bg-white/5"
-                  }`}
+              <label className="flex items-center gap-2 text-xs text-slate-500">
+                <span>Date:</span>
+                <select
+                  value={datePreset}
+                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)}
+                  className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                  aria-label="Date range"
                 >
-                  {preset.label}
-                </button>
-              ))}
-              <label className="ml-1 flex items-center gap-2 text-xs text-slate-500">
+                  {datePresets.map((preset) => (
+                    <option key={preset.value} value={preset.value} className="bg-white">
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-500">
                 <span>Rows:</span>
                 <select
                   value={pageSize}
@@ -840,6 +734,71 @@ export default function CmsOperatorDashboard() {
                   <option value={100} className="bg-white">100</option>
                 </select>
               </label>
+              <div ref={columnEditorRef} className="relative">
+                <button
+                  onClick={openColumnEditor}
+                  disabled={!columnsLoaded}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#e8e8e8] disabled:opacity-50"
+                >
+                  <Settings2 size={14} />
+                  Columns
+                </button>
+                {columnEditorOpen && (
+                  <div ref={columnMenuRef} style={{ position: "fixed", top: columnMenuPosition.top, right: columnMenuPosition.right }} className="z-[9999] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Columns & fields</p>
+                        <p className="text-xs text-slate-500">Add or remove fields from the table, then drag selected fields to set their order.</p>
+                      </div>
+                      <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close columns">×</button>
+                    </div>
+                    <div className="mb-3 flex items-center justify-between">
+                      <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900">
+                        <RotateCcw size={13} /> Reset
+                      </button>
+                      <span className="text-xs text-slate-500">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
+                    </div>
+                    <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                      <div>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-600">Selected fields · drag to reorder</p>
+                        <div className="space-y-1">
+                          {draftColumns.map((columnId) => {
+                            const column = CMS_COLUMNS.find((item) => item.id === columnId);
+                            if (!column) return null;
+                            return (
+                              <div key={column.id} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/cms-column", column.id); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId; if (dragged) reorderTableColumn(dragged, column.id); }} className="flex cursor-grab items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 active:cursor-grabbing">
+                                <input type="checkbox" checked onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-indigo-600" />
+                                <span className="font-mono text-xs text-slate-700">{column.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="border-t border-slate-200 pt-3">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Available</p>
+                        <div className="space-y-1">
+                          {CMS_COLUMN_IDS.filter((columnId) => !draftColumns.includes(columnId)).map((columnId) => {
+                            const column = CMS_COLUMNS.find((item) => item.id === columnId);
+                            if (!column) return null;
+                            return (
+                              <label key={column.id} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100">
+                                <input type="checkbox" checked={false} onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-indigo-600" />
+                                <span className="font-mono text-xs text-slate-700">{column.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-200 pt-3">
+                      <button onClick={closeColumnEditor} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                      <button onClick={() => void saveColumnPreferences(draftColumns)} disabled={savingColumns || draftColumns.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
+                        <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="ml-1 flex items-center gap-2 text-xs text-slate-500">
                 <Activity size={14} />
                 Active: {active}

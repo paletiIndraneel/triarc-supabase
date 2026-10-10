@@ -693,7 +693,7 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     ),
     vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
     vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
-    tariffAmount: toNumber(raw.tariffAmount),
+    tariffAmount: toNumber(raw.usedAmount ?? raw["Used Amount"]),
     vat: toNumber(raw.vat),
     invoiceAvailable: Boolean(raw.invoiceAvailable),
   };

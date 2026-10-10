@@ -360,7 +360,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
-  const [historicalConsumption, setHistoricalConsumption] = useState<{ previousMonth: number; currentFirstHalf: number | null; previousMonthLabel: string; currentFirstHalfLabel: string } | null>(null);
+  const [historicalConsumption, setHistoricalConsumption] = useState<{ currentToDate: number | null; previousMonth: number | null; currentFirstHalf: number | null; primaryLabel: string; previousMonthLabel: string } | null>(null);
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
   const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
@@ -683,8 +683,9 @@ export default function CmsOperatorDashboard() {
             ac: monthTotals.energyAc,
             dc: monthTotals.energyDc,
           });
-          // Historical consumption card: before or on the 15th show the full previous month;
-          // from the 16th onward show previous month and current month's first 15 days separately.
+          // Consumption Details uses IST calendar boundaries and transaction start times.
+          // Days 1–15: current month's consumption from midnight on day 1 through now.
+          // Day 16 onward: compare current month's days 1–15 with the entire previous month.
           const istParts = new Intl.DateTimeFormat("en-CA", {
             timeZone: "Asia/Kolkata",
             year: "numeric",
@@ -701,7 +702,7 @@ export default function CmsOperatorDashboard() {
             `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-01T00:00:00+05:30`
           );
           const currentFirstHalfEnd = new Date(`${istValues.year}-${istValues.month}-16T00:00:00+05:30`);
-          const previousMonthEnd = currentMonthStart;
+          const now = new Date();
           const fetchEnergyForRange = async (startDate: Date, endDate: Date) => {
             let pageNumber = 1;
             let expectedCount = Number.POSITIVE_INFINITY;
@@ -725,18 +726,33 @@ export default function CmsOperatorDashboard() {
             }
             return energy;
           };
-          const previousMonthEnergy = await fetchEnergyForRange(previousMonthStart, previousMonthEnd);
-          const previousMonthLabel = previousMonthStart.toLocaleDateString("en-IN", { month: "long", timeZone: "Asia/Kolkata" });
-          let currentFirstHalfEnergy: number | null = null;
-          if (localDay >= 16) {
-            currentFirstHalfEnergy = await fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd);
+          if (localDay <= 15) {
+            const currentToDateEnergy = await fetchEnergyForRange(currentMonthStart, now);
+            setHistoricalConsumption({
+              currentToDate: currentToDateEnergy,
+              previousMonth: null,
+              currentFirstHalf: null,
+              primaryLabel: "This month (1–today)",
+              previousMonthLabel: "",
+            });
+          } else {
+            const [previousMonthEnergy, currentFirstHalfEnergy] = await Promise.all([
+              fetchEnergyForRange(previousMonthStart, currentMonthStart),
+              fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd),
+            ]);
+            const previousMonthLabel = previousMonthStart.toLocaleDateString("en-IN", {
+              month: "long",
+              year: "numeric",
+              timeZone: "Asia/Kolkata",
+            });
+            setHistoricalConsumption({
+              currentToDate: null,
+              previousMonth: previousMonthEnergy,
+              currentFirstHalf: currentFirstHalfEnergy,
+              primaryLabel: "This month (1–15)",
+              previousMonthLabel,
+            });
           }
-          setHistoricalConsumption({
-            previousMonth: previousMonthEnergy,
-            currentFirstHalf: currentFirstHalfEnergy,
-            previousMonthLabel,
-            currentFirstHalfLabel: `${istValues.month}/01–15`,
-          });
           setMonthToDateEnergy(monthTotals.energyTotal);
         }
       } catch {
@@ -885,22 +901,29 @@ export default function CmsOperatorDashboard() {
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                  {historicalConsumption === null
-                    ? "—"
-                    : `${historicalConsumption.previousMonth.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">
-                  {historicalConsumption?.previousMonthLabel ?? "Previous month"}
-                </p>
+                {historicalConsumption?.currentToDate !== null && historicalConsumption?.currentToDate !== undefined ? (
+                  <>
+                    <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                      {historicalConsumption.currentToDate.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{historicalConsumption.primaryLabel}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-xs font-medium text-slate-500">{historicalConsumption?.primaryLabel ?? "This month (1–15)"}</p>
+                    <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                      {historicalConsumption?.currentFirstHalf == null ? "—" : `${historicalConsumption.currentFirstHalf.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+                    </p>
+                  </>
+                )}
               </div>
               <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
               <div className="min-w-0 flex-1 space-y-3">
-                {historicalConsumption?.currentFirstHalf !== null && historicalConsumption?.currentFirstHalf !== undefined && (
+                {historicalConsumption?.previousMonth !== null && historicalConsumption?.previousMonth !== undefined && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-slate-500">This month (1–15)</p>
+                    <p className="text-xs font-medium text-slate-500">{historicalConsumption.previousMonthLabel}</p>
                     <p className="text-sm font-semibold text-slate-800">
-                      {historicalConsumption.currentFirstHalf.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
+                      {historicalConsumption.previousMonth.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
                     </p>
                   </div>
                 )}

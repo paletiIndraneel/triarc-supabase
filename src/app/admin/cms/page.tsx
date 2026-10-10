@@ -360,7 +360,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
-  const [monthToDateDuration, setMonthToDateDuration] = useState<{ total: number; ac: number; dc: number } | null>(null);
+  const [historicalConsumption, setHistoricalConsumption] = useState<{ previousMonth: number; currentFirstHalf: number | null; previousMonthLabel: string; currentFirstHalfLabel: string } | null>(null);
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
   const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
@@ -683,32 +683,60 @@ export default function CmsOperatorDashboard() {
             ac: monthTotals.energyAc,
             dc: monthTotals.energyDc,
           });
-          const durationTotals = monthTransactions.reduce(
-            (totals, transaction) => {
-              if (!transaction.startedAt || !transaction.stoppedAt) return totals;
-              const seconds = Math.max(
-                0,
-                (new Date(transaction.stoppedAt).getTime() -
-                  new Date(transaction.startedAt).getTime()) / 1000
-              );
-              if (!Number.isFinite(seconds)) return totals;
-              totals.total += seconds;
-              const normalizedMobile = normalizeIndianMobile(transaction.mobile);
-              const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
-              const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              // CPO charging time remains in overall duration but not in AC/DC breakdowns.
-              if (!isCpo) {
-                if (/\bac\b|ac charger|alternating current/.test(type)) {
-                  totals.ac += seconds;
-                } else if (/\bdc\b|dc charger|direct current/.test(type)) {
-                  totals.dc += seconds;
-                }
-              }
-              return totals;
-            },
-            { total: 0, ac: 0, dc: 0 }
+          // Historical consumption card: before or on the 15th show the full previous month;
+          // from the 16th onward show previous month and current month's first 15 days separately.
+          const istParts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Kolkata",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).formatToParts(new Date());
+          const istValues = Object.fromEntries(istParts.map(({ type, value }) => [type, value]));
+          const localYear = Number(istValues.year);
+          const localMonth = Number(istValues.month);
+          const localDay = Number(istValues.day);
+          const currentMonthStart = new Date(`${istValues.year}-${istValues.month}-01T00:00:00+05:30`);
+          const previousMonthStartDate = new Date(Date.UTC(localYear, localMonth - 2, 1));
+          const previousMonthStart = new Date(
+            `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-01T00:00:00+05:30`
           );
-          setMonthToDateDuration(durationTotals);
+          const currentFirstHalfEnd = new Date(`${istValues.year}-${istValues.month}-16T00:00:00+05:30`);
+          const previousMonthEnd = currentMonthStart;
+          const fetchEnergyForRange = async (startDate: Date, endDate: Date) => {
+            let pageNumber = 1;
+            let expectedCount = Number.POSITIVE_INFINITY;
+            let energy = 0;
+            while ((pageNumber - 1) * 100 < expectedCount) {
+              const params = new URLSearchParams({
+                page: String(pageNumber),
+                perPage: "100",
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+              });
+              const response = await fetch(`/api/cms/operator?${params.toString()}`, { cache: "no-store" });
+              if (!response.ok) throw new Error("Unable to load historical consumption.");
+              const data = (await response.json()) as { transactions?: TransactionResponse };
+              const result = data.transactions;
+              const rows = result?.transactions ?? [];
+              expectedCount = typeof result?.count === "number" ? result.count : rows.length;
+              energy += rows.reduce((sum, transaction) => sum + (transaction.energyKwh ?? 0), 0);
+              if (rows.length < 100) break;
+              pageNumber += 1;
+            }
+            return energy;
+          };
+          const previousMonthEnergy = await fetchEnergyForRange(previousMonthStart, previousMonthEnd);
+          const previousMonthLabel = previousMonthStart.toLocaleDateString("en-IN", { month: "long", timeZone: "Asia/Kolkata" });
+          let currentFirstHalfEnergy: number | null = null;
+          if (localDay >= 16) {
+            currentFirstHalfEnergy = await fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd);
+          }
+          setHistoricalConsumption({
+            previousMonth: previousMonthEnergy,
+            currentFirstHalf: currentFirstHalfEnergy,
+            previousMonthLabel,
+            currentFirstHalfLabel: `${istValues.month}/01–15`,
+          });
           setMonthToDateEnergy(monthTotals.energyTotal);
         }
       } catch {
@@ -856,25 +884,32 @@ export default function CmsOperatorDashboard() {
           <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total duration (MTD)</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
                 <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                  {monthToDateDuration === null ? "—" : formatDuration(monthToDateDuration.total)}
+                  {historicalConsumption === null
+                    ? "—"
+                    : `${historicalConsumption.previousMonth.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {historicalConsumption?.previousMonthLabel ?? "Previous month"}
                 </p>
               </div>
               <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
               <div className="min-w-0 flex-1 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-slate-500">AC Charger</p>
+                  <p className="text-xs font-medium text-slate-500">Previous month</p>
                   <p className="text-sm font-semibold text-slate-800">
-                    {monthToDateDuration === null ? "—" : formatDuration(monthToDateDuration.ac)}
+                    {historicalConsumption === null ? "—" : `${historicalConsumption.previousMonth.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                   </p>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-slate-500">DC Charger</p>
-                  <p className="text-sm font-semibold text-slate-800">
-                    {monthToDateDuration === null ? "—" : formatDuration(monthToDateDuration.dc)}
-                  </p>
-                </div>
+                {historicalConsumption?.currentFirstHalf !== null && historicalConsumption?.currentFirstHalf !== undefined && (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-slate-500">This month (1–15)</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {historicalConsumption.currentFirstHalf.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </GlassCard>

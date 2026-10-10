@@ -349,6 +349,7 @@ function displayCharger(value: string) {
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -579,6 +580,35 @@ export default function CmsOperatorDashboard() {
           )
         );
       }
+
+      // Keep the energy KPI month-to-date regardless of the selected transaction-table date filter.
+      try {
+        const monthRange = getDateRangeIST("this-month");
+        const monthParams = new URLSearchParams({
+          page: "1",
+          perPage: "100",
+          startDate: monthRange.startDate,
+          endDate: monthRange.endDate,
+        });
+        const monthResponse = await fetch(
+          `/api/cms/operator?${monthParams.toString()}`,
+          { cache: "no-store" }
+        );
+        if (monthResponse.ok) {
+          const monthData = (await monthResponse.json()) as {
+            transactions?: TransactionResponse;
+          };
+          const monthTransactions = monthData.transactions?.transactions ?? [];
+          setMonthToDateEnergy(
+            monthTransactions.reduce(
+              (sum, transaction) => sum + (transaction.energyKwh ?? 0),
+              0
+            )
+          );
+        }
+      } catch {
+        // Do not fail the dashboard if the separate month-to-date KPI request fails.
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CMS request failed.");
     } finally {
@@ -655,8 +685,10 @@ export default function CmsOperatorDashboard() {
 
         <div className="relative z-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric
-            label="Total energy"
-            value={`${(num(details.totalEnergy) / 1000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+            label="Total energy (MTD)"
+            value={monthToDateEnergy === null
+              ? "—"
+              : `${monthToDateEnergy.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
           />
           <Metric label="Total revenue" value={money(details.totalRevenue)} />
           <Metric

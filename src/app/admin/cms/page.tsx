@@ -363,6 +363,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateDuration, setMonthToDateDuration] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
+  const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -620,6 +621,9 @@ export default function CmsOperatorDashboard() {
           );
           setTotalEnergyToday(
             todayTransactions.reduce((sum, transaction) => sum + (transaction.energyKwh ?? 0), 0)
+          );
+          setTotalRevenueToday(
+            todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0)
           );
           let configuredCpoNumbers: string[] = [];
           try {
@@ -879,8 +883,8 @@ export default function CmsOperatorDashboard() {
             value={active > 0 ? "Charging" : "Idle"}
             accent={active > 0}
           />
-          <Metric label="Total energy today consumed" value={totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`} />
-          <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
+          <Metric label="Today’s Consumption" value={totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`} />
+          <Metric label="Chargers" value={totalRevenueToday === null ? "—" : money(totalRevenueToday)} />
           <Metric label="Locations" value={String(locationCount)} />
           <Metric label="Active now" value={String(active)} accent />
         </div>

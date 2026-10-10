@@ -350,6 +350,7 @@ function displayCharger(value: string) {
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
+  const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -605,6 +606,22 @@ export default function CmsOperatorDashboard() {
               0
             )
           );
+
+          const revenue = monthTransactions.reduce(
+            (totals, transaction) => {
+              const amount = transaction.tariffAmount ?? 0;
+              const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
+              if (/\bac\b|ac charger|alternating current/.test(type)) {
+                totals.ac += amount;
+              } else if (/\bdc\b|dc charger|direct current/.test(type)) {
+                totals.dc += amount;
+              }
+              totals.total += amount;
+              return totals;
+            },
+            { total: 0, ac: 0, dc: 0 }
+          );
+          setMonthToDateRevenue(revenue);
         }
       } catch {
         // Do not fail the dashboard if the separate month-to-date KPI request fails.
@@ -690,7 +707,18 @@ export default function CmsOperatorDashboard() {
               ? "—"
               : `${monthToDateEnergy.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
           />
-          <Metric label="Total revenue" value={money(details.totalRevenue)} />
+          <Metric
+            label="Total revenue (MTD)"
+            value={monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
+          />
+          <Metric
+            label="AC charger revenue (MTD)"
+            value={monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
+          />
+          <Metric
+            label="DC charger revenue (MTD)"
+            value={monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
+          />
           <Metric
             label="Total duration"
             value={formatDuration(num(details.totalTime))}

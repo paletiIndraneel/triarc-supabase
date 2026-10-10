@@ -654,10 +654,6 @@ export default function CmsOperatorDashboard() {
         )}
 
         <div className="relative z-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Transactions" value={String(summary.transactionCount ?? 0)} />
-          <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
-          <Metric label="Locations" value={String(locationCount)} />
-          <Metric label="Active now" value={String(active)} accent />
           <Metric
             label="Total energy"
             value={`${(num(details.totalEnergy) / 1000).toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
@@ -672,6 +668,10 @@ export default function CmsOperatorDashboard() {
             value={active > 0 ? "Charging" : "Idle"}
             accent={active > 0}
           />
+          <Metric label="Transactions" value={String(summary.transactionCount ?? 0)} />
+          <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
+          <Metric label="Locations" value={String(locationCount)} />
+          <Metric label="Active now" value={String(active)} accent />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">

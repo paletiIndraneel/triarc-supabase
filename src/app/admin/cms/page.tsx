@@ -648,9 +648,9 @@ export default function CmsOperatorDashboard() {
               if (!Number.isFinite(seconds)) return totals;
               totals.total += seconds;
               const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              if (/\\bac\\b|ac charger|alternating current/.test(type)) {
+              if (/\bac\b|ac charger|alternating current/.test(type)) {
                 totals.ac += seconds;
-              } else if (/\\bdc\\b|dc charger|direct current/.test(type)) {
+              } else if (/\bdc\b|dc charger|direct current/.test(type)) {
                 totals.dc += seconds;
               }
               return totals;

@@ -640,13 +640,18 @@ export default function CmsOperatorDashboard() {
             (totals, transaction) => {
               const amount = transaction.tariffAmount ?? 0;
               const energy = transaction.energyKwh ?? 0;
+              const normalizedMobile = normalizeIndianMobile(transaction.mobile);
+              const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
               const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              if (/\bac\b|ac charger|alternating current/.test(type)) {
-                totals.revenueAc += amount;
-                totals.energyAc += energy;
-              } else if (/\bdc\b|dc charger|direct current/.test(type)) {
-                totals.revenueDc += amount;
-                totals.energyDc += energy;
+              // CPO transactions remain in overall totals but are excluded from AC/DC breakdowns.
+              if (!isCpo) {
+                if (/\bac\b|ac charger|alternating current/.test(type)) {
+                  totals.revenueAc += amount;
+                  totals.energyAc += energy;
+                } else if (/\bdc\b|dc charger|direct current/.test(type)) {
+                  totals.revenueDc += amount;
+                  totals.energyDc += energy;
+                }
               }
               totals.revenueTotal += amount;
               totals.energyTotal += energy;
@@ -674,11 +679,16 @@ export default function CmsOperatorDashboard() {
               );
               if (!Number.isFinite(seconds)) return totals;
               totals.total += seconds;
+              const normalizedMobile = normalizeIndianMobile(transaction.mobile);
+              const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
               const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              if (/\bac\b|ac charger|alternating current/.test(type)) {
-                totals.ac += seconds;
-              } else if (/\bdc\b|dc charger|direct current/.test(type)) {
-                totals.dc += seconds;
+              // CPO charging time remains in overall duration but not in AC/DC breakdowns.
+              if (!isCpo) {
+                if (/\bac\b|ac charger|alternating current/.test(type)) {
+                  totals.ac += seconds;
+                } else if (/\bdc\b|dc charger|direct current/.test(type)) {
+                  totals.dc += seconds;
+                }
               }
               return totals;
             },

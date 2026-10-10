@@ -884,7 +884,7 @@ export default function CmsOperatorDashboard() {
             accent={active > 0}
           />
           <Metric label="Today’s Consumption" value={totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`} />
-          <Metric label="Chargers" value={totalRevenueToday === null ? "—" : money(totalRevenueToday)} />
+          <Metric label="Today Revenue" value={totalRevenueToday === null ? "—" : money(totalRevenueToday)} />
           <Metric label="Locations" value={String(locationCount)} />
           <Metric label="Active now" value={String(active)} accent />
         </div>

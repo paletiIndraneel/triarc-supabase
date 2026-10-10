@@ -734,18 +734,26 @@ export default function CmsOperatorDashboard() {
               ? "—"
               : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
           />
-          <Metric
-            label="Total revenue (MTD)"
-            value={monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
-          />
-          <Metric
-            label="AC charger revenue (MTD)"
-            value={monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
-          />
-          <Metric
-            label="DC charger revenue (MTD)"
-            value={monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
-          />
+          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue (MTD)</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+              {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
+              <div>
+                <p className="text-xs font-medium text-slate-500">AC Charger</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">
+                  {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500">DC Charger</p>
+                <p className="mt-1 text-sm font-semibold text-slate-800">
+                  {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
+                </p>
+              </div>
+            </div>
+          </GlassCard>
           <Metric
             label="Total duration"
             value={formatDuration(num(details.totalTime))}

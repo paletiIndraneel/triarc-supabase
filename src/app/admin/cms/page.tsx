@@ -716,41 +716,59 @@ export default function CmsOperatorDashboard() {
         )}
 
         <div className="relative z-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric
-            label="Total energy (MTD)"
-            value={monthToDateConsumption === null
-              ? "—"
-              : `${monthToDateConsumption.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-          />
-          <Metric
-            label="AC consumption (MTD)"
-            value={monthToDateConsumption === null
-              ? "—"
-              : `${monthToDateConsumption.ac.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-          />
-          <Metric
-            label="DC consumption (MTD)"
-            value={monthToDateConsumption === null
-              ? "—"
-              : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-          />
           <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue (MTD)</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-              {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
-              <div>
-                <p className="text-xs font-medium text-slate-500">AC Charger</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total energy (MTD)</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                  {monthToDateConsumption === null
+                    ? "—"
+                    : `${monthToDateConsumption.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                 </p>
               </div>
-              <div>
-                <p className="text-xs font-medium text-slate-500">DC Charger</p>
-                <p className="mt-1 text-sm font-semibold text-slate-800">
-                  {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
+              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">AC Charger</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {monthToDateConsumption === null
+                      ? "—"
+                      : `${monthToDateConsumption.ac.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">DC Charger</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {monthToDateConsumption === null
+                      ? "—"
+                      : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue (MTD)</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                  {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
                 </p>
+              </div>
+              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">AC Charger</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">DC Charger</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
+                  </p>
+                </div>
               </div>
             </div>
           </GlassCard>

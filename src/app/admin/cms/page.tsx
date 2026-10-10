@@ -352,6 +352,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
+  const [monthToDateDuration, setMonthToDateDuration] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -636,6 +637,27 @@ export default function CmsOperatorDashboard() {
             ac: monthTotals.energyAc,
             dc: monthTotals.energyDc,
           });
+          const durationTotals = monthTransactions.reduce(
+            (totals, transaction) => {
+              if (!transaction.startedAt || !transaction.stoppedAt) return totals;
+              const seconds = Math.max(
+                0,
+                (new Date(transaction.stoppedAt).getTime() -
+                  new Date(transaction.startedAt).getTime()) / 1000
+              );
+              if (!Number.isFinite(seconds)) return totals;
+              totals.total += seconds;
+              const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
+              if (/\\bac\\b|ac charger|alternating current/.test(type)) {
+                totals.ac += seconds;
+              } else if (/\\bdc\\b|dc charger|direct current/.test(type)) {
+                totals.dc += seconds;
+              }
+              return totals;
+            },
+            { total: 0, ac: 0, dc: 0 }
+          );
+          setMonthToDateDuration(durationTotals);
           setMonthToDateEnergy(monthTotals.energyTotal);
         }
       } catch {
@@ -772,10 +794,31 @@ export default function CmsOperatorDashboard() {
               </div>
             </div>
           </GlassCard>
-          <Metric
-            label="Total duration"
-            value={formatDuration(num(details.totalTime))}
-          />
+          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total duration (MTD)</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                  {monthToDateDuration === null ? "—" : formatDuration(monthToDateDuration.total)}
+                </p>
+              </div>
+              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">AC Charger</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {monthToDateDuration === null ? "—" : formatDuration(monthToDateDuration.ac)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-slate-500">DC Charger</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {monthToDateDuration === null ? "—" : formatDuration(monthToDateDuration.dc)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
           <Metric
             label="Live state"
             value={active > 0 ? "Charging" : "Idle"}

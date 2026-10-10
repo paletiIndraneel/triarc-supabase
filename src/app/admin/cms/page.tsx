@@ -346,6 +346,14 @@ function displayCharger(value: string) {
   return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
 }
 
+function normalizeIndianMobile(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let digits = value.replace(/\\D/g, "");
+  if (digits.startsWith("0091") && digits.length === 14) digits = digits.slice(4);
+  else if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
+  return digits.length === 10 ? digits : null;
+}
+
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -353,6 +361,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateDuration, setMonthToDateDuration] = useState<{ total: number; ac: number; dc: number } | null>(null);
+  const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -602,6 +611,24 @@ export default function CmsOperatorDashboard() {
             transactions?: TransactionResponse;
           };
           const monthTransactions = monthData.transactions?.transactions ?? [];
+          let configuredCpoNumbers: string[] = [];
+          try {
+            const cpoResponse = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
+            if (cpoResponse.ok) {
+              const cpoData = (await cpoResponse.json()) as { numbers?: Array<{ normalizedMobile?: string }> };
+              configuredCpoNumbers = (cpoData.numbers ?? [])
+                .map((entry) => entry.normalizedMobile)
+                .filter((value): value is string => typeof value === "string" && Boolean(value));
+            }
+          } catch {
+            // CPO KPI remains unavailable if its configuration cannot be loaded.
+          }
+          const cpoSet = new Set(configuredCpoNumbers);
+          const cpoEnergy = monthTransactions.reduce((sum, transaction) => {
+            const normalized = normalizeIndianMobile(transaction.mobile);
+            return normalized && cpoSet.has(normalized) ? sum + (transaction.energyKwh ?? 0) : sum;
+          }, 0);
+          setMonthToDateCpoEnergy(cpoEnergy);
           setMonthToDateEnergy(
             monthTransactions.reduce(
               (sum, transaction) => sum + (transaction.energyKwh ?? 0),
@@ -764,6 +791,14 @@ export default function CmsOperatorDashboard() {
                     {monthToDateConsumption === null
                       ? "—"
                       : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                  <p className="text-xs font-semibold text-violet-600">CPO</p>
+                  <p className="text-sm font-semibold text-violet-700">
+                    {monthToDateCpoEnergy === null
+                      ? "—"
+                      : `${monthToDateCpoEnergy.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                   </p>
                 </div>
               </div>

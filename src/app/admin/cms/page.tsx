@@ -720,7 +720,19 @@ export default function CmsOperatorDashboard() {
               const result = data.transactions;
               const rows = result?.transactions ?? [];
               expectedCount = typeof result?.count === "number" ? result.count : rows.length;
-              energy += rows.reduce((sum, transaction) => sum + (transaction.energyKwh ?? 0), 0);
+              // Enforce the reporting range using the transaction Started At timestamp.
+              // The end boundary is exclusive, so an end of the 16th at 00:00 includes
+              // every transaction started through the 15th at 23:59:59.999 IST.
+              const rangeStartMs = startDate.getTime();
+              const rangeEndMs = endDate.getTime();
+              energy += rows.reduce((sum, transaction) => {
+                if (!transaction.startedAt) return sum;
+                const startedAtMs = new Date(transaction.startedAt).getTime();
+                if (!Number.isFinite(startedAtMs) || startedAtMs < rangeStartMs || startedAtMs >= rangeEndMs) {
+                  return sum;
+                }
+                return sum + (transaction.energyKwh ?? 0);
+              }, 0);
               if (rows.length < 100) break;
               pageNumber += 1;
             }

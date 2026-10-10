@@ -351,6 +351,7 @@ export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
+  const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -607,21 +608,35 @@ export default function CmsOperatorDashboard() {
             )
           );
 
-          const revenue = monthTransactions.reduce(
+          const monthTotals = monthTransactions.reduce(
             (totals, transaction) => {
               const amount = transaction.tariffAmount ?? 0;
+              const energy = transaction.energyKwh ?? 0;
               const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
               if (/\bac\b|ac charger|alternating current/.test(type)) {
-                totals.ac += amount;
+                totals.revenueAc += amount;
+                totals.energyAc += energy;
               } else if (/\bdc\b|dc charger|direct current/.test(type)) {
-                totals.dc += amount;
+                totals.revenueDc += amount;
+                totals.energyDc += energy;
               }
-              totals.total += amount;
+              totals.revenueTotal += amount;
+              totals.energyTotal += energy;
               return totals;
             },
-            { total: 0, ac: 0, dc: 0 }
+            { revenueTotal: 0, revenueAc: 0, revenueDc: 0, energyTotal: 0, energyAc: 0, energyDc: 0 }
           );
-          setMonthToDateRevenue(revenue);
+          setMonthToDateRevenue({
+            total: monthTotals.revenueTotal,
+            ac: monthTotals.revenueAc,
+            dc: monthTotals.revenueDc,
+          });
+          setMonthToDateConsumption({
+            total: monthTotals.energyTotal,
+            ac: monthTotals.energyAc,
+            dc: monthTotals.energyDc,
+          });
+          setMonthToDateEnergy(monthTotals.energyTotal);
         }
       } catch {
         // Do not fail the dashboard if the separate month-to-date KPI request fails.
@@ -703,9 +718,21 @@ export default function CmsOperatorDashboard() {
         <div className="relative z-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric
             label="Total energy (MTD)"
-            value={monthToDateEnergy === null
+            value={monthToDateConsumption === null
               ? "—"
-              : `${monthToDateEnergy.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+              : `${monthToDateConsumption.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+          />
+          <Metric
+            label="AC consumption (MTD)"
+            value={monthToDateConsumption === null
+              ? "—"
+              : `${monthToDateConsumption.ac.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+          />
+          <Metric
+            label="DC consumption (MTD)"
+            value={monthToDateConsumption === null
+              ? "—"
+              : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
           />
           <Metric
             label="Total revenue (MTD)"

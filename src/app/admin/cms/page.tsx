@@ -896,14 +896,8 @@ export default function CmsOperatorDashboard() {
               </div>
               <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
               <div className="min-w-0 flex-1 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-slate-500">Previous month</p>
-                  <p className="text-sm font-semibold text-slate-800">
-                    {historicalConsumption === null ? "—" : `${historicalConsumption.previousMonth.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                  </p>
-                </div>
                 {historicalConsumption?.currentFirstHalf !== null && historicalConsumption?.currentFirstHalf !== undefined && (
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="space-y-2">
                     <p className="text-xs font-medium text-slate-500">This month (1–15)</p>
                     <p className="text-sm font-semibold text-slate-800">
                       {historicalConsumption.currentFirstHalf.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh

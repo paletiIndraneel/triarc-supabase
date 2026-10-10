@@ -611,8 +611,20 @@ export default function CmsOperatorDashboard() {
         if (monthResponse.ok) {
           const monthData = (await monthResponse.json()) as {
             transactions?: TransactionResponse;
+            active?: ActiveTransactionResponse;
           };
-          const monthTransactions = monthData.transactions?.transactions ?? [];
+          // Include live sessions from get-pwr-active-transaction in dashboard totals.
+          // Deduplicate by transaction ID because a session may exist in both responses.
+          const monthRows = [
+            ...(monthData.transactions?.transactions ?? []),
+            ...(monthData.active?.transactions ?? []),
+          ];
+          const monthTransactionMap = new Map<string, Transaction>();
+          for (const transaction of monthRows) {
+            const key = transaction.id || transaction.transactionId;
+            if (key) monthTransactionMap.set(key, transaction);
+          }
+          const monthTransactions = Array.from(monthTransactionMap.values());
           const todayRange = getDateRangeIST("today");
           const todayTransactions = filterTransactionsByRange(
             monthTransactions,
@@ -716,16 +728,25 @@ export default function CmsOperatorDashboard() {
               });
               const response = await fetch(`/api/cms/operator?${params.toString()}`, { cache: "no-store" });
               if (!response.ok) throw new Error("Unable to load historical consumption.");
-              const data = (await response.json()) as { transactions?: TransactionResponse };
+              const data = (await response.json()) as {
+                transactions?: TransactionResponse;
+                active?: ActiveTransactionResponse;
+              };
               const result = data.transactions;
               const rows = result?.transactions ?? [];
               expectedCount = typeof result?.count === "number" ? result.count : rows.length;
-              // Enforce the reporting range using the transaction Started At timestamp.
-              // The end boundary is exclusive, so an end of the 16th at 00:00 includes
-              // every transaction started through the 15th at 23:59:59.999 IST.
+              // Active sessions are returned separately by get-pwr-active-transaction.
+              // Merge them on the first page and deduplicate sessions present in both APIs.
+              const activeRows = pageNumber === 1 ? (data.active?.transactions ?? []) : [];
+              const uniqueRows = new Map<string, Transaction>();
+              for (const transaction of [...rows, ...activeRows]) {
+                const key = transaction.id || transaction.transactionId;
+                if (key) uniqueRows.set(key, transaction);
+              }
+              // Filter on Started At (mapped from Chargemod startAt); end boundary is exclusive.
               const rangeStartMs = startDate.getTime();
               const rangeEndMs = endDate.getTime();
-              energy += rows.reduce((sum, transaction) => {
+              energy += Array.from(uniqueRows.values()).reduce((sum, transaction) => {
                 if (!transaction.startedAt) return sum;
                 const startedAtMs = new Date(transaction.startedAt).getTime();
                 if (!Number.isFinite(startedAtMs) || startedAtMs < rangeStartMs || startedAtMs >= rangeEndMs) {

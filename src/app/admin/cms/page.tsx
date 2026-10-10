@@ -362,6 +362,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateDuration, setMonthToDateDuration] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
+  const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
@@ -611,6 +612,15 @@ export default function CmsOperatorDashboard() {
             transactions?: TransactionResponse;
           };
           const monthTransactions = monthData.transactions?.transactions ?? [];
+          const todayRange = getDateRangeIST("today");
+          const todayTransactions = filterTransactionsByRange(
+            monthTransactions,
+            todayRange.startDate,
+            todayRange.endDate
+          );
+          setTotalRevenueToday(
+            todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0)
+          );
           let configuredCpoNumbers: string[] = [];
           try {
             const cpoResponse = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
@@ -869,7 +879,7 @@ export default function CmsOperatorDashboard() {
             value={active > 0 ? "Charging" : "Idle"}
             accent={active > 0}
           />
-          <Metric label="Transactions" value={String(summary.transactionCount ?? 0)} />
+          <Metric label="Total revenue today" value={totalRevenueToday === null ? "—" : money(totalRevenueToday)} />
           <Metric label="Chargers" value={String(summary.chargerCount ?? 0)} />
           <Metric label="Locations" value={String(locationCount)} />
           <Metric label="Active now" value={String(active)} accent />

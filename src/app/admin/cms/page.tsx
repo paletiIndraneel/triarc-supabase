@@ -598,336 +598,138 @@ export default function CmsOperatorDashboard() {
         );
       }
 
-      // Keep the energy KPI month-to-date regardless of the selected transaction-table date filter.
+      // All dashboard metrics are derived from transactions already retrieved
+      // and cached locally. They do not issue separate transaction API requests,
+      // and their date ranges are independent of the table's selected filter.
       try {
-        const calendarMonthRange = getDateRangeIST("this-month");
-        // MTD ends at the current instant, not midnight tomorrow, so only
-        // transactions that have actually started up to now are counted.
-        const monthRange = {
-          startDate: calendarMonthRange.startDate,
-          endDate: new Date().toISOString(),
-        };
-        const monthParams = new URLSearchParams({
-          page: "1",
-          perPage: "100",
-          startDate: monthRange.startDate,
-          endDate: monthRange.endDate,
-        });
-        const monthResponse = await fetch(
-          `/api/cms/operator?${monthParams.toString()}`,
-          { cache: "no-store" }
+        const now = new Date();
+        const todayRange = getDateRangeIST("today");
+        const currentMonthRange = getDateRangeIST("this-month");
+        const istParts = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Kolkata",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).formatToParts(now);
+        const istValues = Object.fromEntries(istParts.map(({ type, value }) => [type, value]));
+        const localYear = Number(istValues.year);
+        const localMonth = Number(istValues.month);
+        const localDay = Number(istValues.day);
+        const currentMonthStart = new Date(`${istValues.year}-${istValues.month}-01T00:00:00+05:30`);
+        const previousMonthStartDate = new Date(Date.UTC(localYear, localMonth - 2, 1));
+        const previousMonthStart = new Date(
+          `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-01T00:00:00+05:30`
         );
-        const monthData = (monthResponse.ok
-          ? await monthResponse.json()
-          : {
-              // Keep dashboard KPIs populated if the extra MTD request fails.
-              // This fallback uses the transactions already loaded for the selected date range.
-              transactions: { transactions: cache.transactions },
-              active: { transactions: [] },
-            }) as {
-              transactions?: TransactionResponse;
-              active?: ActiveTransactionResponse;
-            };
-        if (!monthResponse.ok) {
-          console.error("[cms/dashboard] MTD metrics request failed; using already-loaded transactions", monthResponse.status);
-        }
-        {
-          // Include live sessions from get-pwr-active-transaction in dashboard totals.
-          // Deduplicate by transaction ID because a session may exist in both responses.
-          const monthRows = [
-            ...(monthData.transactions?.transactions ?? []),
-            ...(monthData.active?.transactions ?? []),
-          ];
-          const monthTransactionMap = new Map<string, Transaction>();
-          for (const transaction of monthRows) {
-            const key = transaction.transactionId || transaction.id;
-            if (!key) continue;
-            const existing = monthTransactionMap.get(key);
-            if (!existing) {
-              monthTransactionMap.set(key, transaction);
-              continue;
-            }
-            // Fill missing values from the duplicate source record.
+        const previousMonthMidpoint = new Date(
+          `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-16T00:00:00+05:30`
+        );
+        const currentFirstHalfEnd = new Date(`${istValues.year}-${istValues.month}-16T00:00:00+05:30`);
+
+        const metricMap = new Map<string, Transaction>();
+        for (const transaction of [...cache.transactions, ...currentActiveTransactions]) {
+          const key = transaction.transactionId || transaction.id;
+          if (!key) continue;
+          const existing = metricMap.get(key);
+          if (!existing) {
+            metricMap.set(key, transaction);
+          } else {
             const merged = { ...existing };
             for (const [field, value] of Object.entries(transaction)) {
               const current = (merged as unknown as Record<string, unknown>)[field];
-              const missing = current == null || current === "" || current === "Unknown" || (typeof current === "number" && current === 0);
-              const hasValue = value != null && value !== "" && value !== "Unknown" && !(typeof value === "number" && value === 0);
+              const missing = current == null || current === "" || current === "Unknown";
+              const hasValue = value != null && value !== "" && value !== "Unknown";
               if (missing && hasValue) (merged as unknown as Record<string, unknown>)[field] = value;
             }
-            monthTransactionMap.set(key, merged);
-          }
-          const monthTransactions = Array.from(monthTransactionMap.values());
-          const todayRange = getDateRangeIST("today");
-          const todayTransactions = filterTransactionsByRange(
-            monthTransactions,
-            todayRange.startDate,
-            todayRange.endDate
-          );
-          setTotalEnergyToday(
-            todayTransactions.reduce((sum, transaction) => sum + (transaction.energyKwh ?? 0), 0)
-          );
-          setTotalRevenueToday(
-            todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0)
-          );
-          let configuredCpoNumbers: string[] = [];
-          try {
-            const cpoResponse = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
-            if (cpoResponse.ok) {
-              const cpoData = (await cpoResponse.json()) as { numbers?: Array<{ normalizedMobile?: string }> };
-              configuredCpoNumbers = (cpoData.numbers ?? [])
-                .map((entry) => entry.normalizedMobile)
-                .filter((value): value is string => typeof value === "string" && Boolean(value));
-            }
-          } catch {
-            // CPO KPI remains unavailable if its configuration cannot be loaded.
-          }
-          const cpoSet = new Set(configuredCpoNumbers);
-          const cpoEnergy = monthTransactions.reduce((sum, transaction) => {
-            const normalized = normalizeIndianMobile(transaction.mobile);
-            return normalized && cpoSet.has(normalized) ? sum + (transaction.energyKwh ?? 0) : sum;
-          }, 0);
-          setMonthToDateCpoEnergy(cpoEnergy);
-          // Keep the standalone MTD energy value aligned with the same
-          // date-filtered, deduplicated transaction set used by the KPI.
-          setMonthToDateEnergy(
-            filterTransactionsByRange(
-              monthTransactions,
-              monthRange.startDate,
-              monthRange.endDate
-            ).reduce((sum, transaction) => sum + (transaction.energyKwh ?? 0), 0)
-          );
-
-          // Revenue (MTD) must be calculated from transactions started during
-          // the current IST calendar month, independent of the table's date filter.
-          // This explicit client-side range check also protects against an API response
-          // that includes only today's transactions or ignores the requested date range.
-          const mtdRevenueTransactions = filterTransactionsByRange(
-            monthTransactions,
-            monthRange.startDate,
-            monthRange.endDate
-          );
-          const mtdRevenueTotals = mtdRevenueTransactions.reduce(
-            (totals, transaction) => {
-              const amount = transaction.tariffAmount ?? 0;
-              const normalizedMobile = normalizeIndianMobile(transaction.mobile);
-              const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
-              const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              // CPO transactions remain in overall revenue but are excluded from AC/DC breakdowns.
-              if (!isCpo) {
-                if (/\bac\b|ac charger|alternating current/.test(type)) {
-                  totals.ac += amount;
-                } else if (/\bdc\b|dc charger|direct current/.test(type)) {
-                  totals.dc += amount;
-                }
-              }
-              totals.total += amount;
-              return totals;
-            },
-            { total: 0, ac: 0, dc: 0 }
-          );
-          // Revenue (MTD) card is intentionally configured to show the previous
-          // calendar month's revenue, while retaining the existing card label and AC/DC split.
-          const previousRevenueMonthStartDate = new Date(
-            new Date(monthRange.startDate).getTime() - 24 * 60 * 60 * 1000
-          );
-          const previousMonthRange = {
-            startDate: new Date(
-              Date.UTC(
-                previousRevenueMonthStartDate.getUTCFullYear(),
-                previousRevenueMonthStartDate.getUTCMonth(),
-                1
-              ) - 330 * 60 * 1000
-            ).toISOString(),
-            endDate: monthRange.startDate,
-          };
-          const previousMonthParams = new URLSearchParams({
-            page: "1",
-            perPage: "100",
-            startDate: previousMonthRange.startDate,
-            endDate: previousMonthRange.endDate,
-          });
-          const previousMonthResponse = await fetch(
-            `/api/cms/operator?${previousMonthParams.toString()}`,
-            { cache: "no-store" }
-          );
-          if (previousMonthResponse.ok) {
-            const previousMonthData = (await previousMonthResponse.json()) as {
-              transactions?: TransactionResponse;
-              active?: ActiveTransactionResponse;
-            };
-            const previousMonthRows = [
-              ...(previousMonthData.transactions?.transactions ?? []),
-              ...(previousMonthData.active?.transactions ?? []),
-            ];
-            const previousMonthMap = new Map<string, Transaction>();
-            for (const transaction of previousMonthRows) {
-              const key = transaction.transactionId || transaction.id;
-              if (key && !previousMonthMap.has(key)) previousMonthMap.set(key, transaction);
-            }
-            const previousMonthTransactions = filterTransactionsByRange(
-              Array.from(previousMonthMap.values()),
-              previousMonthRange.startDate,
-              previousMonthRange.endDate
-            );
-            const previousMonthRevenueTotals = previousMonthTransactions.reduce(
-              (totals, transaction) => {
-                const amount = transaction.tariffAmount ?? 0;
-                const normalizedMobile = normalizeIndianMobile(transaction.mobile);
-                const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
-                const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-                if (!isCpo) {
-                  if (/\\bac\\b|ac charger|alternating current/.test(type)) {
-                    totals.ac += amount;
-                  } else if (/\\bdc\\b|dc charger|direct current/.test(type)) {
-                    totals.dc += amount;
-                  }
-                }
-                totals.total += amount;
-                return totals;
-              },
-              { total: 0, ac: 0, dc: 0 }
-            );
-            setMonthToDateRevenue(previousMonthRevenueTotals);
-          } else {
-            console.error("[cms/dashboard] Previous-month revenue request failed", previousMonthResponse.status);
-            setMonthToDateRevenue(mtdRevenueTotals);
-          }
-          // Calculate only the Total Energy (MTD) KPI from transactions whose
-          // Started At timestamp falls within the current IST calendar month.
-          // Keep revenue, Today Revenue, CPO, and all other metrics unchanged.
-          const mtdEnergyTransactions = filterTransactionsByRange(
-            monthTransactions,
-            monthRange.startDate,
-            monthRange.endDate
-          );
-          const mtdEnergyTotals = mtdEnergyTransactions.reduce(
-            (totals, transaction) => {
-              const energy = Number(transaction.energyKwh);
-              if (!Number.isFinite(energy) || energy <= 0) return totals;
-              const normalizedMobile = normalizeIndianMobile(transaction.mobile);
-              const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
-              const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              totals.total += energy;
-              // Total includes CPO energy; AC/DC subtotals exclude CPO sessions.
-              if (!isCpo) {
-                if (/\\bac\\b|ac charger|alternating current/.test(type)) {
-                  totals.ac += energy;
-                } else if (/\\bdc\\b|dc charger|direct current/.test(type)) {
-                  totals.dc += energy;
-                }
-              }
-              return totals;
-            },
-            { total: 0, ac: 0, dc: 0 }
-          );
-          setMonthToDateConsumption(mtdEnergyTotals);
-          // Consumption Details uses IST calendar boundaries and transaction start times.
-          // Days 1–15: current month's consumption from midnight on day 1 through now.
-          // Day 16 onward: compare current month's days 1–15 with the entire previous month.
-          const istParts = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "Asia/Kolkata",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          }).formatToParts(new Date());
-          const istValues = Object.fromEntries(istParts.map(({ type, value }) => [type, value]));
-          const localYear = Number(istValues.year);
-          const localMonth = Number(istValues.month);
-          const localDay = Number(istValues.day);
-          const currentMonthStart = new Date(`${istValues.year}-${istValues.month}-01T00:00:00+05:30`);
-          const previousMonthStartDate = new Date(Date.UTC(localYear, localMonth - 2, 1));
-          const previousMonthStart = new Date(
-            `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-01T00:00:00+05:30`
-          );
-          const currentFirstHalfEnd = new Date(`${istValues.year}-${istValues.month}-16T00:00:00+05:30`);
-          const now = new Date();
-          const fetchEnergyForRange = async (startDate: Date, endDate: Date) => {
-            let pageNumber = 1;
-            let expectedCount = Number.POSITIVE_INFINITY;
-            let energy = 0;
-            while ((pageNumber - 1) * 100 < expectedCount) {
-              const params = new URLSearchParams({
-                page: String(pageNumber),
-                perPage: "100",
-                startDate: startDate.toISOString(),
-                endDate: endDate.toISOString(),
-              });
-              const response = await fetch(`/api/cms/operator?${params.toString()}`, { cache: "no-store" });
-              if (!response.ok) throw new Error("Unable to load historical consumption.");
-              const data = (await response.json()) as {
-                transactions?: TransactionResponse;
-                active?: ActiveTransactionResponse;
-              };
-              const result = data.transactions;
-              const rows = result?.transactions ?? [];
-              expectedCount = typeof result?.count === "number" ? result.count : rows.length;
-              // Active sessions are returned separately by get-pwr-active-transaction.
-              // Merge them on the first page and deduplicate sessions present in both APIs.
-              const activeRows = pageNumber === 1 ? (data.active?.transactions ?? []) : [];
-              const uniqueRows = new Map<string, Transaction>();
-              for (const transaction of [...rows, ...activeRows]) {
-                const key = transaction.id || transaction.transactionId;
-                if (key) uniqueRows.set(key, transaction);
-              }
-              // Filter on Started At (mapped from Chargemod startAt); end boundary is exclusive.
-              const rangeStartMs = startDate.getTime();
-              const rangeEndMs = endDate.getTime();
-              energy += Array.from(uniqueRows.values()).reduce((sum, transaction) => {
-                if (!transaction.startedAt) return sum;
-                const startedAtMs = new Date(transaction.startedAt).getTime();
-                if (!Number.isFinite(startedAtMs) || startedAtMs < rangeStartMs || startedAtMs >= rangeEndMs) {
-                  return sum;
-                }
-                return sum + (transaction.energyKwh ?? 0);
-              }, 0);
-              if (rows.length < 100) break;
-              pageNumber += 1;
-            }
-            return energy;
-          };
-          const previousMonthMidpoint = new Date(
-            String(previousMonthStartDate.getUTCFullYear()) + "-" +
-            String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0") +
-            "-16T00:00:00+05:30"
-          );
-          const previousMonthName = previousMonthStart.toLocaleDateString("en-IN", {
-            month: "long",
-            year: "numeric",
-            timeZone: "Asia/Kolkata",
-          });
-          if (localDay <= 15) {
-            // During days 1–15, show the previous month's first half first,
-            // followed by the previous month's second half.
-            const [previousFirstHalfEnergy, previousSecondHalfEnergy] = await Promise.all([
-              fetchEnergyForRange(previousMonthStart, previousMonthMidpoint),
-              fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
-            ]);
-            setHistoricalConsumption({
-              items: [
-                { label: previousMonthName + " (1–15)", value: previousFirstHalfEnergy },
-                { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
-              ],
-            });
-          } else {
-            // From day 16 onward, show this month's first half, then both
-            // halves of the previous month in chronological order.
-            const [currentFirstHalfEnergy, previousFirstHalfEnergy, previousSecondHalfEnergy] = await Promise.all([
-              fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd),
-              fetchEnergyForRange(previousMonthStart, previousMonthMidpoint),
-              fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
-            ]);
-            setHistoricalConsumption({
-              items: [
-                { label: "This month (1–15)", value: currentFirstHalfEnergy },
-                { label: previousMonthName + " (1–15)", value: previousFirstHalfEnergy },
-                { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
-              ],
-            });
+            metricMap.set(key, merged);
           }
         }
+        const metricTransactions = Array.from(metricMap.values());
+        const todayTransactions = filterTransactionsByRange(metricTransactions, todayRange.startDate, todayRange.endDate);
+        setTotalEnergyToday(todayTransactions.reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0));
+        setTotalRevenueToday(todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0));
+
+        const configuredCpoNumbers: string[] = [];
+        try {
+          const cpoResponse = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
+          if (cpoResponse.ok) {
+            const cpoData = (await cpoResponse.json()) as { numbers?: Array<{ normalizedMobile?: string }> };
+            configuredCpoNumbers.push(...(cpoData.numbers ?? [])
+              .map((entry) => entry.normalizedMobile)
+              .filter((value): value is string => typeof value === "string" && Boolean(value)));
+          }
+        } catch {
+          // If CPO configuration is unavailable, calculate without CPO classification.
+        }
+        const cpoSet = new Set(configuredCpoNumbers);
+        const isCpoTransaction = (transaction: Transaction) => {
+          const mobile = normalizeIndianMobile(transaction.mobile);
+          return mobile !== null && cpoSet.has(mobile);
+        };
+        const stationType = (transaction: Transaction) =>
+          `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
+
+        const mtdTransactions = filterTransactionsByRange(
+          metricTransactions,
+          currentMonthRange.startDate,
+          now.toISOString()
+        );
+        const mtdEnergyTotals = mtdTransactions.reduce((totals, transaction) => {
+          const energy = Number(transaction.energyKwh);
+          if (!Number.isFinite(energy) || energy <= 0) return totals;
+          totals.total += energy;
+          if (!isCpoTransaction(transaction)) {
+            const type = stationType(transaction);
+            if (/\\bac\\b|ac charger|alternating current/.test(type)) totals.ac += energy;
+            else if (/\\bdc\\b|dc charger|direct current/.test(type)) totals.dc += energy;
+          }
+          return totals;
+        }, { total: 0, ac: 0, dc: 0 });
+        setMonthToDateEnergy(mtdEnergyTotals.total);
+        setMonthToDateConsumption(mtdEnergyTotals);
+        setMonthToDateCpoEnergy(mtdTransactions.reduce((sum, transaction) =>
+          isCpoTransaction(transaction) ? sum + Math.max(0, transaction.energyKwh ?? 0) : sum, 0));
+
+        // Revenue card displays previous calendar month, using locally available rows.
+        const previousMonthEnd = currentMonthStart.toISOString();
+        const previousMonthRows = filterTransactionsByRange(metricTransactions, previousMonthStart.toISOString(), previousMonthEnd);
+        const previousRevenueTotals = previousMonthRows.reduce((totals, transaction) => {
+          const amount = transaction.tariffAmount ?? 0;
+          const type = stationType(transaction);
+          if (!isCpoTransaction(transaction)) {
+            if (/\\bac\\b|ac charger|alternating current/.test(type)) totals.ac += amount;
+            else if (/\\bdc\\b|dc charger|direct current/.test(type)) totals.dc += amount;
+          }
+          totals.total += amount;
+          return totals;
+        }, { total: 0, ac: 0, dc: 0 });
+        setMonthToDateRevenue(previousRevenueTotals);
+
+        const previousMonthName = previousMonthStart.toLocaleDateString("en-IN", {
+          month: "long",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        });
+        const sumEnergy = (start: Date, end: Date) =>
+          filterTransactionsByRange(metricTransactions, start.toISOString(), end.toISOString())
+            .reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0);
+        if (localDay <= 15) {
+          setHistoricalConsumption({
+            items: [
+              { label: previousMonthName + " (1–15)", value: sumEnergy(previousMonthStart, previousMonthMidpoint) },
+              { label: previousMonthName + " (16–end)", value: sumEnergy(previousMonthMidpoint, currentMonthStart) },
+            ],
+          });
+        } else {
+          setHistoricalConsumption({
+            items: [
+              { label: "This month (1–15)", value: sumEnergy(currentMonthStart, currentFirstHalfEnd) },
+              { label: previousMonthName + " (1–15)", value: sumEnergy(previousMonthStart, previousMonthMidpoint) },
+              { label: previousMonthName + " (16–end)", value: sumEnergy(previousMonthMidpoint, currentMonthStart) },
+            ],
+          });
+        }
       } catch {
-        // Do not fail the dashboard if the separate month-to-date KPI request fails.
+        // Metric calculation must not prevent the dashboard from rendering.
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CMS request failed.");

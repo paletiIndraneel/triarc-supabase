@@ -507,7 +507,8 @@ export default function CmsOperatorDashboard() {
       }).formatToParts(nowForMetrics);
       const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
       const metricFetchStart = new Date(
-        `${Number(istDateValues.year)}-${String(Number(istDateValues.month) - 1).padStart(2, "0")}-01T00:00:00+05:30`
+        Date.UTC(Number(istDateValues.year), Number(istDateValues.month) - 2, 1) -
+          330 * 60 * 1000
       );
       const metricFetchRange = {
         startDate: metricFetchStart.toISOString(),

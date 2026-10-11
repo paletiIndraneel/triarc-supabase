@@ -34,7 +34,10 @@ export async function GET(request: Request) {
 
   const config = await getCmsConfig();
   if (!config.enabled) {
-    return new NextResponse("Not Found", { status: 404 });
+    return NextResponse.json(
+      { error: "CMS operator dashboard is disabled. Enable CMS_OPERATOR_DASHBOARD_ENABLED in the deployment environment." },
+      { status: 404 }
+    );
   }
 
   try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, RefreshCw, Settings2, RotateCcw, Save } from "lucide-react";
+import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 
 type Dashboard = {
@@ -761,6 +761,37 @@ export default function CmsOperatorDashboard() {
 
   const pagedTransactions = transactions.slice((page - 1) * pageSize, page * pageSize);
 
+  function exportTransactionsCsv() {
+    // Export every row matching the selected table date filter, not only the
+    // current pagination page or the visible table columns.
+    const headers = CMS_COLUMNS.map((column) => column.label);
+    const csvCell = (value: unknown) => {
+      const text = value == null ? "" : String(value);
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const rows = transactions.map((transaction) =>
+      CMS_COLUMN_IDS.map((columnId) =>
+        csvCell(transaction[columnId as keyof Transaction])
+      )
+    );
+    const csv = [headers.map(csvCell).join(","), ...rows.map((row) => row.join(","))].join("\\r\\n");
+    const blob = new Blob(["\\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStamp = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    link.href = url;
+    link.download = `cms-transactions-${datePreset}-${dateStamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   const summary = dashboard?.summary ?? {};
   const details =
     summary.transactionDetails &&
@@ -949,6 +980,15 @@ export default function CmsOperatorDashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={exportTransactionsCsv}
+                disabled={loading || transactions.length === 0}
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                title={`Export all ${count} transactions matching the selected date filter`}
+              >
+                <Download size={14} />
+                Export CSV
+              </button>
               <label className="flex items-center gap-2 text-xs text-slate-500">
                 <span>Date:</span>
                 <select

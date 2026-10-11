@@ -24,6 +24,7 @@ export default function AdminApp({ enquiries, enquiryError }: { enquiries: Enqui
 
   return (
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule }}>
+      <div className="admin-shell">
       <AdminHeader />
       {activeModule === "cms" && <CmsDashboard />}
       {activeModule === "billing" && (
@@ -50,6 +51,7 @@ export default function AdminApp({ enquiries, enquiryError }: { enquiries: Enqui
           </div>
         </main>
       )}
+      </div>
     </AdminModuleContext.Provider>
   );
 }

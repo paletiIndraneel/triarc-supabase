@@ -992,18 +992,29 @@ export default function CmsOperatorDashboard() {
             </div>
           </GlassCard>
           <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="sm:col-span-3">
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                  {historicalConsumption?.items[0]
+                    ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`
+                    : "—"}
+                </p>
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  {historicalConsumption?.items[0]?.label ?? "Loading consumption"}
+                </p>
               </div>
-              {(historicalConsumption?.items ?? []).map((item) => (
-                <div key={item.label} className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500">{item.label}</p>
-                  <p className="mt-2 text-lg font-bold tracking-tight text-slate-900">
-                    {item.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
-                  </p>
-                </div>
-              ))}
+              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-3">
+                {(historicalConsumption?.items ?? []).slice(1).map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-3">
+                    <p className="min-w-0 text-xs font-medium text-slate-500">{item.label}</p>
+                    <p className="shrink-0 text-sm font-semibold text-slate-800">
+                      {item.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </GlassCard>
           <Metric

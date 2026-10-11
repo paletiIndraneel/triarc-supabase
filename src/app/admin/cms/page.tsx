@@ -360,7 +360,7 @@ export default function CmsOperatorDashboard() {
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
-  const [historicalConsumption, setHistoricalConsumption] = useState<{ currentToDate: number | null; previousMonth: number | null; currentFirstHalf: number | null; primaryLabel: string; previousMonthLabel: string } | null>(null);
+  const [historicalConsumption, setHistoricalConsumption] = useState<{ items: Array<{ label: string; value: number }> } | null>(null);
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
   const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
@@ -811,34 +811,43 @@ export default function CmsOperatorDashboard() {
             }
             return energy;
           };
+          const previousMonthMidpoint = new Date(
+            String(previousMonthStartDate.getUTCFullYear()) + "-" +
+            String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0") +
+            "-16T00:00:00+05:30"
+          );
+          const previousMonthName = previousMonthStart.toLocaleDateString("en-IN", {
+            month: "long",
+            year: "numeric",
+            timeZone: "Asia/Kolkata",
+          });
           if (localDay <= 15) {
-            const currentToDateEnergy = await fetchEnergyForRange(currentMonthStart, now);
+            const [currentFirstHalfEnergy, previousSecondHalfEnergy, previousFirstHalfEnergy] = await Promise.all([
+              fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd),
+              fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
+              fetchEnergyForRange(previousMonthStart, previousMonthMidpoint),
+            ]);
             setHistoricalConsumption({
-              currentToDate: currentToDateEnergy,
-              previousMonth: null,
-              currentFirstHalf: null,
-              primaryLabel: "This month (1–today)",
-              previousMonthLabel: "",
+              items: [
+                { label: "This month (1–15)", value: currentFirstHalfEnergy },
+                { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
+                { label: previousMonthName + " (1–15)", value: previousFirstHalfEnergy },
+              ],
             });
           } else {
-            const [previousMonthEnergy, currentFirstHalfEnergy] = await Promise.all([
-              fetchEnergyForRange(previousMonthStart, currentMonthStart),
+            const [currentSecondHalfEnergy, currentFirstHalfEnergy, previousSecondHalfEnergy] = await Promise.all([
+              fetchEnergyForRange(currentFirstHalfEnd, now),
               fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd),
+              fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
             ]);
-            const previousMonthLabel = previousMonthStart.toLocaleDateString("en-IN", {
-              month: "long",
-              year: "numeric",
-              timeZone: "Asia/Kolkata",
-            });
             setHistoricalConsumption({
-              currentToDate: null,
-              previousMonth: previousMonthEnergy,
-              currentFirstHalf: currentFirstHalfEnergy,
-              primaryLabel: "This month (1–15)",
-              previousMonthLabel,
+              items: [
+                { label: "This month (16–end)", value: currentSecondHalfEnergy },
+                { label: "This month (1–15)", value: currentFirstHalfEnergy },
+                { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
+              ],
             });
           }
-          setMonthToDateEnergy(monthTotals.energyTotal);
         }
       } catch {
         // Do not fail the dashboard if the separate month-to-date KPI request fails.
@@ -983,36 +992,18 @@ export default function CmsOperatorDashboard() {
             </div>
           </GlassCard>
           <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center gap-4">
-              <div className="min-w-0 flex-1">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="sm:col-span-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
-                {historicalConsumption?.currentToDate !== null && historicalConsumption?.currentToDate !== undefined ? (
-                  <>
-                    <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
-                      {historicalConsumption.currentToDate.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">{historicalConsumption.primaryLabel}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="mt-2 text-xs font-medium text-slate-500">{historicalConsumption?.primaryLabel ?? "This month (1–15)"}</p>
-                    <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-                      {historicalConsumption?.currentFirstHalf == null ? "—" : `${historicalConsumption.currentFirstHalf.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                    </p>
-                  </>
-                )}
               </div>
-              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-              <div className="min-w-0 flex-1 space-y-3">
-                {historicalConsumption?.previousMonth !== null && historicalConsumption?.previousMonth !== undefined && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-slate-500">{historicalConsumption.previousMonthLabel}</p>
-                    <p className="text-sm font-semibold text-slate-800">
-                      {historicalConsumption.previousMonth.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
-                    </p>
-                  </div>
-                )}
-              </div>
+              {(historicalConsumption?.items ?? []).map((item) => (
+                <div key={item.label} className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-lg font-bold tracking-tight text-slate-900">
+                    {item.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
+                  </p>
+                </div>
+              ))}
             </div>
           </GlassCard>
           <Metric

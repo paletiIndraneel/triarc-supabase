@@ -608,11 +608,21 @@ export default function CmsOperatorDashboard() {
           `/api/cms/operator?${monthParams.toString()}`,
           { cache: "no-store" }
         );
-        if (monthResponse.ok) {
-          const monthData = (await monthResponse.json()) as {
-            transactions?: TransactionResponse;
-            active?: ActiveTransactionResponse;
-          };
+        const monthData = (monthResponse.ok
+          ? await monthResponse.json()
+          : {
+              // Keep dashboard KPIs populated if the extra MTD request fails.
+              // This fallback uses the transactions already loaded for the selected date range.
+              transactions: { transactions: cache.transactions },
+              active: { transactions: [] },
+            }) as {
+              transactions?: TransactionResponse;
+              active?: ActiveTransactionResponse;
+            };
+        if (!monthResponse.ok) {
+          console.error("[cms/dashboard] MTD metrics request failed; using already-loaded transactions", monthResponse.status);
+        }
+        {
           // Include live sessions from get-pwr-active-transaction in dashboard totals.
           // Deduplicate by transaction ID because a session may exist in both responses.
           const monthRows = [

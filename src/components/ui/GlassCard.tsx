@@ -3,13 +3,17 @@ interface GlassCardProps {
   className?: string;
 }
 
+/**
+ * Shared admin card surface. Keep this component neutral so CMS cards match
+ * the Billing, Enquiries and CPO Settings design system.
+ */
 export default function GlassCard({
   children,
   className = "",
 }: GlassCardProps) {
   return (
     <div
-      className={`rounded-[28px] border border-white/10 bg-white/8 backdrop-blur-xl shadow-[0_20px_60px_rgba(2,12,8,0.2)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/30 ${className}`.trim()}
+      className={`rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md ${className}`.trim()}
     >
       {children}
     </div>

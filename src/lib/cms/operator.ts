@@ -786,7 +786,10 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     startedAt: raw.startAt ?? null,
     stoppedAt: raw.stopAt ?? null,
     userName: String(raw.userName ?? "Unknown"),
-    mobile: raw.userMobile ? String(raw.userMobile) : null,
+    mobile:
+      raw.userMobile !== null && raw.userMobile !== undefined && String(raw.userMobile).trim() !== ""
+        ? String(raw.userMobile)
+        : null,
     userType: raw.userType ? String(raw.userType) : null,
     tagReference: raw.tagReference ? String(raw.tagReference) : null,
     location: String(raw.locationName ?? ""),
@@ -796,7 +799,7 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     stopReason: raw.stopReason ? String(raw.stopReason) : null,
     energyKwh:
       startValue !== null && stopValue !== null
-        ? Math.max(0, stopValue - startValue) / 1000
+        ? (stopValue - startValue) / 1000
         : null,
     startSoc: toNumber(raw.startSoc ?? raw.startSoC ?? raw.startSOC),
     endSoc: toNumber(

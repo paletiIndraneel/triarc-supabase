@@ -807,7 +807,7 @@ export default function CmsOperatorDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => void load(true)}
-              disabled={loading}
+              disabled={loading && !message}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw size={16} className={loading ? "animate-spin" : ""} />

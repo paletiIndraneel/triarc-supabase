@@ -797,7 +797,7 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     stopReason: raw.stopReason ? String(raw.stopReason) : null,
     energyKwh:
       startValue !== null && stopValue !== null
-        ? (stopValue - startValue) / 1000
+        ? Math.max(0, stopValue - startValue) / 1000
         : null,
     startSoc: toNumber(raw.startSoc ?? raw.startSoC ?? raw.startSOC),
     endSoc: toNumber(

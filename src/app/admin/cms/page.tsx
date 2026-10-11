@@ -65,7 +65,7 @@ type CmsCache = {
   coverage: Array<{ startDate: string; endDate: string }>;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v2";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v3";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };
@@ -92,7 +92,7 @@ function writeCmsCache(cache: CmsCache) {
 function mergeCmsTransactions(existing: Transaction[], incoming: Transaction[]) {
   const merged = new Map<string, Transaction>();
   for (const transaction of [...existing, ...incoming]) {
-    const key = transaction.id || transaction.transactionId;
+    const key = transaction.transactionId || transaction.id;
     if (key) merged.set(key, transaction);
   }
   return Array.from(merged.values());
@@ -570,8 +570,8 @@ export default function CmsOperatorDashboard() {
         (activeTransaction) =>
           !filteredTransactions.some(
             (transaction) =>
-              transaction.id === activeTransaction.id ||
-              transaction.transactionId === activeTransaction.transactionId
+              (transaction.transactionId && transaction.transactionId === activeTransaction.transactionId) ||
+              (transaction.id && transaction.id === activeTransaction.id)
           )
       );
 
@@ -592,7 +592,7 @@ export default function CmsOperatorDashboard() {
         setActiveTransactionIds(
           new Set(
             currentActiveTransactions.flatMap((transaction) =>
-              [transaction.id, transaction.transactionId].filter(Boolean)
+              [transaction.transactionId, transaction.id].filter(Boolean)
             )
           )
         );

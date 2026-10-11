@@ -1090,8 +1090,23 @@ export default function CmsOperatorDashboard() {
             value={active > 0 ? "Charging" : "Idle"}
             accent={active > 0}
           />
-          <Metric label="Today’s Consumption" value={totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`} />
-          <Metric label="Today Revenue" value={totalRevenueToday === null ? "—" : money(totalRevenueToday)} />
+          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:shadow-md">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Todays Details</p>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-slate-500">Total Consumption Today</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                <p className="text-xs font-medium text-slate-500">Revenue Generated Today</p>
+                <p className="text-sm font-semibold text-slate-900">
+                  {totalRevenueToday === null ? "—" : money(totalRevenueToday)}
+                </p>
+              </div>
+            </div>
+          </GlassCard>
           <Metric label="Locations" value={String(locationCount)} />
           <Metric label="Active now" value={String(active)} accent />
         </div>

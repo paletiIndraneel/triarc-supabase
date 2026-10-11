@@ -292,12 +292,16 @@ async function cmsFetch<T>(
 ): Promise<T> {
   const token = await getToken(config);
 
+  const requestHeaders = new Headers(init.headers);
+  // CMS endpoints use Bearer auth. OCPI endpoints may require the raw token,
+  // matching the authorization header used by Chargemod browser XHR.
+  if (!requestHeaders.has("authorization")) {
+    requestHeaders.set("authorization", `Bearer ${token}`);
+  }
+
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
-    headers: {
-      ...(init.headers ?? {}),
-      authorization: `Bearer ${token}`,
-    },
+    headers: requestHeaders,
     cache: "no-store",
   });
 
@@ -575,13 +579,14 @@ async function getOcpiTransactions(
 ) {
   const context = await getCmsContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
+  const token = await getToken(config);
   return cmsFetch<Record<string, unknown>>(
     config,
     "https://ls.console.chargemod.com",
     "/ocpi/ocpi-transactions",
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", authorization: token },
       body: JSON.stringify({
         organizationId: context.organizationId,
         projectId: context.projectId,
@@ -602,13 +607,14 @@ async function getOcpiTransactions(
 async function getOcpiActiveTransactions(config: CmsConfig) {
   const context = await getCmsContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
+  const token = await getToken(config);
   return cmsFetch<Record<string, unknown>>(
     config,
     "https://ls.console.chargemod.com",
     "/ocpi/ocpi-active-transactions",
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", authorization: token },
       body: JSON.stringify({
         organizationId: context.organizationId,
         projectId: context.projectId,

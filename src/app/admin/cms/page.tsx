@@ -65,7 +65,7 @@ type CmsCache = {
   coverage: Array<{ startDate: string; endDate: string }>;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v2";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };
@@ -576,9 +576,11 @@ export default function CmsOperatorDashboard() {
       );
 
       const visibleTransactions = [...liveTransactions, ...filteredTransactions];
-      const nextDashboard = dashboardData
-        ? dashboardData
-        : buildLocalDashboard(dashboard, filteredTransactions);
+      // Recompute transaction-derived summary metrics from combined CMS + OCPI rows.
+      const nextDashboard = buildLocalDashboard(
+        dashboardData ?? dashboard,
+        filteredTransactions
+      );
 
       if (nextDashboard) setDashboard(nextDashboard);
       setTransactions(visibleTransactions);
@@ -631,8 +633,22 @@ export default function CmsOperatorDashboard() {
           ];
           const monthTransactionMap = new Map<string, Transaction>();
           for (const transaction of monthRows) {
-            const key = transaction.id || transaction.transactionId;
-            if (key) monthTransactionMap.set(key, transaction);
+            const key = transaction.transactionId || transaction.id;
+            if (!key) continue;
+            const existing = monthTransactionMap.get(key);
+            if (!existing) {
+              monthTransactionMap.set(key, transaction);
+              continue;
+            }
+            // Fill missing values from the duplicate source record.
+            const merged = { ...existing };
+            for (const [field, value] of Object.entries(transaction)) {
+              const current = (merged as unknown as Record<string, unknown>)[field];
+              const missing = current == null || current === "" || current === "Unknown" || (typeof current === "number" && current === 0);
+              const hasValue = value != null && value !== "" && value !== "Unknown" && !(typeof value === "number" && value === 0);
+              if (missing && hasValue) (merged as unknown as Record<string, unknown>)[field] = value;
+            }
+            monthTransactionMap.set(key, merged);
           }
           const monthTransactions = Array.from(monthTransactionMap.values());
           const todayRange = getDateRangeIST("today");

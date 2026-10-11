@@ -697,8 +697,8 @@ export default function CmsOperatorDashboard() {
           totals.total += energy;
           if (!isCpoTransaction(transaction)) {
             const type = stationType(transaction);
-            if (/\\bac\\b|ac charger|alternating current/.test(type)) totals.ac += energy;
-            else if (/\\bdc\\b|dc charger|direct current/.test(type)) totals.dc += energy;
+            if (/\bac\b|ac charger|alternating current/.test(type)) totals.ac += energy;
+            else if (/\bdc\b|dc charger|direct current/.test(type)) totals.dc += energy;
           }
           return totals;
         }, { total: 0, ac: 0, dc: 0 });
@@ -714,8 +714,8 @@ export default function CmsOperatorDashboard() {
           const amount = transaction.tariffAmount ?? 0;
           const type = stationType(transaction);
           if (!isCpoTransaction(transaction)) {
-            if (/\\bac\\b|ac charger|alternating current/.test(type)) totals.ac += amount;
-            else if (/\\bdc\\b|dc charger|direct current/.test(type)) totals.dc += amount;
+            if (/\bac\b|ac charger|alternating current/.test(type)) totals.ac += amount;
+            else if (/\bdc\b|dc charger|direct current/.test(type)) totals.dc += amount;
           }
           totals.total += amount;
           return totals;

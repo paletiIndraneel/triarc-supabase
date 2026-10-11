@@ -26,6 +26,7 @@ type Transaction = {
   locationId: number | null;
   chargerName: string;
   stationType: string | null;
+  type: string | null;
   stopReason: string | null;
   energyKwh: number | null;
   startSoc: number | null;
@@ -395,22 +396,6 @@ function displayCharger(value: string) {
   return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
 }
 
-function normalizeIndianMobile(value: string | null | undefined): string | null {
-  if (!value) return null;
-
-  let digits = value.replace(/\D/g, "");
-
-  if (digits.startsWith("0091") && digits.length === 14) {
-    digits = digits.slice(4);
-  } else if (digits.startsWith("91") && digits.length === 12) {
-    digits = digits.slice(2);
-  } else if (digits.length === 11 && digits.startsWith("0")) {
-    digits = digits.slice(1);
-  }
-
-  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
-}
-
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 export default function CmsOperatorDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -716,23 +701,10 @@ export default function CmsOperatorDashboard() {
         setTotalEnergyToday(todayTransactions.reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0));
         setTotalRevenueToday(todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0));
 
-        const configuredCpoNumbers: string[] = [];
-        try {
-          const cpoResponse = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
-          if (cpoResponse.ok) {
-            const cpoData = (await cpoResponse.json()) as { numbers?: Array<{ normalizedMobile?: string }> };
-            configuredCpoNumbers.push(...(cpoData.numbers ?? [])
-              .map((entry) => entry.normalizedMobile)
-              .filter((value): value is string => typeof value === "string" && Boolean(value)));
-          }
-        } catch {
-          // If CPO configuration is unavailable, calculate without CPO classification.
-        }
-        const cpoSet = new Set(configuredCpoNumbers);
-        const isCpoTransaction = (transaction: Transaction) => {
-          const mobile = normalizeIndianMobile(transaction.mobile);
-          return mobile !== null && cpoSet.has(mobile);
-        };
+        // ChargeMOD marks CPO transactions directly on the transaction record.
+        // Use the source field rather than inferring CPO status from a customer's mobile number.
+        const isCpoTransaction = (transaction: Transaction) =>
+          transaction.type?.trim().toUpperCase() === "CPO";
         const stationType = (transaction: Transaction) =>
           `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
 

@@ -805,7 +805,12 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     ),
     vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
     vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
-    tariffAmount: toNumber(raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]),
+    // CMS currentUsedAmount is stored in thousandths of the currency unit.
+    // Normalize it to the actual transaction revenue before aggregating/displaying.
+    tariffAmount:
+      raw.currentUsedAmount !== null && raw.currentUsedAmount !== undefined
+        ? (toNumber(raw.currentUsedAmount) ?? 0) / 1000
+        : toNumber(raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]),
     vat: toNumber(raw.vat),
     invoiceAvailable: Boolean(raw.invoiceAvailable),
     userId: raw.userId ? String(raw.userId) : null,

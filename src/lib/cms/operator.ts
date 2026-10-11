@@ -469,12 +469,26 @@ export async function getOperatorData(
     searchKey?: string;
   }
 ) {
+  // CMS is the primary transaction source. An OCPI authorization/API failure
+  // must not discard valid CMS dashboard or transaction data.
+  const ocpiErrors: string[] = [];
+  const safeOcpiFetch = async <T,>(label: string, request: () => Promise<T>): Promise<T | { result: unknown[] }> => {
+    try {
+      return await request();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[cms] OCPI ${label} request failed:`, message);
+      ocpiErrors.push(`${label}: ${message}`);
+      return { result: [] };
+    }
+  };
+
   const [dashboard, transactions, active, ocpi, ocpiActive] = await Promise.all([
     getDashboardData(config, transactionOptions.startDate, transactionOptions.endDate),
     getTransactions(config, transactionOptions),
     getActiveTransactions(config),
-    getOcpiTransactions(config, transactionOptions),
-    getOcpiActiveTransactions(config),
+    safeOcpiFetch("transactions", () => getOcpiTransactions(config, transactionOptions)),
+    safeOcpiFetch("active transactions", () => getOcpiActiveTransactions(config)),
   ]);
 
   const collectPages = async (
@@ -541,6 +555,7 @@ export async function getOperatorData(
         cms: cmsRows.length,
         ocpi: ocpiRows.length,
       },
+      sourceErrors: ocpiErrors,
     },
     active: {
       transactions: activeTransactions,

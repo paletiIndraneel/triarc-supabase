@@ -600,7 +600,13 @@ export default function CmsOperatorDashboard() {
 
       // Keep the energy KPI month-to-date regardless of the selected transaction-table date filter.
       try {
-        const monthRange = getDateRangeIST("this-month");
+        const calendarMonthRange = getDateRangeIST("this-month");
+        // MTD ends at the current instant, not midnight tomorrow, so only
+        // transactions that have actually started up to now are counted.
+        const monthRange = {
+          startDate: calendarMonthRange.startDate,
+          endDate: new Date().toISOString(),
+        };
         const monthParams = new URLSearchParams({
           page: "1",
           perPage: "100",
@@ -682,11 +688,14 @@ export default function CmsOperatorDashboard() {
             return normalized && cpoSet.has(normalized) ? sum + (transaction.energyKwh ?? 0) : sum;
           }, 0);
           setMonthToDateCpoEnergy(cpoEnergy);
+          // Keep the standalone MTD energy value aligned with the same
+          // date-filtered, deduplicated transaction set used by the KPI.
           setMonthToDateEnergy(
-            monthTransactions.reduce(
-              (sum, transaction) => sum + (transaction.energyKwh ?? 0),
-              0
-            )
+            filterTransactionsByRange(
+              monthTransactions,
+              monthRange.startDate,
+              monthRange.endDate
+            ).reduce((sum, transaction) => sum + (transaction.energyKwh ?? 0), 0)
           );
 
           // Revenue (MTD) must be calculated from transactions started during
@@ -794,13 +803,13 @@ export default function CmsOperatorDashboard() {
           );
           const mtdEnergyTotals = mtdEnergyTransactions.reduce(
             (totals, transaction) => {
-              const energy = transaction.energyKwh ?? 0;
+              const energy = Number(transaction.energyKwh);
+              if (!Number.isFinite(energy) || energy <= 0) return totals;
               const normalizedMobile = normalizeIndianMobile(transaction.mobile);
               const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
               const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
               totals.total += energy;
-              // Preserve the existing rule: CPO energy contributes to the total,
-              // but is excluded from AC/DC breakdowns.
+              // Total includes CPO energy; AC/DC subtotals exclude CPO sessions.
               if (!isCpo) {
                 if (/\\bac\\b|ac charger|alternating current/.test(type)) {
                   totals.ac += energy;

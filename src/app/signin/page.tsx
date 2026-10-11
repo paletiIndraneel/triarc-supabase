@@ -10,10 +10,12 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#03110d] px-6 py-16">
-      <GlassCard className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-white">Admin Sign In</h1>
-        <p className="mt-2 text-sm text-white/60">Restricted access.</p>
+    <main className="flex min-h-screen items-center justify-center bg-[#03110d] px-6 py-12">
+      <GlassCard className="w-full max-w-md p-8 sm:p-10">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Admin Sign In
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">Restricted access.</p>
         <Suspense fallback={null}>
           <SignInForm />
         </Suspense>

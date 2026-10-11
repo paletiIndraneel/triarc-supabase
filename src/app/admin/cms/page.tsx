@@ -822,28 +822,30 @@ export default function CmsOperatorDashboard() {
             timeZone: "Asia/Kolkata",
           });
           if (localDay <= 15) {
-            const [currentFirstHalfEnergy, previousSecondHalfEnergy, previousFirstHalfEnergy] = await Promise.all([
-              fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd),
-              fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
+            // During days 1–15, show the previous month's first half first,
+            // followed by the previous month's second half.
+            const [previousFirstHalfEnergy, previousSecondHalfEnergy] = await Promise.all([
               fetchEnergyForRange(previousMonthStart, previousMonthMidpoint),
+              fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
             ]);
             setHistoricalConsumption({
               items: [
-                { label: "This month (1–15)", value: currentFirstHalfEnergy },
-                { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
                 { label: previousMonthName + " (1–15)", value: previousFirstHalfEnergy },
+                { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
               ],
             });
           } else {
-            const [currentSecondHalfEnergy, currentFirstHalfEnergy, previousSecondHalfEnergy] = await Promise.all([
-              fetchEnergyForRange(currentFirstHalfEnd, now),
+            // From day 16 onward, show this month's first half, then both
+            // halves of the previous month in chronological order.
+            const [currentFirstHalfEnergy, previousFirstHalfEnergy, previousSecondHalfEnergy] = await Promise.all([
               fetchEnergyForRange(currentMonthStart, currentFirstHalfEnd),
+              fetchEnergyForRange(previousMonthStart, previousMonthMidpoint),
               fetchEnergyForRange(previousMonthMidpoint, currentMonthStart),
             ]);
             setHistoricalConsumption({
               items: [
-                { label: "This month (16–end)", value: currentSecondHalfEnergy },
                 { label: "This month (1–15)", value: currentFirstHalfEnergy },
+                { label: previousMonthName + " (1–15)", value: previousFirstHalfEnergy },
                 { label: previousMonthName + " (16–end)", value: previousSecondHalfEnergy },
               ],
             });

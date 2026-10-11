@@ -837,13 +837,15 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     ),
     vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
     vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
-    // CMS currentUsedAmount is stored in thousandths of the currency unit.
-    // Normalize it to the actual transaction revenue before aggregating/displaying.
-    // Keep the source amount in its original units; the dashboard money()
-    // formatter converts currentUsedAmount to displayed currency by dividing by 1000.
-    tariffAmount: toNumber(
-      raw.currentUsedAmount ?? raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]
-    ),
+    // currentUsedAmount is reported in thousandths of the currency unit by CMS.
+    // Normalize it here so every dashboard calculation uses INR, just like tariffAmount/OCPI price.
+    tariffAmount:
+      raw.currentUsedAmount !== null && raw.currentUsedAmount !== undefined
+        ? (() => {
+            const amount = toNumber(raw.currentUsedAmount);
+            return amount === null ? null : amount / 1000;
+          })()
+        : toNumber(raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]),
     vat: toNumber(raw.vat),
     invoiceAvailable: Boolean(raw.invoiceAvailable),
     userId: raw.userId ? String(raw.userId) : null,

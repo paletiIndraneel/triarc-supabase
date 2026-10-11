@@ -576,10 +576,11 @@ export default function CmsOperatorDashboard() {
       );
 
       const visibleTransactions = [...liveTransactions, ...filteredTransactions];
-      // Recompute transaction-derived summary metrics from combined CMS + OCPI rows.
+      // Recompute transaction-derived summary metrics from combined CMS + OCPI rows,
+      // including active sessions so live consumption is represented too.
       const nextDashboard = buildLocalDashboard(
         dashboardData ?? dashboard,
-        filteredTransactions
+        visibleTransactions
       );
 
       if (nextDashboard) setDashboard(nextDashboard);

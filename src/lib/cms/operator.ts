@@ -293,13 +293,10 @@ async function cmsFetch<T>(
   const token = await getToken(config);
 
   const requestHeaders = new Headers(init.headers);
-  // Chargemod CMS endpoints use Bearer auth, while the OCPI browser XHR uses
-  // the token as-is in the Authorization header (without the "Bearer " prefix).
+  // The captured ChargeMOD browser requests use the same access token with
+  // the Bearer scheme for both CMS and OCPI endpoints.
   if (!requestHeaders.has("authorization")) {
-    requestHeaders.set(
-      "authorization",
-      path.startsWith("/ocpi/") ? token : `Bearer ${token}`
-    );
+    requestHeaders.set("authorization", `Bearer ${token}`);
   }
 
   const response = await fetch(`${baseUrl}${path}`, {
@@ -604,7 +601,7 @@ async function getOcpiTransactions(
     "/ocpi/ocpi-transactions",
     {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: token },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
         organizationId: context.organizationId,
         projectId: context.projectId,

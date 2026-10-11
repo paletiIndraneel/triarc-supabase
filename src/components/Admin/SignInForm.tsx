@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -64,7 +64,7 @@ export default function SignInForm() {
       className="mt-6 grid gap-4"
       noValidate
     >
-      <label className="grid gap-2 text-sm font-medium text-white/85">
+      <label className="grid gap-2 text-sm font-medium text-slate-700">
         Email
 
         <input
@@ -74,11 +74,11 @@ export default function SignInForm() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
           required
-          className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-emerald-400/70 focus:bg-white/10"
+          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
         />
       </label>
 
-      <label className="grid gap-2 text-sm font-medium text-white/85">
+      <label className="grid gap-2 text-sm font-medium text-slate-700">
         Password
 
         <input
@@ -88,12 +88,12 @@ export default function SignInForm() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           required
-          className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-emerald-400/70 focus:bg-white/10"
+          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
         />
       </label>
 
       {status === "error" && (
-        <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {errorMsg}
         </p>
       )}

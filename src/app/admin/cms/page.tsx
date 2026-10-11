@@ -717,7 +717,73 @@ export default function CmsOperatorDashboard() {
             },
             { total: 0, ac: 0, dc: 0 }
           );
-          setMonthToDateRevenue(mtdRevenueTotals);
+          // Revenue (MTD) card is intentionally configured to show the previous
+          // calendar month's revenue, while retaining the existing card label and AC/DC split.
+          const previousMonthStartDate = new Date(
+            new Date(monthRange.startDate).getTime() - 24 * 60 * 60 * 1000
+          );
+          const previousMonthRange = {
+            startDate: new Date(
+              Date.UTC(
+                previousMonthStartDate.getUTCFullYear(),
+                previousMonthStartDate.getUTCMonth(),
+                1
+              ) - 330 * 60 * 1000
+            ).toISOString(),
+            endDate: monthRange.startDate,
+          };
+          const previousMonthParams = new URLSearchParams({
+            page: "1",
+            perPage: "100",
+            startDate: previousMonthRange.startDate,
+            endDate: previousMonthRange.endDate,
+          });
+          const previousMonthResponse = await fetch(
+            `/api/cms/operator?${previousMonthParams.toString()}`,
+            { cache: "no-store" }
+          );
+          if (previousMonthResponse.ok) {
+            const previousMonthData = (await previousMonthResponse.json()) as {
+              transactions?: TransactionResponse;
+              active?: ActiveTransactionResponse;
+            };
+            const previousMonthRows = [
+              ...(previousMonthData.transactions?.transactions ?? []),
+              ...(previousMonthData.active?.transactions ?? []),
+            ];
+            const previousMonthMap = new Map<string, Transaction>();
+            for (const transaction of previousMonthRows) {
+              const key = transaction.transactionId || transaction.id;
+              if (key && !previousMonthMap.has(key)) previousMonthMap.set(key, transaction);
+            }
+            const previousMonthTransactions = filterTransactionsByRange(
+              Array.from(previousMonthMap.values()),
+              previousMonthRange.startDate,
+              previousMonthRange.endDate
+            );
+            const previousMonthRevenueTotals = previousMonthTransactions.reduce(
+              (totals, transaction) => {
+                const amount = transaction.tariffAmount ?? 0;
+                const normalizedMobile = normalizeIndianMobile(transaction.mobile);
+                const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
+                const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
+                if (!isCpo) {
+                  if (/\\bac\\b|ac charger|alternating current/.test(type)) {
+                    totals.ac += amount;
+                  } else if (/\\bdc\\b|dc charger|direct current/.test(type)) {
+                    totals.dc += amount;
+                  }
+                }
+                totals.total += amount;
+                return totals;
+              },
+              { total: 0, ac: 0, dc: 0 }
+            );
+            setMonthToDateRevenue(previousMonthRevenueTotals);
+          } else {
+            console.error("[cms/dashboard] Previous-month revenue request failed", previousMonthResponse.status);
+            setMonthToDateRevenue(mtdRevenueTotals);
+          }
           // Calculate only the Total Energy (MTD) KPI from transactions whose
           // Started At timestamp falls within the current IST calendar month.
           // Keep revenue, Today Revenue, CPO, and all other metrics unchanged.

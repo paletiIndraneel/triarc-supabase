@@ -717,11 +717,35 @@ export default function CmsOperatorDashboard() {
             ac: monthTotals.revenueAc,
             dc: monthTotals.revenueDc,
           });
-          setMonthToDateConsumption({
-            total: monthTotals.energyTotal,
-            ac: monthTotals.energyAc,
-            dc: monthTotals.energyDc,
-          });
+          // Calculate only the Total Energy (MTD) KPI from transactions whose
+          // Started At timestamp falls within the current IST calendar month.
+          // Keep revenue, Today Revenue, CPO, and all other metrics unchanged.
+          const mtdEnergyTransactions = filterTransactionsByRange(
+            monthTransactions,
+            monthRange.startDate,
+            monthRange.endDate
+          );
+          const mtdEnergyTotals = mtdEnergyTransactions.reduce(
+            (totals, transaction) => {
+              const energy = transaction.energyKwh ?? 0;
+              const normalizedMobile = normalizeIndianMobile(transaction.mobile);
+              const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
+              const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
+              totals.total += energy;
+              // Preserve the existing rule: CPO energy contributes to the total,
+              // but is excluded from AC/DC breakdowns.
+              if (!isCpo) {
+                if (/\\bac\\b|ac charger|alternating current/.test(type)) {
+                  totals.ac += energy;
+                } else if (/\\bdc\\b|dc charger|direct current/.test(type)) {
+                  totals.dc += energy;
+                }
+              }
+              return totals;
+            },
+            { total: 0, ac: 0, dc: 0 }
+          );
+          setMonthToDateConsumption(mtdEnergyTotals);
           // Consumption Details uses IST calendar boundaries and transaction start times.
           // Days 1–15: current month's consumption from midnight on day 1 through now.
           // Day 16 onward: compare current month's days 1–15 with the entire previous month.

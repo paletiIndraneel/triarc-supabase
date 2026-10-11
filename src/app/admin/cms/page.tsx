@@ -588,6 +588,20 @@ export default function CmsOperatorDashboard() {
           { cache: "no-store" }
         );
 
+        if (!response.ok) {
+          const responseBody = await response.text();
+          let errorMessage = `CMS request failed (${response.status}${response.statusText ? ` ${response.statusText}` : ""}).`;
+
+          try {
+            const errorData = JSON.parse(responseBody) as { error?: string };
+            if (errorData.error) errorMessage = errorData.error;
+          } catch {
+            if (responseBody.trim()) errorMessage = responseBody.trim();
+          }
+
+          throw new Error(errorMessage);
+        }
+
         const data = (await response.json()) as {
           error?: string;
           dashboard?: Dashboard;
@@ -596,10 +610,6 @@ export default function CmsOperatorDashboard() {
           };
           active?: ActiveTransactionResponse;
         };
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "CMS request failed.");
-        }
 
         dashboardData = data.dashboard;
         if (!dashboardData) {

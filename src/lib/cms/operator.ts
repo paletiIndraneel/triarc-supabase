@@ -462,74 +462,164 @@ export async function getOperatorData(
     searchKey?: string;
   }
 ) {
-  const [dashboard, transactions, active] = await Promise.all([
+  const [dashboard, transactions, active, ocpi, ocpiActive] = await Promise.all([
     getDashboardData(config, transactionOptions.startDate, transactionOptions.endDate),
     getTransactions(config, transactionOptions),
     getActiveTransactions(config),
+    getOcpiTransactions(config, transactionOptions),
+    getOcpiActiveTransactions(config),
   ]);
 
-  const firstResult = Array.isArray(transactions.result) ? transactions.result : [];
-  const totalCount = Number(transactions.count ?? firstResult.length);
-  const totalPages = Math.max(1, Math.ceil(totalCount / transactionOptions.perPage));
-
-  const remainingPages = await Promise.all(
-    Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) =>
-      getTransactions(config, {
-        ...transactionOptions,
-        page: index + 2,
-      })
-    )
-  );
-
-  const rawTransactions = [
-    ...firstResult,
-    ...remainingPages.flatMap((pageResult) =>
-      Array.isArray(pageResult.result) ? pageResult.result : []
-    ),
-  ];
-
-  const sanitizedTransactions = rawTransactions
-    .filter(
+  const collectPages = async (
+    firstPage: Record<string, unknown>,
+    fetchPage: (page: number) => Promise<Record<string, unknown>>
+  ) => {
+    const firstResult = Array.isArray(firstPage.result) ? firstPage.result : [];
+    const totalCount = Number(firstPage.count ?? firstResult.length);
+    const totalPages = Math.max(1, Math.ceil(totalCount / transactionOptions.perPage));
+    const remainingPages = await Promise.all(
+      Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => fetchPage(index + 2))
+    );
+    return [
+      ...firstResult,
+      ...remainingPages.flatMap((pageResult) =>
+        Array.isArray(pageResult.result) ? pageResult.result : []
+      ),
+    ].filter(
       (item): item is Record<string, unknown> =>
         Boolean(item) && typeof item === "object"
-    )
-    .map(sanitizeTransaction);
+    );
+  };
 
-  const uniqueTransactions = Array.from(
-    new Map(
-      sanitizedTransactions.map((transaction) => [
-        transaction.id || transaction.transactionId,
-        transaction,
-      ])
-    ).values()
+  const [cmsRows, ocpiRows] = await Promise.all([
+    collectPages(transactions, (page) => getTransactions(config, { ...transactionOptions, page })),
+    collectPages(ocpi, (page) => getOcpiTransactions(config, { ...transactionOptions, page })),
+  ]);
+
+  const mergeUnique = (rows: Record<string, unknown>[]) => {
+    const merged = new Map<string, ReturnType<typeof sanitizeTransaction>>();
+    for (const raw of rows) {
+      const transaction = sanitizeTransaction(raw);
+      const key = transaction.transactionId || transaction.id;
+      if (!key) continue;
+      const existing = merged.get(key);
+      merged.set(key, existing ? mergeSanitizedTransactions(existing, transaction) : transaction);
+    }
+    return Array.from(merged.values());
+  };
+
+  const uniqueTransactions = mergeUnique([...cmsRows, ...ocpiRows]);
+  const activeRows = [
+    ...(Array.isArray(active.result) ? active.result : []),
+    ...(Array.isArray(ocpiActive.result) ? ocpiActive.result : []),
+  ].filter(
+    (item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === "object"
   );
-
-  const activeResult = Array.isArray(active.result) ? active.result : [];
-  const activeTransactions = activeResult
-    .filter(
-      (item): item is Record<string, unknown> =>
-        Boolean(item) && typeof item === "object"
-    )
-    .map(sanitizeTransaction);
+  const activeTransactions = mergeUnique(activeRows);
 
   return {
     dashboard,
     transactions: {
       transactions: uniqueTransactions,
       count: uniqueTransactions.length,
-      totalCount,
+      totalCount: uniqueTransactions.length,
       page: transactionOptions.page,
       perPage: transactionOptions.perPage,
       coverage: {
         startDate: transactionOptions.startDate,
         endDate: transactionOptions.endDate,
       },
+      sources: {
+        cms: cmsRows.length,
+        ocpi: ocpiRows.length,
+      },
     },
     active: {
       transactions: activeTransactions,
-      count: Number(active.count ?? activeTransactions.length),
+      count: activeTransactions.length,
+      sources: {
+        cms: Array.isArray(active.result) ? active.result.length : 0,
+        ocpi: Array.isArray(ocpiActive.result) ? ocpiActive.result.length : 0,
+      },
     },
   };
+}
+
+type TransactionRecord = ReturnType<typeof sanitizeTransaction>;
+
+function mergeSanitizedTransactions(
+  existing: TransactionRecord,
+  incoming: TransactionRecord
+): TransactionRecord {
+  const merged = { ...existing } as TransactionRecord;
+  for (const [key, value] of Object.entries(incoming)) {
+    const current = (merged as unknown as Record<string, unknown>)[key];
+    if ((current === null || current === "" || current === "Unknown") && value !== null && value !== "") {
+      (merged as unknown as Record<string, unknown>)[key] = value;
+    }
+  }
+  return merged;
+}
+
+async function getOcpiTransactions(
+  config: CmsConfig,
+  options: {
+    page: number;
+    perPage: number;
+    startDate: string;
+    endDate: string;
+    searchField?: string;
+    searchKey?: string;
+  }
+) {
+  const context = await getCmsContext(config);
+  const allowedLocations = await getAllowedLocationIds(config, context);
+  return cmsFetch<Record<string, unknown>>(
+    config,
+    "https://ls.console.chargemod.com",
+    "/ocpi/ocpi-transactions",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        organizationId: context.organizationId,
+        projectId: context.projectId,
+        perPageCount: options.perPage,
+        pageNumber: options.page,
+        filterDate: { startDate: options.startDate, endDate: options.endDate },
+        searchValue: {
+          searchField: options.searchField ?? "",
+          searchKey: options.searchKey ?? "",
+        },
+        allowedLocations,
+        role: "6231",
+      }),
+    }
+  );
+}
+
+async function getOcpiActiveTransactions(config: CmsConfig) {
+  const context = await getCmsContext(config);
+  const allowedLocations = await getAllowedLocationIds(config, context);
+  return cmsFetch<Record<string, unknown>>(
+    config,
+    "https://ls.console.chargemod.com",
+    "/ocpi/ocpi-active-transactions",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        organizationId: context.organizationId,
+        projectId: context.projectId,
+        perPageCount: 25,
+        pageNumber: 1,
+        allowedLocations,
+        searchValue: { searchField: "", searchKey: "" },
+        role: "6231",
+      }),
+    }
+  );
 }
 
 export async function getDashboardData(
@@ -693,9 +783,24 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     ),
     vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
     vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
-    tariffAmount: toNumber(raw.usedAmount ?? raw["Used Amount"]),
+    tariffAmount: toNumber(raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]),
     vat: toNumber(raw.vat),
     invoiceAvailable: Boolean(raw.invoiceAvailable),
+    userId: raw.userId ? String(raw.userId) : null,
+    vehicleId: raw.vehicleId ? String(raw.vehicleId) : null,
+    vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
+    vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
+    geoLatitude: toNumber(raw.geoLatitude),
+    geoLongitude: toNumber(raw.geoLongitude),
+    idTag: raw.idTag ? String(raw.idTag) : null,
+    isFree: typeof raw.isFree === "boolean" ? raw.isFree : null,
+    baseDeductiveAmount: toNumber(raw.baseDeductiveAmount),
+    isAlphaGuaranteed: typeof raw.isAlphaGuaranteed === "boolean" ? raw.isAlphaGuaranteed : null,
+    isTimeBasedTariff: typeof raw.isTimeBasedTariff === "boolean" ? raw.isTimeBasedTariff : null,
+    startValue,
+    stopValue,
+    createdAt: typeof raw.createdAt === "string" ? raw.createdAt : null,
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : null,
   };
 }
 

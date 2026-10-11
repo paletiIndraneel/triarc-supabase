@@ -44,10 +44,73 @@ h1, h2, h3, h4, p, span, a {
   color: inherit;
 }
 
-h1, h2, h3, h4 {
+/* Keep legacy public-site text treatment out of the admin portal. */
+body:not(:has(.admin-shell)) h1,
+body:not(:has(.admin-shell)) h2,
+body:not(:has(.admin-shell)) h3,
+body:not(:has(.admin-shell)) h4 {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-p, span, a {
+body:not(:has(.admin-shell)) p,
+body:not(:has(.admin-shell)) span,
+body:not(:has(.admin-shell)) a {
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+/* Shared design baseline for all admin pages and modules. */
+.admin-shell {
+  --admin-bg: #f8f9ff;
+  --admin-surface: #ffffff;
+  --admin-text: #172033;
+  --admin-muted: #667085;
+  --admin-border: #e7e8ef;
+  --admin-primary: #7157d9;
+  --admin-primary-hover: #5b46c4;
+  min-height: 100vh;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  line-height: 1.5;
+  overflow-x: clip;
+}
+
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3,
+.admin-shell h4,
+.admin-shell p,
+.admin-shell span,
+.admin-shell a {
+  text-shadow: none;
+}
+
+.admin-shell h1,
+.admin-shell h2,
+.admin-shell h3,
+.admin-shell h4 {
+  color: var(--admin-text);
+}
+
+.admin-shell :where(input, select, textarea, button) {
+  font: inherit;
+}
+
+.admin-shell :where(input, select, textarea):focus-visible,
+.admin-shell :where(button, a):focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+}
+
+.admin-shell :where(.admin-page-container) {
+  width: min(1440px, 100%);
+  margin-inline: auto;
+  padding: 32px 24px 48px;
+}
+
+@media (max-width: 700px) {
+  .admin-shell :where(.admin-page-container) {
+    padding: 22px 14px 32px;
+  }
 }

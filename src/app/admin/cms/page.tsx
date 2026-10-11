@@ -954,7 +954,7 @@ export default function CmsOperatorDashboard() {
                 <span>Date:</span>
                 <select
                   value={datePreset}
-                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)} disabled={Boolean(message)}
+                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)} disabled={loading}
                   className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
                   aria-label="Date range"
                 >
@@ -981,7 +981,7 @@ export default function CmsOperatorDashboard() {
               <div ref={columnEditorRef} className="relative">
                 <button
                   onClick={openColumnEditor}
-                  disabled={!columnsLoaded || Boolean(message)}
+                  disabled={!columnsLoaded}
                   className="inline-flex items-center gap-2 rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#e8e8e8] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Settings2 size={14} />
@@ -1166,14 +1166,14 @@ export default function CmsOperatorDashboard() {
             </span>
             <div className="flex gap-2">
               <button
-                disabled={page <= 1 || loading || Boolean(message)}
+                disabled={page <= 1 || loading}
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >
                 Previous
               </button>
               <button
-                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading || Boolean(message)}
+                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading}
                 onClick={() => setPage((value) => value + 1)}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >

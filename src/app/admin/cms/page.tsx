@@ -689,34 +689,35 @@ export default function CmsOperatorDashboard() {
             )
           );
 
-          const monthTotals = monthTransactions.reduce(
+          // Revenue (MTD) must be calculated from transactions started during
+          // the current IST calendar month, independent of the table's date filter.
+          // This explicit client-side range check also protects against an API response
+          // that includes only today's transactions or ignores the requested date range.
+          const mtdRevenueTransactions = filterTransactionsByRange(
+            monthTransactions,
+            monthRange.startDate,
+            monthRange.endDate
+          );
+          const mtdRevenueTotals = mtdRevenueTransactions.reduce(
             (totals, transaction) => {
               const amount = transaction.tariffAmount ?? 0;
-              const energy = transaction.energyKwh ?? 0;
               const normalizedMobile = normalizeIndianMobile(transaction.mobile);
               const isCpo = normalizedMobile !== null && cpoSet.has(normalizedMobile);
               const type = `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-              // CPO transactions remain in overall totals but are excluded from AC/DC breakdowns.
+              // CPO transactions remain in overall revenue but are excluded from AC/DC breakdowns.
               if (!isCpo) {
                 if (/\bac\b|ac charger|alternating current/.test(type)) {
-                  totals.revenueAc += amount;
-                  totals.energyAc += energy;
+                  totals.ac += amount;
                 } else if (/\bdc\b|dc charger|direct current/.test(type)) {
-                  totals.revenueDc += amount;
-                  totals.energyDc += energy;
+                  totals.dc += amount;
                 }
               }
-              totals.revenueTotal += amount;
-              totals.energyTotal += energy;
+              totals.total += amount;
               return totals;
             },
-            { revenueTotal: 0, revenueAc: 0, revenueDc: 0, energyTotal: 0, energyAc: 0, energyDc: 0 }
+            { total: 0, ac: 0, dc: 0 }
           );
-          setMonthToDateRevenue({
-            total: monthTotals.revenueTotal,
-            ac: monthTotals.revenueAc,
-            dc: monthTotals.revenueDc,
-          });
+          setMonthToDateRevenue(mtdRevenueTotals);
           // Calculate only the Total Energy (MTD) KPI from transactions whose
           // Started At timestamp falls within the current IST calendar month.
           // Keep revenue, Today Revenue, CPO, and all other metrics unchanged.

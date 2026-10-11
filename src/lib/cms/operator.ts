@@ -807,10 +807,11 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
     // CMS currentUsedAmount is stored in thousandths of the currency unit.
     // Normalize it to the actual transaction revenue before aggregating/displaying.
-    tariffAmount:
-      raw.currentUsedAmount !== null && raw.currentUsedAmount !== undefined
-        ? (toNumber(raw.currentUsedAmount) ?? 0) / 1000
-        : toNumber(raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]),
+    // Keep the source amount in its original units; the dashboard money()
+    // formatter converts currentUsedAmount to displayed currency by dividing by 1000.
+    tariffAmount: toNumber(
+      raw.currentUsedAmount ?? raw.tariffAmount ?? raw.price ?? raw.usedAmount ?? raw["Used Amount"]
+    ),
     vat: toNumber(raw.vat),
     invoiceAvailable: Boolean(raw.invoiceAvailable),
     userId: raw.userId ? String(raw.userId) : null,

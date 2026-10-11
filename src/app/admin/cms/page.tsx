@@ -983,13 +983,13 @@ export default function CmsOperatorDashboard() {
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Todays Details</p>
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-medium text-slate-500">Total Consumption Today</p>
+                <p className="text-xs font-medium text-slate-500">Consumption</p>
                 <p className="text-sm font-semibold text-slate-900">
                   {totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                 </p>
               </div>
               <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                <p className="text-xs font-medium text-slate-500">Revenue Generated Today</p>
+                <p className="text-xs font-medium text-slate-500">Revenue</p>
                 <p className="text-sm font-semibold text-slate-900">
                   {totalRevenueToday === null ? "—" : money(totalRevenueToday)}
                 </p>

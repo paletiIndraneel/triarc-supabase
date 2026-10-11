@@ -788,8 +788,6 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     invoiceAvailable: Boolean(raw.invoiceAvailable),
     userId: raw.userId ? String(raw.userId) : null,
     vehicleId: raw.vehicleId ? String(raw.vehicleId) : null,
-    vehicleName: raw.vehicleName ? String(raw.vehicleName) : null,
-    vehicleNumber: raw.vehicleNumber ? String(raw.vehicleNumber) : null,
     geoLatitude: toNumber(raw.geoLatitude),
     geoLongitude: toNumber(raw.geoLongitude),
     idTag: raw.idTag ? String(raw.idTag) : null,

@@ -719,14 +719,14 @@ export default function CmsOperatorDashboard() {
           );
           // Revenue (MTD) card is intentionally configured to show the previous
           // calendar month's revenue, while retaining the existing card label and AC/DC split.
-          const previousMonthStartDate = new Date(
+          const previousRevenueMonthStartDate = new Date(
             new Date(monthRange.startDate).getTime() - 24 * 60 * 60 * 1000
           );
           const previousMonthRange = {
             startDate: new Date(
               Date.UTC(
-                previousMonthStartDate.getUTCFullYear(),
-                previousMonthStartDate.getUTCMonth(),
+                previousRevenueMonthStartDate.getUTCFullYear(),
+                previousRevenueMonthStartDate.getUTCMonth(),
                 1
               ) - 330 * 60 * 1000
             ).toISOString(),

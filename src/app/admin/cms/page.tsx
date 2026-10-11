@@ -707,11 +707,10 @@ export default function CmsOperatorDashboard() {
         setMonthToDateCpoEnergy(mtdTransactions.reduce((sum, transaction) =>
           isCpoTransaction(transaction) ? sum + Math.max(0, transaction.energyKwh ?? 0) : sum, 0));
 
-        // Revenue card displays previous calendar month, using locally available rows.
-        const previousMonthEnd = currentMonthStart.toISOString();
-        const previousMonthRows = filterTransactionsByRange(metricTransactions, previousMonthStart.toISOString(), previousMonthEnd);
-        const previousRevenueTotals = previousMonthRows.reduce((totals, transaction) => {
-          const amount = transaction.tariffAmount ?? 0;
+        // Revenue MTD uses transactions started in the current calendar month.
+        const mtdRevenueTotals = mtdTransactions.reduce((totals, transaction) => {
+          const amount = Number(transaction.tariffAmount);
+          if (!Number.isFinite(amount)) return totals;
           const type = stationType(transaction);
           if (!isCpoTransaction(transaction)) {
             if (/\bac\b|ac charger|alternating current/.test(type)) totals.ac += amount;
@@ -720,7 +719,7 @@ export default function CmsOperatorDashboard() {
           totals.total += amount;
           return totals;
         }, { total: 0, ac: 0, dc: 0 });
-        setMonthToDateRevenue(previousRevenueTotals);
+        setMonthToDateRevenue(mtdRevenueTotals);
 
         const previousMonthName = previousMonthStart.toLocaleDateString("en-IN", {
           month: "long",

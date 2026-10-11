@@ -89,11 +89,60 @@ function writeCmsCache(cache: CmsCache) {
   } catch {}
 }
 
+function mergeTransactionData(existing: Transaction, incoming: Transaction): Transaction {
+  const merged = { ...existing, ...incoming };
+  const existingEnergy = existing.energyKwh;
+  const incomingEnergy = incoming.energyKwh;
+  const existingRevenue = existing.tariffAmount;
+  const incomingRevenue = incoming.tariffAmount;
+
+  // Prefer a positive fresh value over a cached zero, but don't let a later
+  // zero from an incomplete active-session response erase a known positive value.
+  if (typeof incomingEnergy === "number" && incomingEnergy > 0) {
+    merged.energyKwh = incomingEnergy;
+  } else if (typeof existingEnergy === "number" && existingEnergy > 0) {
+    merged.energyKwh = existingEnergy;
+  }
+
+  if (typeof incomingRevenue === "number" && incomingRevenue > 0) {
+    merged.tariffAmount = incomingRevenue;
+  } else if (typeof existingRevenue === "number" && existingRevenue > 0) {
+    merged.tariffAmount = existingRevenue;
+  }
+
+  // Retain useful existing values when the incoming record is incomplete.
+  for (const [field, value] of Object.entries(incoming)) {
+    const current = (merged as unknown as Record<string, unknown>)[field];
+    const incomingMissing = value == null || value === "" || value === "Unknown";
+    const existingValue = (existing as unknown as Record<string, unknown>)[field];
+    const existingMissing =
+      existingValue == null || existingValue === "" || existingValue === "Unknown";
+    if (incomingMissing && !existingMissing) {
+      (merged as unknown as Record<string, unknown>)[field] = existingValue;
+    } else if (
+      (field === "startedAt" || field === "stoppedAt") &&
+      typeof existingValue === "string" &&
+      typeof value === "string" &&
+      existingValue.length > value.length
+    ) {
+      (merged as unknown as Record<string, unknown>)[field] = existingValue;
+    }
+  }
+
+  return merged;
+}
+
 function mergeCmsTransactions(existing: Transaction[], incoming: Transaction[]) {
   const merged = new Map<string, Transaction>();
-  for (const transaction of [...existing, ...incoming]) {
+  for (const transaction of existing) {
     const key = transaction.transactionId || transaction.id;
     if (key) merged.set(key, transaction);
+  }
+  for (const transaction of incoming) {
+    const key = transaction.transactionId || transaction.id;
+    if (!key) continue;
+    const previous = merged.get(key);
+    merged.set(key, previous ? mergeTransactionData(previous, transaction) : transaction);
   }
   return Array.from(merged.values());
 }
@@ -348,10 +397,18 @@ function displayCharger(value: string) {
 
 function normalizeIndianMobile(value: string | null | undefined): string | null {
   if (!value) return null;
-  let digits = value.replace(/\\D/g, "");
-  if (digits.startsWith("0091") && digits.length === 14) digits = digits.slice(4);
-  else if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
-  return digits.length === 10 ? digits : null;
+
+  let digits = value.replace(/\D/g, "");
+
+  if (digits.startsWith("0091") && digits.length === 14) {
+    digits = digits.slice(4);
+  } else if (digits.startsWith("91") && digits.length === 12) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  return /^[6-9]\d{9}$/.test(digits) ? digits : null;
 }
 
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
@@ -651,14 +708,7 @@ export default function CmsOperatorDashboard() {
           if (!existing) {
             metricMap.set(key, transaction);
           } else {
-            const merged = { ...existing };
-            for (const [field, value] of Object.entries(transaction)) {
-              const current = (merged as unknown as Record<string, unknown>)[field];
-              const missing = current == null || current === "" || current === "Unknown";
-              const hasValue = value != null && value !== "" && value !== "Unknown";
-              if (missing && hasValue) (merged as unknown as Record<string, unknown>)[field] = value;
-            }
-            metricMap.set(key, merged);
+            metricMap.set(key, mergeTransactionData(existing, transaction));
           }
         }
         const metricTransactions = Array.from(metricMap.values());

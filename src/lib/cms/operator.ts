@@ -594,7 +594,6 @@ async function getOcpiTransactions(
 ) {
   const context = await getCmsContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
-  const token = await getToken(config);
   return cmsFetch<Record<string, unknown>>(
     config,
     "https://ls.console.chargemod.com",
@@ -622,14 +621,13 @@ async function getOcpiTransactions(
 async function getOcpiActiveTransactions(config: CmsConfig) {
   const context = await getCmsContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
-  const token = await getToken(config);
   return cmsFetch<Record<string, unknown>>(
     config,
     "https://ls.console.chargemod.com",
     "/ocpi/ocpi-active-transactions",
     {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: token },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
         organizationId: context.organizationId,
         projectId: context.projectId,

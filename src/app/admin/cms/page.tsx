@@ -691,21 +691,29 @@ export default function CmsOperatorDashboard() {
           currentMonthRange.startDate,
           now.toISOString()
         );
+        // Keep regular AC/DC energy separate from CPO energy, then explicitly
+        // add CPO usage into the overall MTD total.
         const mtdEnergyTotals = mtdTransactions.reduce((totals, transaction) => {
           const energy = Number(transaction.energyKwh);
           if (!Number.isFinite(energy) || energy <= 0) return totals;
-          totals.total += energy;
-          if (!isCpoTransaction(transaction)) {
+          if (isCpoTransaction(transaction)) {
+            totals.cpo += energy;
+          } else {
+            totals.total += energy;
             const type = stationType(transaction);
             if (/\bac\b|ac charger|alternating current/.test(type)) totals.ac += energy;
             else if (/\bdc\b|dc charger|direct current/.test(type)) totals.dc += energy;
           }
           return totals;
-        }, { total: 0, ac: 0, dc: 0 });
-        setMonthToDateEnergy(mtdEnergyTotals.total);
-        setMonthToDateConsumption(mtdEnergyTotals);
-        setMonthToDateCpoEnergy(mtdTransactions.reduce((sum, transaction) =>
-          isCpoTransaction(transaction) ? sum + Math.max(0, transaction.energyKwh ?? 0) : sum, 0));
+        }, { total: 0, ac: 0, dc: 0, cpo: 0 });
+        const totalMtdEnergyIncludingCpo = mtdEnergyTotals.total + mtdEnergyTotals.cpo;
+        setMonthToDateEnergy(totalMtdEnergyIncludingCpo);
+        setMonthToDateConsumption({
+          total: totalMtdEnergyIncludingCpo,
+          ac: mtdEnergyTotals.ac,
+          dc: mtdEnergyTotals.dc,
+        });
+        setMonthToDateCpoEnergy(mtdEnergyTotals.cpo);
 
         // Revenue MTD uses transactions started in the current calendar month.
         const mtdRevenueTotals = mtdTransactions.reduce((totals, transaction) => {

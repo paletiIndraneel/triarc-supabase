@@ -572,12 +572,44 @@ function mergeSanitizedTransactions(
   incoming: TransactionRecord
 ): TransactionRecord {
   const merged = { ...existing } as TransactionRecord;
+  const target = merged as unknown as Record<string, unknown>;
+
   for (const [key, value] of Object.entries(incoming)) {
-    const current = (merged as unknown as Record<string, unknown>)[key];
-    if ((current === null || current === "" || current === "Unknown") && value !== null && value !== "") {
-      (merged as unknown as Record<string, unknown>)[key] = value;
+    const current = target[key];
+    const missing = current === null || current === "" || current === "Unknown";
+    if (missing && value !== null && value !== "") {
+      target[key] = value;
+      continue;
+    }
+
+    // CMS and OCPI can describe the same session but have different meter/price
+    // completeness. Do not let a CMS zero/null overwrite a positive OCPI value.
+    if (
+      key === "energyKwh" &&
+      typeof current === "number" &&
+      current <= 0 &&
+      typeof value === "number" &&
+      value > 0
+    ) {
+      target[key] = value;
+    } else if (
+      key === "tariffAmount" &&
+      typeof current === "number" &&
+      current <= 0 &&
+      typeof value === "number" &&
+      value > 0
+    ) {
+      target[key] = value;
+    } else if (
+      (key === "startedAt" || key === "stoppedAt") &&
+      typeof current === "string" &&
+      typeof value === "string" &&
+      value.length > current.length
+    ) {
+      target[key] = value;
     }
   }
+
   return merged;
 }
 

@@ -65,7 +65,7 @@ type CmsCache = {
   coverage: Array<{ startDate: string; endDate: string }>;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v3";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v4";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };

@@ -826,6 +826,7 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     locationId: toNumber(raw.locationId),
     chargerName: String(raw.chargerName ?? ""),
     stationType: raw.stationType ? String(raw.stationType) : null,
+    type: raw.type ? String(raw.type) : null,
     stopReason: raw.stopReason ? String(raw.stopReason) : null,
     energyKwh:
       startValue !== null && stopValue !== null

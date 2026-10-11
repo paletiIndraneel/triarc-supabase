@@ -496,6 +496,23 @@ export default function CmsOperatorDashboard() {
 
     try {
       const dateRange = getDateRangeIST(datePreset);
+      // Fetch one consistent transaction window for all dashboard metrics,
+      // regardless of the table's selected date filter. It covers the previous
+      // calendar month and the current month-to-date.
+      const nowForMetrics = new Date();
+      const istDateParts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+      }).formatToParts(nowForMetrics);
+      const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
+      const metricFetchStart = new Date(
+        `${Number(istDateValues.year)}-${String(Number(istDateValues.month) - 1).padStart(2, "0")}-01T00:00:00+05:30`
+      );
+      const metricFetchRange = {
+        startDate: metricFetchStart.toISOString(),
+        endDate: nowForMetrics.toISOString(),
+      };
       let cache = readCmsCache();
 
       if (forceRefresh) {
@@ -509,7 +526,7 @@ export default function CmsOperatorDashboard() {
       let dashboardData: Dashboard | undefined;
       let activeData: ActiveTransactionResponse = {};
 
-      if (rangeIsCovered(cache.coverage, dateRange.startDate, dateRange.endDate)) {
+      if (rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) {
         filteredTransactions = filterTransactionsByRange(
           cache.transactions,
           dateRange.startDate,
@@ -519,8 +536,8 @@ export default function CmsOperatorDashboard() {
         const params = new URLSearchParams({
           page: "1",
           perPage: "25",
-          startDate: dateRange.startDate,
-          endDate: dateRange.endDate,
+          startDate: metricFetchRange.startDate,
+          endDate: metricFetchRange.endDate,
         });
 
         const response = await fetch(
@@ -547,7 +564,7 @@ export default function CmsOperatorDashboard() {
         }
 
         const incoming = data.transactions?.transactions ?? [];
-        const coverage = data.transactions?.coverage ?? dateRange;
+        const coverage = data.transactions?.coverage ?? metricFetchRange;
 
         cache = {
           transactions: mergeCmsTransactions(cache.transactions, incoming),

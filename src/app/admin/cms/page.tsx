@@ -136,7 +136,7 @@ function money(value: unknown) {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 2,
-  }).format(num(value) / 1000);
+  }).format(num(value));
 }
 
 function formatDate(value: string | null) {
@@ -1171,7 +1171,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
                           {columnId === "vehicleNumber" && <span className="font-mono text-emerald-700">{transaction.vehicleNumber || "—"}</span>}
-                          {columnId === "tariffAmount" && (transaction.tariffAmount ?? "—")}
+                          {columnId === "tariffAmount" && (transaction.tariffAmount == null ? "—" : money(transaction.tariffAmount))}
                           {columnId === "vat" && (transaction.vat ?? "—")}
                           {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}
                           {columnId === "userId" && (transaction.userId ?? "—")}

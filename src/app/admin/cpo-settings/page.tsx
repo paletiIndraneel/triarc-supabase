@@ -59,7 +59,7 @@ export default function CpoSettingsPage() {
     finally { setSaving(false); }
   }
 
-  return <main className="min-h-screen bg-[#f8f9ff] px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
+  return <main className="admin-shell min-h-screen bg-[#f8f9ff] px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
     <div className="mx-auto max-w-[1100px]">
       <a href="/admin" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-violet-700"><ArrowLeft size={16}/> Back to CMS Dashboard</a>
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-7">

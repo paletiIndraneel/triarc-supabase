@@ -39,7 +39,7 @@ export async function GET() {
   if (!user) return new NextResponse("Forbidden", { status: 403 });
 
   const { data, error } = await supabase
-    .from("admin_preferences")
+    .from("admin_users")
     .select("cms_operator_columns")
     .eq("user_id", user.id)
     .maybeSingle();
@@ -67,14 +67,11 @@ export async function PUT(request: Request) {
       : [];
 
     const { error } = await supabase
-      .from("admin_preferences")
-      .upsert(
-        {
-          user_id: user.id,
-          cms_operator_columns: columns,
-        },
-        { onConflict: "user_id" }
-      );
+      .from("admin_users")
+      .update({ cms_operator_columns: columns })
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .eq("role", "admin");
 
     if (error) {
       console.error("[admin/preferences PUT]", error);

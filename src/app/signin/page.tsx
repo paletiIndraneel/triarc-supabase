@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import GlassCard from "@/components/ui/GlassCard";
-import SignInForm from "@/components/Admin/SignInForm";
+import SignInForm from "@/components/admin/SignInForm";
 
 export const metadata: Metadata = {
   title: "Sign In",

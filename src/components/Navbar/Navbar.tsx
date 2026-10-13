@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Menu, X, Zap } from "lucide-react";
 import Container from "@/components/Container";
-import LogoutButton from "@/components/Admin/LogoutButton";
+import LogoutButton from "@/components/admin/LogoutButton";
 import { navigation, navCta } from "@/data/navigation";
 
 export default function Navbar() {

@@ -24,7 +24,7 @@ export const contact = {
         "https://www.google.com/searchviewer/10?svid=CAwSHRIbCgNwdnESFENnMHZaeTh4TVhwb01UQnJjalV5GAo",
 
     email:
-        "info@triarcevhub.com",
+        "info@triarc.in",
 
     hours:
         "Open 24×7",

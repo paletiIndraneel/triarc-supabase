@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Check, Pencil, Plus, RefreshCw, Settings2, Trash2, X } from "lucide-react";
+import { useAdminModule } from "@/components/admin/AdminModuleContext";
 
 type CpoNumber = { id: string; mobileNumber: string; normalizedMobile: string; createdAt: string; updatedAt: string };
 
-export default function CpoSettingsPage() {
+export default function CpoSettings() {
+  const { setActiveModule } = useAdminModule();
   const [numbers, setNumbers] = useState<CpoNumber[]>([]);
   const [mobileNumber, setMobileNumber] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export default function CpoSettingsPage() {
 
   return <main className="min-h-screen bg-[#f8f9ff] px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
     <div className="mx-auto max-w-[1100px]">
-      <a href="/admin" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-violet-700"><ArrowLeft size={16}/> Back to CMS Dashboard</a>
+      <button type="button" onClick={() => setActiveModule("cms")} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-violet-700"><ArrowLeft size={16}/> Back to CMS Dashboard</button>
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3"><div className="rounded-xl bg-violet-50 p-3 text-violet-700"><Settings2 size={23}/></div><div>

@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
       { source: "/solutions/commercial-charging", destination: "/charging-solutions/commercial-ev-charging", permanent: true },
       { source: "/solutions/fleet-charging", destination: "/charging-solutions/fleet-charging", permanent: true },
       { source: "/stations/triarc-ev-hub-bhadrachalam", destination: "/ev-station/triarc-ev-hub-bhadrachalam", permanent: true },
+      // The admin area is a single page; old module URLs (e.g. /admin/billing) land on it.
+      { source: "/admin/:path+", destination: "/admin", permanent: false },
     ];
   },
 };

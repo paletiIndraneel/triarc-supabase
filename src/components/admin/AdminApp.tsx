@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
-import CmsDashboard from "@/app/admin/cms/page";
+import CmsDashboard from "@/app/admin/cms/CmsDashboard";
+import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
 import { ToastProvider } from "@/components/BillingToast";
@@ -42,6 +43,7 @@ export default function AdminApp({ enquiries, enquiryError }: { enquiries: Enqui
           </div>
         </main>
       )}
+      {activeModule === "cpo-settings" && <CpoSettings />}
       {activeModule === "inventory" && (
         <main className="min-h-screen bg-[#f8f9ff] px-6 py-8 text-slate-900">
           <div className="mx-auto max-w-[1440px]">

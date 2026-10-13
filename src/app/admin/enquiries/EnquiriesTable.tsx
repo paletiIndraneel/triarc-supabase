@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Mail, Phone, RefreshCw, Search, ChevronDown, ChevronUp, AlertCircle, Inbox } from "lucide-react";
+import { safeMailtoHref, safeTelHref } from "@/lib/security";
 
 type Enquiry = {
   id: string;
@@ -129,8 +130,8 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2">
-                            <a href={`mailto:${item.email}`} aria-label={`Email ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Mail size={15} /></a>
-                            {item.phone && <a href={`tel:${item.phone}`} aria-label={`Call ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Phone size={15} /></a>}
+                            <a href={safeMailtoHref(item.email)} aria-label={`Email ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Mail size={15} /></a>
+                            {item.phone && <a href={safeTelHref(item.phone)} aria-label={`Call ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Phone size={15} /></a>}
                           </div>
                         </td>
                       </tr>

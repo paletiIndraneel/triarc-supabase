@@ -135,6 +135,7 @@ export default function ContactForm() {
             value={form.name}
             onChange={handleChange}
             placeholder="Your name"
+            maxLength={200}
             required
             autoComplete="name"
             className="h-11 w-full rounded-lg border border-white/15 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-emerald-400/70 focus:bg-white/10"
@@ -150,6 +151,7 @@ export default function ContactForm() {
             value={form.email}
             onChange={handleChange}
             placeholder="you@example.com"
+            maxLength={254}
             required
             autoComplete="email"
             className="h-11 w-full rounded-lg border border-white/15 bg-white/5 px-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-emerald-400/70 focus:bg-white/10"
@@ -167,6 +169,7 @@ export default function ContactForm() {
           onChange={handleChange}
           rows={4}
           placeholder="Tell us your travel or charging plan..."
+          maxLength={10000}
           required
           className="min-h-[108px] resize-none rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-emerald-400/70 focus:bg-white/10"
         />

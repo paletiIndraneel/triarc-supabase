@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getSafeCallbackUrl } from "@/lib/security";
 
 export default function SignInForm() {
   const searchParams = useSearchParams();
@@ -37,16 +38,11 @@ export default function SignInForm() {
         return;
       }
 
-      const callbackUrl = searchParams.get("callbackUrl");
-
-      const isSafeCallback =
-        !!callbackUrl &&
-        callbackUrl.startsWith("/") &&
-        !callbackUrl.startsWith("//");
-
-      const destination = isSafeCallback
-        ? callbackUrl
-        : "/admin";
+      // Only same-origin paths are accepted; anything else falls back to /admin.
+      const destination = getSafeCallbackUrl(
+        searchParams.get("callbackUrl"),
+        window.location.origin
+      );
 
       window.location.href = destination;
     } catch (error) {

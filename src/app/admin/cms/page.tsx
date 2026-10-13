@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
+import { neutralizeCsvCell } from "@/lib/security";
 
 type Dashboard = {
   summary: Record<string, unknown>;
@@ -796,7 +797,8 @@ export default function CmsOperatorDashboard() {
     // current pagination page or the visible table columns.
     const headers = CMS_COLUMNS.map((column) => column.label);
     const csvCell = (value: unknown) => {
-      const text = value == null ? "" : String(value);
+      // neutralizeCsvCell stops spreadsheet formula injection from customer-controlled text.
+      const text = neutralizeCsvCell(value);
       return `"${text.replace(/"/g, '""')}"`;
     };
     const rows = transactions.map((transaction) =>

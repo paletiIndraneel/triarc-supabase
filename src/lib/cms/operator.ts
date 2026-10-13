@@ -24,6 +24,7 @@ let tokenRefreshPromise: Promise<string> | null = null;
 let contextDiscoveryPromise: Promise<CmsContext> | null = null;
 let cachedAllowedLocationIds: number[] | null = null;
 
+const MAX_COLLECTED_PAGES = 450;
 const TOKEN_TTL_MS = 45 * 60 * 1000;
 const TOKEN_REFRESH_SKEW_MS = 2 * 60 * 1000;
 
@@ -49,7 +50,11 @@ export async function getCmsConfig(): Promise<CmsConfig> {
   };
 }
 
-async function login(config: CmsConfig): Promise<string> {
+// A device-limit cleanup removes every "node" session in one pass, so a few retries
+// cover concurrent logins; without a bound a persistent 409 would loop forever.
+const MAX_DEVICE_LIMIT_RETRIES = 3;
+
+async function login(config: CmsConfig, deviceLimitRetries = 0): Promise<string> {
   if (
     !config.apiUrl ||
     !config.username ||
@@ -81,12 +86,18 @@ async function login(config: CmsConfig): Promise<string> {
       | null;
 
     if (payload?.status === "DEVICE_LIMIT_REACHED") {
+      if (deviceLimitRetries >= MAX_DEVICE_LIMIT_RETRIES) {
+        throw new Error(
+          "ChargeMOD device limit reached. Please free a slot and try again."
+        );
+      }
+
       try {
         await removeNodeSessionsFromDeviceLimit(
           payload,
           cachedToken?.value ?? null
         );
-        return login(config);
+        return login(config, deviceLimitRetries + 1);
       } catch (error) {
         console.error("[cms] ChargeMOD device limit cleanup failed", error);
         throw new Error(
@@ -495,6 +506,13 @@ export async function getOperatorData(
     const firstResult = Array.isArray(firstPage.result) ? firstPage.result : [];
     const totalCount = Number(firstPage.count ?? firstResult.length);
     const totalPages = Math.max(1, Math.ceil(totalCount / transactionOptions.perPage));
+    // Bound the fan-out: one request per page is fired in parallel, so a tiny perPage
+    // combined with a huge date range could otherwise issue an unbounded number of requests.
+    if (totalPages > MAX_COLLECTED_PAGES) {
+      throw new Error(
+        `Too many results (${totalCount}) for this request. Narrow the date range or search.`
+      );
+    }
     const remainingPages = await Promise.all(
       Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => fetchPage(index + 2))
     );

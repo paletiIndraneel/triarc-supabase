@@ -2,6 +2,7 @@
 
 import { Bell, Search, Settings2 } from "lucide-react";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
+import LogoutButton from "@/components/admin/LogoutButton";
 import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNavigation";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 
@@ -32,6 +33,7 @@ export default function AdminHeader() {
         <div className="flex h-9 w-[190px] items-center gap-2 rounded-[10px] border border-[#e2e4ec] px-[11px] text-xs text-[#98a2b3]"><Search size={16} /><span>Search portal...</span></div>
         <Bell size={18} />
         <AdminUserBadge />
+        <LogoutButton className="rounded-[10px] border border-[#e2e4ec] px-[12px] py-[7px] text-[13px] font-semibold text-[#172033] transition hover:bg-[#f5f3ff] hover:text-[#7157d9]" />
       </div>
     </header>
   );

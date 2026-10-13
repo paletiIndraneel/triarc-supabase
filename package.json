@@ -50,5 +50,8 @@
     "core-js": true,
     "esbuild": true,
     "workerd": true
+  },
+  "overrides": {
+    "node-domexception": "npm:@nolyfill/domexception@^1.0.28"
   }
 }

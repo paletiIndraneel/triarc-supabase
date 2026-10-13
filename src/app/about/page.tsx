@@ -65,7 +65,7 @@ export default function AboutPage() {
 						{/* Image */}
 						<div className="relative mx-auto w-full max-w-[680px] overflow-hidden rounded-[30px] border border-white/10 bg-white/5">
 							<Image
-								src="/images/stations/experience.png"
+								src="/images/stations/experience.webp"
 								alt="TRIARC EV Hub charging station in Bhadrachalam"
 								width={1400}
 								height={900}

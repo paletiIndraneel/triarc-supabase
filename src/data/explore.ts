@@ -17,7 +17,7 @@ export const places: ExplorePlace[] = [
     category: "Spiritual Heritage",
     description:
       "",
-    image: "/images/explore/temple.png",
+    image: "/images/explore/temple.webp",
     featured: true,
     mapsUrl: "https://maps.google.com/",
   },
@@ -28,7 +28,7 @@ export const places: ExplorePlace[] = [
     category: "Dining & Cafés",
     description:
       "",
-    image: "/images/explore/dining.png",
+    image: "/images/explore/dining.webp",
     featured: false,
     mapsUrl: "https://maps.google.com/",
   },
@@ -39,7 +39,7 @@ export const places: ExplorePlace[] = [
     category: "Scenic Escape",
     description:
       "",
-    image: "/images/explore/explore.jpg",
+    image: "/images/explore/explore.webp",
     featured: false,
     mapsUrl: "https://maps.google.com/",
   },
@@ -50,7 +50,7 @@ export const places: ExplorePlace[] = [
     category: "Comfort & Stay",
     description:
       "",
-    image: "/images/explore/hotel.png",
+    image: "/images/explore/hotel.webp",
     featured: false,
     mapsUrl: "https://maps.google.com/",
   },

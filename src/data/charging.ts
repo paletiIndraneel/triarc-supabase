@@ -2,7 +2,7 @@ export const chargingSolutions = [
   {
     title: "AC Charging",
     badge: "Up to 22 kW",
-    image: "/images/charging/ac-charging.png",
+    image: "/images/charging/ac-charging.webp",
     description:
       "Ideal for destination charging, workplaces and longer parking durations.",
     href: "/charging-solutions/ev-charging",
@@ -11,7 +11,7 @@ export const chargingSolutions = [
   {
     title: "DC Fast Charging",
     badge: "Up to 60 kW",
-    image: "/images/charging/dc-fast-charging.png",
+    image: "/images/charging/dc-fast-charging.webp",
     description:
       "Recharge quickly and continue your journey with high-speed DC charging.",
     href: "/charging-solutions/dc-fast-charging",
@@ -20,7 +20,7 @@ export const chargingSolutions = [
   {
     title: "Commercial EV Charging",
     badge: "2W • 3W • Fleet",
-    image: "/images/charging/commercial-charging.png",
+    image: "/images/charging/commercial-charging.webp",
     description:
       "Reliable charging infrastructure for electric three-wheelers and commercial fleets.",
     href: "/charging-solutions/commercial-ev-charging",

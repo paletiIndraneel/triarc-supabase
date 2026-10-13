@@ -1,9 +1,9 @@
-﻿"use client";
-
-import { createClient } from "@/lib/supabase/client";
+"use client";
 
 export default function LogoutButton({ compact = false }: { compact?: boolean }) {
   async function handleLogout() {
+    // Loaded on demand so the Supabase client is not in every public page bundle.
+    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
 
     await supabase.auth.signOut();

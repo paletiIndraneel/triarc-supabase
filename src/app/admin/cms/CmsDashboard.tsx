@@ -239,7 +239,7 @@ type DatePreset =
   | "last-week"
   | "this-month";
 
-function getISTCalendarDate(date = new Date()) {
+function getISTCalendarParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
@@ -248,19 +248,21 @@ function getISTCalendarDate(date = new Date()) {
   }).formatToParts(date);
 
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return new Date(
-    `${values.year}-${values.month}-${values.day}T00:00:00+05:30`
-  );
+  return { year: Number(values.year), month: Number(values.month), day: Number(values.day) };
 }
 
 function getDateRangeIST(preset: DatePreset) {
-  const today = getISTCalendarDate();
+  // Work on IST calendar parts: an IST midnight Date read back with getUTC*/getDay
+  // falls on the previous UTC day, which put the 1st of the month in the prior month.
+  const { year, month, day: dayOfMonth } = getISTCalendarParts();
+  const istMidnight = (offsetDays: number, dayInMonth = dayOfMonth + offsetDays) =>
+    new Date(Date.UTC(year, month - 1, dayInMonth) - 330 * 60 * 1000);
   const day = 24 * 60 * 60 * 1000;
-  const startOfWeek = new Date(today.getTime() - ((today.getDay() + 6) % 7) * day);
-  const startOfLastWeek = new Date(startOfWeek.getTime() - 7 * day);
-  const startOfMonth = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1) - 330 * 60 * 1000
-  );
+  const today = istMidnight(0);
+  const weekday = (new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay() + 6) % 7;
+  const startOfWeek = istMidnight(-weekday);
+  const startOfLastWeek = istMidnight(-weekday - 7);
+  const startOfMonth = istMidnight(0, 1);
 
   switch (preset) {
     case "yesterday":

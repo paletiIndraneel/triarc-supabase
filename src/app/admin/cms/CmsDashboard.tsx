@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
+import { type DatePreset, getDateRangeIST } from "./dateRanges";
 import { neutralizeCsvCell } from "@/lib/security";
 
 type Dashboard = {
@@ -149,6 +150,10 @@ function mergeCmsTransactions(existing: Transaction[], incoming: Transaction[]) 
   return Array.from(merged.values());
 }
 
+// The metric window always ends at "now", so an exact end match would never hit the
+// cache. Data up to this old is reused; Refresh forces a fetch.
+const CMS_CACHE_MAX_AGE_MS = 5 * 60 * 1000;
+
 function rangeIsCovered(
   coverage: CmsCache["coverage"],
   startDate: string,
@@ -159,8 +164,43 @@ function rangeIsCovered(
   return coverage.some((range) => {
     const start = new Date(range.startDate).getTime();
     const end = new Date(range.endDate).getTime();
-    return start <= requestedStart && end >= requestedEnd;
+    return start <= requestedStart && end >= requestedEnd - CMS_CACHE_MAX_AGE_MS;
   });
+}
+
+// React runs mount effects twice in development and quick filter changes can overlap;
+// requests for the same window in flight share one fetch. The window's end is "now",
+// so it is keyed by its start only.
+const inFlightOperatorRequests = new Map<string, Promise<{ ok: boolean; data: unknown }>>();
+
+function fetchOperatorData(query: string, key: string) {
+  let request = inFlightOperatorRequests.get(key);
+  if (!request) {
+    request = fetch(`/api/cms/operator?${query}`, { cache: "no-store" })
+      .then(async (response) => ({ ok: response.ok, data: await response.json() }))
+      .finally(() => inFlightOperatorRequests.delete(key));
+    inFlightOperatorRequests.set(key, request);
+  }
+  return request;
+}
+
+function normalizeMobile(value: string | null | undefined) {
+  const digits = String(value ?? "").replace(/D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : null;
+}
+
+// CPO Settings numbers; only consulted when ChargeMOD leaves a transaction's type empty.
+async function fetchCpoMobileNumbers(): Promise<Set<string>> {
+  try {
+    const response = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
+    if (!response.ok) return new Set();
+    const data = (await response.json()) as { numbers?: Array<{ normalizedMobile?: string }> };
+    return new Set(
+      (data.numbers ?? []).map((row) => row.normalizedMobile).filter((v): v is string => Boolean(v))
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 function filterTransactionsByRange(
@@ -231,68 +271,6 @@ const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [
   "energyKwh",
   "stopReason",
 ];
-
-type DatePreset =
-  | "today"
-  | "yesterday"
-  | "this-week"
-  | "last-week"
-  | "this-month";
-
-function getISTCalendarParts(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return { year: Number(values.year), month: Number(values.month), day: Number(values.day) };
-}
-
-function getDateRangeIST(preset: DatePreset) {
-  // Work on IST calendar parts: an IST midnight Date read back with getUTC*/getDay
-  // falls on the previous UTC day, which put the 1st of the month in the prior month.
-  const { year, month, day: dayOfMonth } = getISTCalendarParts();
-  const istMidnight = (offsetDays: number, dayInMonth = dayOfMonth + offsetDays) =>
-    new Date(Date.UTC(year, month - 1, dayInMonth) - 330 * 60 * 1000);
-  const day = 24 * 60 * 60 * 1000;
-  const today = istMidnight(0);
-  const weekday = (new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay() + 6) % 7;
-  const startOfWeek = istMidnight(-weekday);
-  const startOfLastWeek = istMidnight(-weekday - 7);
-  const startOfMonth = istMidnight(0, 1);
-
-  switch (preset) {
-    case "yesterday":
-      return {
-        startDate: new Date(today.getTime() - day).toISOString(),
-        endDate: today.toISOString(),
-      };
-    case "this-week":
-      return {
-        startDate: startOfWeek.toISOString(),
-        endDate: new Date(today.getTime() + day).toISOString(),
-      };
-    case "last-week":
-      return {
-        startDate: startOfLastWeek.toISOString(),
-        endDate: startOfWeek.toISOString(),
-      };
-    case "this-month":
-      return {
-        startDate: startOfMonth.toISOString(),
-        endDate: new Date(today.getTime() + day).toISOString(),
-      };
-    case "today":
-    default:
-      return {
-        startDate: today.toISOString(),
-        endDate: new Date().toISOString(),
-      };
-  }
-}
 
 function buildLocalDashboard(base: Dashboard | null, transactions: Transaction[]): Dashboard | null {
   if (!base) return null;
@@ -560,6 +538,7 @@ export default function CmsOperatorDashboard() {
         endDate: nowForMetrics.toISOString(),
       };
       let cache = readCmsCache();
+      const cpoMobileNumbersRequest = fetchCpoMobileNumbers();
 
       if (forceRefresh) {
         cache = { transactions: [], coverage: [] };
@@ -581,17 +560,14 @@ export default function CmsOperatorDashboard() {
       } else {
         const params = new URLSearchParams({
           page: "1",
-          perPage: "25",
+          perPage: "100",
           startDate: metricFetchRange.startDate,
           endDate: metricFetchRange.endDate,
         });
 
-        const response = await fetch(
-          `/api/cms/operator?${params.toString()}`,
-          { cache: "no-store" }
-        );
+        const response = await fetchOperatorData(params.toString(), metricFetchRange.startDate);
 
-        const data = (await response.json()) as {
+        const data = response.data as {
           error?: string;
           dashboard?: Dashboard;
           transactions?: TransactionResponse & {
@@ -704,10 +680,16 @@ export default function CmsOperatorDashboard() {
         setTotalEnergyToday(todayTransactions.reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0));
         setTotalRevenueToday(todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0));
 
-        // ChargeMOD marks CPO transactions directly on the transaction record.
-        // Use the source field rather than inferring CPO status from a customer's mobile number.
-        const isCpoTransaction = (transaction: Transaction) =>
-          transaction.type?.trim().toUpperCase() === "CPO";
+        // ChargeMOD marks CPO transactions directly on the transaction record, and
+        // that type always wins. Only when ChargeMOD leaves the type empty do the
+        // CPO Settings mobile numbers decide.
+        const cpoMobileNumbers = await cpoMobileNumbersRequest;
+        const isCpoTransaction = (transaction: Transaction) => {
+          const type = transaction.type?.trim().toUpperCase();
+          if (type) return type === "CPO";
+          const mobile = normalizeMobile(transaction.mobile);
+          return mobile !== null && cpoMobileNumbers.has(mobile);
+        };
         const stationType = (transaction: Transaction) =>
           `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
 

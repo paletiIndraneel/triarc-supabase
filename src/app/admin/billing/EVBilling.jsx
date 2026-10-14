@@ -3,23 +3,13 @@ import { Download, Plus, Trash2, RefreshCw, X } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/supabase/billing';
 import { useToast } from '@/components/BillingToast';
+import { words, calc } from './invoiceMath.mjs';
 
 const TRIARC_STATE = '36';
 const money = n => Number(n || 0).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '-';
 const gstState = g => g && /^\d{2}/.test(g.trim()) ? g.trim().slice(0,2) : null;
 
-function words(n){
- const o=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'],t=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
- const w=x=>{x=Math.floor(x);if(!x)return '';if(x<20)return o[x];if(x<100)return t[Math.floor(x/10)]+(x%10?' '+o[x%10]:'');if(x<1000)return o[Math.floor(x/100)]+' Hundred'+(x%100?' '+w(x%100):'');if(x<1e5)return w(x/1e3)+' Thousand'+(x%1e3?' '+w(x%1e3):'');if(x<1e7)return w(x/1e5)+' Lakh'+(x%1e5?' '+w(x%1e5):'');return w(x/1e7)+' Crore'+(x%1e7?' '+w(x%1e7):'')};
- const r=Math.floor(n||0),p=Math.round(((n||0)-r)*100); return 'INR '+(w(r)||'Zero')+' Rupees'+(p?' and '+w(p)+' Paise':'')+' Only';
-}
-function calc(items,type){
- let taxable=0,cgst=0,sgst=0,igst=0;
- const rows=items.map(x=>{const gross=+x.quantity*+x.unit_price,disc=gross*(+x.discount_percent||0)/100,tx=gross-disc,tax=tx*(+x.gst_rate||0)/100;taxable+=tx;if(type==='IGST')igst+=tax;else{cgst+=tax/2;sgst+=tax/2}return {...x,taxable_amount:tx,discount_amount:disc,line_total:tx+tax}});
- const tax=cgst+sgst+igst,total=taxable+tax,round=Math.round(total)-total;
- return {rows,taxable,cgst,sgst,igst,tax,round,total:total+round};
-}
 function pdf(inv,items,cfg){
   // PDF layout rebuilt from the supplied Excel invoice template.
   // The printable area is A1:G37. Keep this function aligned to that template.
@@ -264,7 +254,7 @@ export default function EVBilling(){
  const emptyCustomerForm={name:'',gstin:'',pan:'',billing_address_line1:'',billing_city:'',billing_state:'',billing_pincode:'',place_of_supply:'',customer_state_code:''};
  const [customerForm,setCustomerForm]=useState(emptyCustomerForm);
  const emptyInventoryForm={product_name:'DC EV Charging',hsn:'996749',unit:'KWH',purchase_price:'',selling_price:'',gst_rate:'18',notes:'',inventory_type:'electricity'}; const [inventoryForm,setInventoryForm]=useState(emptyInventoryForm);
- const load=useCallback(async()=>{const [a,b,c,s,st,se,po,li]=await Promise.all([supabase.from('billing_customers').select('*').eq('active',true).order('name'),supabase.from('billing_invoices').select('*').order('invoice_date',{ascending:false}),supabase.from('billing_inventory').select('*').eq('active',true).eq('inventory_type','electricity').order('product_name'),supabase.from('billing_invoice_settings').select('*').limit(1).maybeSingle(),supabase.from('billing_invoice_stations').select('*').eq('active',true).order('name'),supabase.from('billing_invoice_series').select('*').eq('active',true).order('series'),supabase.from('billing_place_of_supply').select('*').eq('active',true).order('name'),supabase.from('billing_items').select('invoice_id,quantity')]);const err=[a,b,c,s,st,se,po,li].find(x=>x.error);if(err)throw err.error;setCustomers(a.data||[]);setInvoices(b.data||[]);setInventory(c.data||[]);setBillingLines(li.data||[]);setSettings(s.data);setStations(st.data||[]);setSeriesList(se.data||[]);setPlaces(po.data||[]);if(!series&&se.data?.length)setSeries(se.data[0].series);if(!station&&st.data?.length)setStation(st.data[0].name);if(!place&&po.data?.length){setPlace(po.data[0].name);setPlaceCode(po.data[0].state_code||'')}},[place,series,station]);
+ const load=useCallback(async()=>{const [a,b,c,s,st,se,po,li]=await Promise.all([supabase.from('billing_customers').select('*').eq('active',true).order('name'),supabase.from('billing_invoices').select('*').order('invoice_date',{ascending:false}),supabase.from('billing_inventory').select('*').eq('active',true).eq('inventory_type','electricity').order('product_name'),supabase.from('billing_invoice_settings').select('*').limit(1).maybeSingle(),supabase.from('billing_invoice_stations').select('*').eq('active',true).order('name'),supabase.from('billing_invoice_series').select('*').eq('active',true).order('series'),supabase.from('billing_place_of_supply').select('*').eq('active',true).order('name'),supabase.from('billing_items').select('invoice_id,quantity')]);const err=[a,b,c,s,st,se,po,li].find(x=>x.error);if(err)throw err.error;setCustomers(a.data||[]);setInvoices(b.data||[]);setInventory(c.data||[]);setBillingLines(li.data||[]);setSettings(s.data);setStations(st.data||[]);setSeriesList(se.data||[]);setPlaces(po.data||[]);if(se.data?.length)setSeries(v=>v||se.data[0].series);if(st.data?.length)setStation(v=>v||st.data[0].name);if(po.data?.length)setPlace(v=>{if(v)return v;setPlaceCode(po.data[0].state_code||'');return po.data[0].name})},[]);
  useEffect(()=>{load().catch(e=>toast.error(e.message))},[load,toast]);
  const c=customers.find(x=>x.id===customer),auto=gstState(c?.gstin),taxType=auto?(auto===TRIARC_STATE?'CGST_SGST':'IGST'):manualTax,total=useMemo(()=>calc(items,taxType),[items,taxType]);
  const add=()=>{const p=inventory[0];if(!p)return toast.error('Add an inventory item first.');setItems(x=>[...x,{inventory_id:p.id,description:p.product_name,hsn:p.hsn||'',unit:p.unit||'PCS',quantity:1,unit_price:+p.selling_price||0,gst_rate:+p.gst_rate||0,discount_percent:0}])};

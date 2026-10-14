@@ -1,11 +1,14 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type CmsConfig = {
   enabled: boolean;
   apiUrl: string;
   username: string;
   password: string;
-  locationId: number;
+  // The signed-in admin's Supabase client. When set, the ChargeMOD token is shared
+  // with every other server instance through the cms_session table.
+  store?: SupabaseClient;
 };
 
 type CmsContext = {
@@ -46,7 +49,6 @@ export async function getCmsConfig(): Promise<CmsConfig> {
     apiUrl: String(env.CMS_API_URL ?? "").replace(/\/$/, ""),
     username: String(env.CMS_API_USERNAME ?? ""),
     password: String(env.CMS_API_PASSWORD ?? ""),
-    locationId: Number(env.CMS_API_LOCATION_ID ?? 0),
   };
 }
 
@@ -54,7 +56,11 @@ export async function getCmsConfig(): Promise<CmsConfig> {
 // cover concurrent logins; without a bound a persistent 409 would loop forever.
 const MAX_DEVICE_LIMIT_RETRIES = 3;
 
-async function login(config: CmsConfig, deviceLimitRetries = 0): Promise<string> {
+async function login(
+  config: CmsConfig,
+  previousToken: string | null,
+  deviceLimitRetries = 0
+): Promise<string> {
   if (
     !config.apiUrl ||
     !config.username ||
@@ -95,9 +101,9 @@ async function login(config: CmsConfig, deviceLimitRetries = 0): Promise<string>
       try {
         await removeNodeSessionsFromDeviceLimit(
           payload,
-          cachedToken?.value ?? null
+          previousToken ?? cachedToken?.value ?? null
         );
-        return login(config, deviceLimitRetries + 1);
+        return login(config, previousToken, deviceLimitRetries + 1);
       } catch (error) {
         console.error("[cms] ChargeMOD device limit cleanup failed", error);
         throw new Error(
@@ -264,7 +270,7 @@ function findToken(value: unknown): string | null {
 async function getToken(config: CmsConfig) {
   const now = Date.now();
 
-  // All CMS API requests use this same cached token until it is close to expiry.
+  // All CMS API requests in this instance use this cached token until it is close to expiry.
   if (
     cachedToken &&
     cachedToken.expiresAt > now + TOKEN_REFRESH_SKEW_MS
@@ -272,25 +278,94 @@ async function getToken(config: CmsConfig) {
     return cachedToken.value;
   }
 
-  // If several CMS requests arrive together, only one login request is made.
+  // If several CMS requests arrive together, only one of them looks for a token.
   if (tokenRefreshPromise) {
     return tokenRefreshPromise;
   }
 
-  tokenRefreshPromise = login(config).finally(() => {
+  tokenRefreshPromise = acquireSharedToken(config).finally(() => {
     tokenRefreshPromise = null;
   });
 
   return tokenRefreshPromise;
 }
 
-function invalidateToken(token: string) {
+const SHARED_LOGIN_LEASE_SECONDS = 30;
+const SHARED_TOKEN_POLL_MS = 500;
+const SHARED_TOKEN_MAX_POLLS = 40;
+
+type SharedSession = {
+  token?: string;
+  expires_at?: string;
+  location_ids?: number[] | null;
+  lease?: boolean;
+  previous_token?: string | null;
+  wait?: boolean;
+};
+
+// Every instance (Cloudflare isolate or Vercel function) gets its token from the
+// cms_session table. Only the instance holding the login lease signs in to ChargeMOD;
+// the rest wait for the token it stores, so concurrent requests share one session.
+async function acquireSharedToken(config: CmsConfig): Promise<string> {
+  const store = config.store;
+  if (!store) return login(config, null);
+
+  for (let attempt = 0; attempt < SHARED_TOKEN_MAX_POLLS; attempt++) {
+    const { data, error } = await store.rpc("cms_session_acquire", {
+      p_lease_seconds: SHARED_LOGIN_LEASE_SECONDS,
+    });
+
+    if (error) {
+      // The shared store is an optimisation; never let it take the dashboard down.
+      console.error("[cms] shared session lookup failed; logging in directly", error);
+      return login(config, null);
+    }
+
+    const session = (data ?? {}) as SharedSession;
+
+    if (session.token) {
+      const expiresAt = session.expires_at ? Date.parse(session.expires_at) : NaN;
+      cachedToken = {
+        value: session.token,
+        expiresAt: Number.isFinite(expiresAt) ? expiresAt : Date.now() + TOKEN_TTL_MS,
+      };
+      if (session.location_ids?.length) cachedAllowedLocationIds = session.location_ids;
+      return session.token;
+    }
+
+    if (session.lease) {
+      try {
+        const token = await login(config, session.previous_token ?? null);
+        const { error: storeError } = await store.rpc("cms_session_store", {
+          p_token: token,
+          p_expires_at: new Date(cachedToken?.expiresAt ?? Date.now() + TOKEN_TTL_MS).toISOString(),
+          p_location_ids: cachedAllowedLocationIds,
+        });
+        if (storeError) console.error("[cms] could not share the ChargeMOD token", storeError);
+        return token;
+      } catch (loginError) {
+        await store.rpc("cms_session_invalidate", { p_token: "" });
+        throw loginError;
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, SHARED_TOKEN_POLL_MS));
+  }
+
+  throw new Error("Timed out waiting for another request to sign in to ChargeMOD. Please retry.");
+}
+
+async function invalidateToken(config: CmsConfig, token: string) {
   // Never clear a newer token installed by another concurrent request.
   if (cachedToken?.value === token) {
     cachedToken = null;
     cachedContext = null;
     contextDiscoveryPromise = null;
     cachedAllowedLocationIds = null;
+  }
+  if (config.store) {
+    const { error } = await config.store.rpc("cms_session_invalidate", { p_token: token });
+    if (error) console.error("[cms] could not clear the shared ChargeMOD token", error);
   }
 }
 
@@ -317,7 +392,7 @@ async function cmsFetch<T>(
   });
 
   if (response.status === 401 && retry) {
-    invalidateToken(token);
+    await invalidateToken(config, token);
     return cmsFetch<T>(config, baseUrl, path, init, false);
   }
 
@@ -420,10 +495,6 @@ async function discoverContextInternal(config: CmsConfig): Promise<CmsContext> {
   throw new Error("CMS PowerLine organization/project could not be discovered.");
 }
 
-async function getCmsContext(config: CmsConfig): Promise<CmsContext> {
-  return discoverContext(config);
-}
-
 async function getAllowedLocationIds(
   config: CmsConfig,
   context: CmsContext
@@ -433,7 +504,6 @@ async function getAllowedLocationIds(
   try {
     const response = await cmsPost<Record<string, unknown>>(
       config,
-      context,
       `/location/all-locations/?organizationId=${context.organizationId}&projectId=${context.projectId}&offset=1&limit=100&location=&other=`,
       { allowedLocations: [] }
     );
@@ -467,7 +537,8 @@ async function getAllowedLocationIds(
 }
 
 export async function getOperatorData(
-  config: CmsConfig,
+  baseConfig: CmsConfig,
+  store: SupabaseClient,
   transactionOptions: {
     page: number;
     perPage: number;
@@ -477,6 +548,8 @@ export async function getOperatorData(
     searchKey?: string;
   }
 ) {
+  const config: CmsConfig = { ...baseConfig, store };
+
   // CMS is the primary transaction source. An OCPI authorization/API failure
   // must not discard valid CMS dashboard or transaction data.
   const ocpiErrors: string[] = [];
@@ -642,7 +715,7 @@ async function getOcpiTransactions(
     searchKey?: string;
   }
 ) {
-  const context = await getCmsContext(config);
+  const context = await discoverContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
   return cmsFetch<Record<string, unknown>>(
     config,
@@ -669,7 +742,7 @@ async function getOcpiTransactions(
 }
 
 async function getOcpiActiveTransactions(config: CmsConfig) {
-  const context = await getCmsContext(config);
+  const context = await discoverContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
   return cmsFetch<Record<string, unknown>>(
     config,
@@ -696,7 +769,7 @@ export async function getDashboardData(
   startDate: string,
   endDate: string
 ) {
-  const context = await getCmsContext(config);
+  const context = await discoverContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
 
   const body = {
@@ -709,13 +782,11 @@ export async function getDashboardData(
   const [summary, chart, chargers, locations] = await Promise.all([
     cmsPost<Record<string, unknown>>(
       config,
-      context,
       `/dashboard/get-transaction-data?organizationId=${context.organizationId}&projectId=${context.projectId}`,
       body
     ),
     cmsPost<Record<string, unknown>>(
       config,
-      context,
       `/dashboard/get-chart-data?organizationId=${context.organizationId}&projectId=${context.projectId}`,
       {
         ...body,
@@ -724,7 +795,6 @@ export async function getDashboardData(
     ),
     cmsPost<Record<string, unknown>>(
       config,
-      context,
       "/dashboard/search-data/get-chargers",
       {
         organizationId: context.organizationId,
@@ -734,7 +804,6 @@ export async function getDashboardData(
     ),
     cmsPost<Record<string, unknown>>(
       config,
-      context,
       "/dashboard/search-data/get-locations",
       {
         organizationId: context.organizationId,
@@ -749,7 +818,6 @@ export async function getDashboardData(
 
 async function cmsPost<T>(
   config: CmsConfig,
-  context: CmsContext,
   path: string,
   body: Record<string, unknown>
 ): Promise<T> {
@@ -771,12 +839,11 @@ export async function getTransactions(
     searchKey?: string;
   }
 ) {
-  const context = await getCmsContext(config);
+  const context = await discoverContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
 
   return cmsPost<Record<string, unknown>>(
     config,
-    context,
     "/pwr/charger/get-pwr-transaction",
     {
       organizationId: context.organizationId,
@@ -801,12 +868,11 @@ export async function getTransactions(
 }
 
 export async function getActiveTransactions(config: CmsConfig) {
-  const context = await getCmsContext(config);
+  const context = await discoverContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
 
   return cmsPost<Record<string, unknown>>(
     config,
-    context,
     "/pwr/charger/get-pwr-active-transaction",
     {
       organizationId: context.organizationId,

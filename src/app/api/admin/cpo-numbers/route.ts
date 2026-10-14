@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 function normalizeIndianMobile(value: string) {
@@ -9,14 +9,6 @@ function normalizeIndianMobile(value: string) {
   return digits.length === 10 ? digits : null;
 }
 
-async function getAdminClient() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null };
-  const { data: admin, error } = await supabase.from("admin_users").select("user_id")
-    .eq("user_id", user.id).eq("role", "admin").eq("active", true).maybeSingle();
-  return { supabase, user: !error && admin ? user : null };
-}
 
 export async function GET() {
   const { supabase, user } = await getAdminClient();

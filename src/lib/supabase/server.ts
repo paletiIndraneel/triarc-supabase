@@ -31,3 +31,23 @@ export async function createClient() {
     },
   });
 }
+
+// Route handlers aren't covered by the /admin proxy guard, so each one calls this.
+// Returns the cookie-bound client plus the user when they are an active admin.
+export async function getAdminClient() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { supabase, user: null };
+
+  const { data: admin, error } = await supabase
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .eq("active", true)
+    .maybeSingle();
+
+  return { supabase, user: !error && admin ? user : null };
+}

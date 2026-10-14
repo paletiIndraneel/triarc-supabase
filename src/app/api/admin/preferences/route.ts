@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,27 +15,8 @@ const DEFAULT_COLUMNS = [
   "stopReason",
 ];
 
-async function getAdminUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { supabase, user: null };
-
-  const { data: admin } = await supabase
-    .from("admin_users")
-    .select("user_id")
-    .eq("user_id", user.id)
-    .eq("role", "admin")
-    .eq("active", true)
-    .maybeSingle();
-
-  return { supabase, user: admin ? user : null };
-}
-
 export async function GET() {
-  const { supabase, user } = await getAdminUser();
+  const { supabase, user } = await getAdminClient();
   if (!user) return new NextResponse("Forbidden", { status: 403 });
 
   const { data, error } = await supabase
@@ -58,7 +39,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const { supabase, user } = await getAdminUser();
+  const { supabase, user } = await getAdminClient();
   if (!user) return new NextResponse("Forbidden", { status: 403 });
 
   try {

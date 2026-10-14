@@ -48,8 +48,19 @@ function pdf(inv,items,cfg){
   const rowH={1:10,2:7,3:11,4:6,5:7,6:7,7:7,8:7,9:7,10:7,11:6.5,12:6.5,13:6.5,14:7,15:8,16:8,17:8,18:8,19:7,20:7,21:7,22:8,23:10,24:5,25:5,26:7,27:7,28:7,29:9,30:5,31:7,32:11,33:8,34:8,35:10,36:8,37:8};
   const y={};
   let yy=TOP;
-  for(let r=1;r<=37;r++){y[r]=yy;yy+=rowH[r];}
-  const bottom=y[37]+rowH[37];
+  for(let r=1;r<=15;r++){y[r]=yy;yy+=rowH[r];}
+  // Service rows (template rows 16-18) grow with the item count, minimum three,
+  // and spill onto continuation pages. The summary block (rows 19-37) is never split.
+  const ITEM_H=8,PAGE_END=292;
+  let tailH=0;
+  for(let r=19;r<=37;r++)tailH+=rowH[r];
+  const slots=Math.max(3,items.length),pages=[];
+  for(let i=0,start=y[15]+rowH[15];;start=TOP+rowH[15]){
+    const remaining=slots-i;
+    if(remaining*ITEM_H<=PAGE_END-tailH-start){pages.push({start,from:i,to:slots});break;}
+    const take=Math.max(1,Math.min(remaining-1,Math.floor((PAGE_END-start)/ITEM_H)));
+    pages.push({start,from:i,to:i+take});i+=take;
+  }
   // Excel A:G column widths scaled to the 190 mm invoice frame.
   const cw=[11,31,11.86,12.86,16.57,10.43,19], scale=W/cw.reduce((a,b)=>a+b,0), x=[L];
   cw.forEach(w=>x.push(x[x.length-1]+w*scale));
@@ -60,11 +71,9 @@ function pdf(inv,items,cfg){
   const right=(txt,x1,x2,yy,size=8,bold=false)=>{d.setFont('helvetica',bold?'bold':'normal');d.setFontSize(size);d.text(safe(txt),x2-1,yy,{align:'right'});};
   const left=(txt,x1,yy,size=8,bold=false,maxWidth)=>{d.setFont('helvetica',bold?'bold':'normal');d.setFontSize(size);d.text(safe(txt),x1+1,yy,maxWidth?{maxWidth}:undefined);};
 
-  // Outer invoice frame: one continuous, uniform border on all four sides.
-  d.setDrawColor(0);
-  d.setLineWidth(0.5);
-  d.rect(L,TOP,W,bottom-TOP);
-  // Restore the standard thinner weight for internal table/divider lines.
+  // Outer invoice frame: one continuous, uniform border on all four sides of each page,
+  // then the standard thinner weight for internal table/divider lines.
+  const frame=(top,bot)=>{d.setDrawColor(0);d.setLineWidth(0.5);d.rect(L,top,W,bot-top);line();};
   line();
 
   // Header A1:G5
@@ -124,27 +133,33 @@ function pdf(inv,items,cfg){
   center(fmtDate(inv.invoice_date),x[5],R,y[8]+rowH[8]/2+2.7,7.5);
   left('Mode/Terms of Payment:',x[4],y[9]+5.0,7.2,false);
 
-  // Service table A15:G18. The Excel template has exactly three service rows.
-  d.setFillColor(...BLUE);d.rect(L+0.25,y[15],W-0.5,rowH[15],'F');
-  // Top border of the service table header.
-  d.line(L,y[15],R,y[15]);
-  for(let i=0;i<8;i++)d.line(x[i],y[15],x[i],y[18]+rowH[18]);
-  for(let r=15;r<=18;r++)hline(r);
+  // Service table A15:G18, repeated with its header on each continuation page.
   const headers=['Sl No.','Description of Services','GST Rate','Quantity (kWh)','Rate (Rs.)','per','Amount (Rs.)'];
-  headers.forEach((v,i)=>center(v,x[i],x[i+1],y[15]+5.3,7.3,true));
-
-  const rows=items.slice(0,3);
-  for(let i=0;i<3;i++){
-    const r=16+i, item=rows[i]||{};
-    const desc=item.description ? item.description+' (HSN/SAC '+safe(item.hsn||'996749')+')' : '';
-    center(i+1,x[0],x[1],y[r]+5.2,7.3);
-    left(desc,x[1],y[r]+5.2,7.0,false,x[2]-x[1]-2);
-    center(item.gst_rate!==undefined&&item.gst_rate!=='' ? (+item.gst_rate||0)+'%' : '',x[2],x[3],y[r]+5.2,7.2);
-    right(item.quantity===undefined?'':money4(item.quantity),x[3],x[4],y[r]+5.2,7.2);
-    right(item.unit_price===undefined?'':money4(item.unit_price),x[4],x[5],y[r]+5.2,7.2);
-    center(item.unit||'UNT',x[5],x[6],y[r]+5.2,7.2);
-    right(item.taxable_amount===undefined?'':money2(item.taxable_amount),x[6],x[7],y[r]+5.2,7.2);
-  }
+  let pageTop=TOP,itemEnd;
+  pages.forEach((p,n)=>{
+    if(n){frame(pageTop,itemEnd);d.addPage();pageTop=TOP;}
+    const head=p.start-rowH[15];
+    itemEnd=p.start+(p.to-p.from)*ITEM_H;
+    d.setFillColor(...BLUE);d.rect(L+0.25,head,W-0.5,rowH[15],'F');
+    d.line(L,head,R,head);d.line(L,p.start,R,p.start);
+    for(let i=0;i<8;i++)d.line(x[i],head,x[i],itemEnd);
+    headers.forEach((v,i)=>center(v,x[i],x[i+1],head+5.3,7.3,true));
+    for(let i=p.from;i<p.to;i++){
+      const top=p.start+(i-p.from)*ITEM_H, item=items[i]||{};
+      const desc=item.description ? item.description+' (HSN/SAC '+safe(item.hsn||'996749')+')' : '';
+      d.line(L,top+ITEM_H,R,top+ITEM_H);
+      center(i+1,x[0],x[1],top+5.2,7.3);
+      left(desc,x[1],top+5.2,7.0,false,x[2]-x[1]-2);
+      center(item.gst_rate!==undefined&&item.gst_rate!=='' ? (+item.gst_rate||0)+'%' : '',x[2],x[3],top+5.2,7.2);
+      right(item.quantity===undefined?'':money4(item.quantity),x[3],x[4],top+5.2,7.2);
+      right(item.unit_price===undefined?'':money4(item.unit_price),x[4],x[5],top+5.2,7.2);
+      center(item.unit||'UNT',x[5],x[6],top+5.2,7.2);
+      right(item.taxable_amount===undefined?'':money2(item.taxable_amount),x[6],x[7],top+5.2,7.2);
+    }
+  });
+  yy=itemEnd;
+  for(let r=19;r<=37;r++){y[r]=yy;yy+=rowH[r];}
+  const bottom=y[37]+rowH[37];
 
   // Summary rows A19:G23. The reference has no horizontal separators
   // through the label area; only the amount/value column is divided.
@@ -154,7 +169,7 @@ function pdf(inv,items,cfg){
   // amount row, ending at the Rs. grand-total boundary.
   d.line(x[6],y[19],x[6],y[22]+rowH[22]);
   [19,20,21].forEach(r=>right(
-    r===19?'Sub Total (Taxable Value)':r===20?(isIgst?'IGST Output A/c @ '+(rows[0]?.gst_rate||0)+'%':'CGST + SGST'):'Rounding Off',
+    r===19?'Sub Total (Taxable Value)':r===20?(isIgst?'IGST Output A/c @ '+(items[0]?.gst_rate||0)+'%':'CGST + SGST'):'Rounding Off',
     L,x[6],y[r]+4.7,7.5,r===19
   ));
   right(money2(inv.taxable_amount),x[6],R,y[19]+4.7,7.5,true);
@@ -173,7 +188,7 @@ function pdf(inv,items,cfg){
   d.line(x[3],y[22],x[3],y[22]+rowH[22]);
   d.line(x[4],y[22],x[4],y[22]+rowH[22]);
   center('Total',L,x[3],y[22]+5.3,8,true);
-  right(money4(rows.reduce((n,r)=>n+(+r.quantity||0),0)),x[3],x[4],y[22]+5.3,7.5,true);
+  right(money4(items.reduce((n,r)=>n+(+r.quantity||0),0)),x[3],x[4],y[22]+5.3,7.5,true);
   right('Rs. '+money2(inv.grand_total),x[4],R,y[22]+5.3,8,true);
 
   left('Amount Chargeable (in words): '+words(inv.grand_total)+' (E. & O.E.)',L,y[23]+6.2,7.5,true,R-L-2);
@@ -196,8 +211,8 @@ function pdf(inv,items,cfg){
   const txHeaders=isIgst?['HSN/SAC','Taxable Value','IGST Rate','IGST Amount','Total Tax Amount']:['HSN/SAC','Taxable Value','GST Rate','CGST','SGST','Total Tax Amount'];
   txHeaders.forEach((v,i)=>center(v,txCols[i],txCols[i+1],y[26]+5.0,7.0,true));
   const groups={};
-  rows.forEach(item=>{const h=item.hsn||'996749';const g=groups[h]||(groups[h]={taxable:0,gst:+item.gst_rate||0});g.taxable+=+item.taxable_amount||0;});
-  const first=Object.entries(groups)[0]||['996749',{taxable:Number(inv.taxable_amount||0),gst:+rows[0]?.gst_rate||18}];
+  items.forEach(item=>{const h=item.hsn||'996749';const g=groups[h]||(groups[h]={taxable:0,gst:+item.gst_rate||0});g.taxable+=+item.taxable_amount||0;});
+  const first=Object.entries(groups)[0]||['996749',{taxable:Number(inv.taxable_amount||0),gst:+items[0]?.gst_rate||18}];
   const taxValue=Number(inv.taxable_amount||first[1].taxable||0), rate=first[1].gst||18;
   center(first[0],txCols[0],txCols[1],y[27]+5.0,7.0);
   right(money2(taxValue),txCols[1],txCols[2],y[27]+5.0,7.0);
@@ -231,6 +246,7 @@ function pdf(inv,items,cfg){
   center('This is a Computer Generated Invoice',L,R,y[37]+5.5,7.2);
   right('Authorised Signatory',L+120,R,y[37]+5.5,7.2);
 
+  frame(pageTop,bottom);
   return d;
 }
 function Modal({title,children,onClose}){return <div className="modal-backdrop"><div className="modal-card"><div className="modal-header"><h3>{title}</h3><button className="icon-btn" onClick={onClose}><X size={18}/></button></div>{children}</div></div>;}

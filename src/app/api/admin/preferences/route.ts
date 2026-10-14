@@ -39,7 +39,7 @@ export async function GET() {
   if (!user) return new NextResponse("Forbidden", { status: 403 });
 
   const { data, error } = await supabase
-    .from("admin_preferences")
+    .from("admin_users")
     .select("cms_operator_columns")
     .eq("user_id", user.id)
     .maybeSingle();
@@ -49,7 +49,8 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load preferences." }, { status: 500 });
   }
 
-  const columns = Array.isArray(data?.cms_operator_columns)
+  // New admin rows default to [], which means "not customised yet".
+  const columns = Array.isArray(data?.cms_operator_columns) && data.cms_operator_columns.length
     ? data.cms_operator_columns
     : DEFAULT_COLUMNS;
 
@@ -66,17 +67,13 @@ export async function PUT(request: Request) {
       ? body.columns.filter((column): column is string => typeof column === "string")
       : [];
 
-    const { error } = await supabase
-      .from("admin_preferences")
-      .upsert(
-        {
-          user_id: user.id,
-          cms_operator_columns: columns,
-        },
-        { onConflict: "user_id" }
-      );
+    const { data, error } = await supabase
+      .from("admin_users")
+      .update({ cms_operator_columns: columns })
+      .eq("user_id", user.id)
+      .select("user_id");
 
-    if (error) {
+    if (error || !data?.length) {
       console.error("[admin/preferences PUT]", error);
       return NextResponse.json({ error: "Failed to save preferences." }, { status: 500 });
     }

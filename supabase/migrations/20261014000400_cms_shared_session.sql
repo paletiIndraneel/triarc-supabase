@@ -8,7 +8,7 @@ create table if not exists public.cms_session (
   id smallint primary key default 1 constraint cms_session_single_row check (id = 1),
   access_token text,
   expires_at timestamptz,
-  location_ids integer[],
+  location_ids bigint[],
   login_lease_until timestamptz,
   updated_at timestamptz not null default now()
 );
@@ -55,7 +55,7 @@ begin
 end;
 $$;
 
-create or replace function public.cms_session_store(p_token text, p_expires_at timestamptz, p_location_ids integer[])
+create or replace function public.cms_session_store(p_token text, p_expires_at timestamptz, p_location_ids bigint[])
 returns void language plpgsql security definer set search_path = '' as $$
 begin
   perform public.cms_session_require_admin();
@@ -82,8 +82,8 @@ $$;
 
 revoke execute on function public.cms_session_require_admin() from public, anon, authenticated;
 revoke execute on function public.cms_session_acquire(integer) from public, anon;
-revoke execute on function public.cms_session_store(text, timestamptz, integer[]) from public, anon;
+revoke execute on function public.cms_session_store(text, timestamptz, bigint[]) from public, anon;
 revoke execute on function public.cms_session_invalidate(text) from public, anon;
 grant execute on function public.cms_session_acquire(integer) to authenticated;
-grant execute on function public.cms_session_store(text, timestamptz, integer[]) to authenticated;
+grant execute on function public.cms_session_store(text, timestamptz, bigint[]) to authenticated;
 grant execute on function public.cms_session_invalidate(text) to authenticated;

@@ -341,7 +341,11 @@ async function acquireSharedToken(config: CmsConfig): Promise<string> {
           p_expires_at: new Date(cachedToken?.expiresAt ?? Date.now() + TOKEN_TTL_MS).toISOString(),
           p_location_ids: cachedAllowedLocationIds,
         });
-        if (storeError) console.error("[cms] could not share the ChargeMOD token", storeError);
+        if (storeError) {
+          // Release the lease so waiting requests don't stall until it times out.
+          console.error("[cms] could not share the ChargeMOD token", storeError);
+          await store.rpc("cms_session_invalidate", { p_token: "" });
+        }
         return token;
       } catch (loginError) {
         await store.rpc("cms_session_invalidate", { p_token: "" });

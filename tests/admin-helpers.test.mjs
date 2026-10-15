@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { calc, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
+import { EMPTY_TRANSACTION_FILTERS, matchesTransactionFilters } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
 
@@ -75,4 +76,26 @@ test("getSafeCallbackUrl keeps same-origin paths and blocks dot-segment redirect
   for (const raw of ["//evil.example", "/..//evil.example", "/.//evil.example", "/admin/..//evil.example", "/admin/%2e%2e//evil.example", "/%2e//evil.example"]) {
     assert.equal(getSafeCallbackUrl(raw, origin), "/admin", raw);
   }
+});
+
+test("last month spans the previous IST calendar month, across a year boundary", () => {
+  assert.deepEqual(at("last-month", "2026-10-15T12:00:00+05:30"), ["2026-08-31T18:30:00.000Z", "2026-09-30T18:30:00.000Z"]);
+  assert.deepEqual(at("last-month", "2026-01-01T00:10:00+05:30"), ["2025-11-30T18:30:00.000Z", "2025-12-31T18:30:00.000Z"]);
+});
+
+test("transaction filters match location, AC/DC, status, min kWh and search", () => {
+  const row = {
+    id: "1", transactionId: "TX-9", chargerId: "C1", chargerName: "Bay 2 DC Charger", stationType: null,
+    location: "Bhadrachalam", userName: "Ravi", mobile: "9876543210", vehicleNumber: "TS09AB1234", energyKwh: 0,
+  };
+  const f = (over) => ({ ...EMPTY_TRANSACTION_FILTERS, ...over });
+  assert.equal(matchesTransactionFilters(row, f({}), false), true);
+  assert.equal(matchesTransactionFilters(row, f({ location: "Other" }), false), false);
+  assert.equal(matchesTransactionFilters(row, f({ current: "dc" }), false), true);
+  assert.equal(matchesTransactionFilters(row, f({ current: "ac" }), false), false);
+  assert.equal(matchesTransactionFilters(row, f({ status: "failed" }), false), true);
+  assert.equal(matchesTransactionFilters(row, f({ status: "live" }), true), true);
+  assert.equal(matchesTransactionFilters(row, f({ minKwh: "0.5" }), false), false);
+  assert.equal(matchesTransactionFilters(row, f({ search: "ts09ab" }), false), true);
+  assert.equal(matchesTransactionFilters(row, f({ search: "nobody" }), false), false);
 });

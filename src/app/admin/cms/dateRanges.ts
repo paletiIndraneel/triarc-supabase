@@ -3,7 +3,8 @@ export type DatePreset =
   | "yesterday"
   | "this-week"
   | "last-week"
-  | "this-month";
+  | "this-month"
+  | "last-month";
 
 export function getISTCalendarParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -30,6 +31,8 @@ export function getDateRangeIST(preset: DatePreset, now = new Date()) {
   const startOfWeek = istMidnight(-weekday);
   const startOfLastWeek = istMidnight(-weekday - 7);
   const startOfMonth = istMidnight(0, 1);
+  // Date.UTC rolls month 0 back to December of the previous year.
+  const startOfLastMonth = new Date(Date.UTC(year, month - 2, 1) - 330 * 60 * 1000);
 
   switch (preset) {
     case "yesterday":
@@ -51,6 +54,11 @@ export function getDateRangeIST(preset: DatePreset, now = new Date()) {
       return {
         startDate: startOfMonth.toISOString(),
         endDate: new Date(today.getTime() + day).toISOString(),
+      };
+    case "last-month":
+      return {
+        startDate: startOfLastMonth.toISOString(),
+        endDate: startOfMonth.toISOString(),
       };
     case "today":
     default:

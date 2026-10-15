@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { type DatePreset, getDateRangeIST } from "./dateRanges";
+import {
+  EMPTY_TRANSACTION_FILTERS,
+  type TransactionFilters,
+  chargerCurrent,
+  chargerLabel,
+  matchesTransactionFilters,
+} from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 
 type Dashboard = {
@@ -379,7 +386,7 @@ function displayCharger(value: string) {
 
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 export default function CmsOperatorDashboard() {
-  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
@@ -387,13 +394,14 @@ export default function CmsOperatorDashboard() {
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
   const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [activeTransactions, setActiveTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
-  const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [datePreset, setDatePreset] = useState<DatePreset>("today");
+  const [filters, setFilters] = useState<TransactionFilters>(EMPTY_TRANSACTION_FILTERS);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
@@ -518,9 +526,8 @@ export default function CmsOperatorDashboard() {
     setMessage("");
 
     try {
-      const dateRange = getDateRangeIST(datePreset);
-      // Fetch one consistent transaction window for all dashboard metrics,
-      // regardless of the table's selected date filter. It covers the previous
+      // Fetch one consistent transaction window for all dashboard metrics and the
+      // table; the table's date filter is applied client-side and never refetches. It covers the previous
       // calendar month and the current month-to-date.
       const nowForMetrics = new Date();
       const istDateParts = new Intl.DateTimeFormat("en-CA", {
@@ -547,17 +554,9 @@ export default function CmsOperatorDashboard() {
         }
       }
 
-      let filteredTransactions: Transaction[];
-      let dashboardData: Dashboard | undefined;
       let activeData: ActiveTransactionResponse = {};
 
-      if (rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) {
-        filteredTransactions = filterTransactionsByRange(
-          cache.transactions,
-          dateRange.startDate,
-          dateRange.endDate
-        );
-      } else {
+      if (!rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) {
         const params = new URLSearchParams({
           page: "1",
           perPage: "100",
@@ -580,7 +579,7 @@ export default function CmsOperatorDashboard() {
           throw new Error(data.error ?? "CMS request failed.");
         }
 
-        dashboardData = data.dashboard;
+        const dashboardData = data.dashboard;
         if (!dashboardData) {
           throw new Error(data.error ?? "CMS dashboard data was not returned.");
         }
@@ -593,40 +592,17 @@ export default function CmsOperatorDashboard() {
           coverage: [...cache.coverage, coverage],
         };
         writeCmsCache(cache);
-
-        filteredTransactions = filterTransactionsByRange(
-          cache.transactions,
-          dateRange.startDate,
-          dateRange.endDate
-        );
+        setBaseDashboard(dashboardData);
         activeData = data.active ?? {};
       }
 
       const activeWasFetched =
         activeData.transactions !== undefined || activeData.count !== undefined;
       const currentActiveTransactions = activeData.transactions ?? [];
-      const liveTransactions = currentActiveTransactions.filter(
-        (activeTransaction) =>
-          !filteredTransactions.some(
-            (transaction) =>
-              (transaction.transactionId && transaction.transactionId === activeTransaction.transactionId) ||
-              (transaction.id && transaction.id === activeTransaction.id)
-          )
-      );
-
-      const visibleTransactions = [...liveTransactions, ...filteredTransactions];
-      // Recompute transaction-derived summary metrics from combined CMS + OCPI rows,
-      // including active sessions so live consumption is represented too.
-      const nextDashboard = buildLocalDashboard(
-        dashboardData ?? dashboard,
-        visibleTransactions
-      );
-
-      if (nextDashboard) setDashboard(nextDashboard);
-      setTransactions(visibleTransactions);
-      setCount(filteredTransactions.length + liveTransactions.length);
+      setAllTransactions(cache.transactions);
 
       if (activeWasFetched) {
+        setActiveTransactions(currentActiveTransactions);
         setActive(activeData.count ?? currentActiveTransactions.length);
         setActiveTransactionIds(
           new Set(
@@ -690,9 +666,6 @@ export default function CmsOperatorDashboard() {
           const mobile = normalizeMobile(transaction.mobile);
           return mobile !== null && cpoMobileNumbers.has(mobile);
         };
-        const stationType = (transaction: Transaction) =>
-          `${transaction.stationType ?? ""} ${transaction.chargerName ?? ""} ${transaction.chargerId ?? ""}`.toLowerCase();
-
         const mtdTransactions = filterTransactionsByRange(
           metricTransactions,
           currentMonthRange.startDate,
@@ -707,9 +680,8 @@ export default function CmsOperatorDashboard() {
             totals.cpo += energy;
           } else {
             totals.total += energy;
-            const type = stationType(transaction);
-            if (/\bac\b|ac charger|alternating current/.test(type)) totals.ac += energy;
-            else if (/\bdc\b|dc charger|direct current/.test(type)) totals.dc += energy;
+            const current = chargerCurrent(transaction);
+            if (current) totals[current] += energy;
           }
           return totals;
         }, { total: 0, ac: 0, dc: 0, cpo: 0 });
@@ -726,10 +698,9 @@ export default function CmsOperatorDashboard() {
         const mtdRevenueTotals = mtdTransactions.reduce((totals, transaction) => {
           const amount = Number(transaction.tariffAmount);
           if (!Number.isFinite(amount)) return totals;
-          const type = stationType(transaction);
           if (!isCpoTransaction(transaction)) {
-            if (/\bac\b|ac charger|alternating current/.test(type)) totals.ac += amount;
-            else if (/\bdc\b|dc charger|direct current/.test(type)) totals.dc += amount;
+            const current = chargerCurrent(transaction);
+            if (current) totals[current] += amount;
           }
           totals.total += amount;
           return totals;
@@ -768,11 +739,45 @@ export default function CmsOperatorDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [datePreset]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const transactions = useMemo(() => {
+    const dateRange = getDateRangeIST(datePreset);
+    const filtered = filterTransactionsByRange(allTransactions, dateRange.startDate, dateRange.endDate);
+    const live = activeTransactions.filter(
+      (activeTransaction) =>
+        !filtered.some(
+          (transaction) =>
+            (transaction.transactionId && transaction.transactionId === activeTransaction.transactionId) ||
+            (transaction.id && transaction.id === activeTransaction.id)
+        )
+    );
+    const isLive = (transaction: Transaction) =>
+      activeTransactionIds.has(transaction.id) || activeTransactionIds.has(transaction.transactionId);
+    return [...live, ...filtered].filter((transaction) =>
+      matchesTransactionFilters(transaction, filters, isLive(transaction))
+    );
+  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, filters]);
+  const locationOptions = useMemo(
+    () => [...new Set(allTransactions.map((transaction) => transaction.location).filter(Boolean))].sort(),
+    [allTransactions]
+  );
+  const chargerOptions = useMemo(
+    () => [...new Set(allTransactions.map(chargerLabel).filter(Boolean))].sort(),
+    [allTransactions]
+  );
+  const filtersActive = Object.values(filters).some((value) => value.trim() !== "");
+  const count = transactions.length;
+  // Transaction-derived summary metrics from combined CMS + OCPI rows, including
+  // active sessions so live consumption is represented too.
+  const dashboard = useMemo(
+    () => buildLocalDashboard(baseDashboard, transactions),
+    [baseDashboard, transactions]
+  );
 
   const pagedTransactions = transactions.slice((page - 1) * pageSize, page * pageSize);
 
@@ -824,6 +829,16 @@ export default function CmsOperatorDashboard() {
     setPage(1);
   }
 
+  function updateFilter<K extends keyof TransactionFilters>(key: K, value: TransactionFilters[K]) {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setFilters(EMPTY_TRANSACTION_FILTERS);
+    setPage(1);
+  }
+
   function selectPageSize(value: number) {
     setPageSize(value);
     setPage(1);
@@ -835,7 +850,10 @@ export default function CmsOperatorDashboard() {
     { value: "this-week", label: "This Week" },
     { value: "last-week", label: "Last Week" },
     { value: "this-month", label: "This Month" },
+    { value: "last-month", label: "Last Month" },
   ];
+  const filterSelectClass =
+    "rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]";
 
   return (
     <>
@@ -991,7 +1009,8 @@ export default function CmsOperatorDashboard() {
             <div>
               <h2 className="text-lg font-bold tracking-tight text-slate-900">Transactions</h2>
               <p className="text-xs text-slate-500">
-                {datePresets.find((preset) => preset.value === datePreset)?.label} · {count} matching
+                {datePresets.find((preset) => preset.value === datePreset)?.label}
+                {filtersActive ? " · filtered" : ""} · {count} matching
               </p>
             </div>
 
@@ -1000,7 +1019,7 @@ export default function CmsOperatorDashboard() {
                 onClick={exportTransactionsCsv}
                 disabled={loading || transactions.length === 0}
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                title={`Export all ${count} transactions matching the selected date filter`}
+                title={`Export all ${count} transactions matching the selected filters`}
               >
                 <Download size={14} />
                 Export CSV
@@ -1103,6 +1122,81 @@ export default function CmsOperatorDashboard() {
                 Active: {active}
               </div>
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
+            <input
+              type="search"
+              value={filters.search}
+              onChange={(event) => updateFilter("search", event.target.value)}
+              placeholder="Search name, mobile, vehicle, ID"
+              className={`${filterSelectClass} w-full sm:w-64`}
+              aria-label="Search transactions"
+            />
+            <select
+              value={filters.location}
+              onChange={(event) => updateFilter("location", event.target.value)}
+              className={filterSelectClass}
+              aria-label="Location"
+            >
+              <option value="" className="bg-white">All locations</option>
+              {locationOptions.map((location) => (
+                <option key={location} value={location} className="bg-white">{location}</option>
+              ))}
+            </select>
+            <select
+              value={filters.charger}
+              onChange={(event) => updateFilter("charger", event.target.value)}
+              className={filterSelectClass}
+              aria-label="Charger"
+            >
+              <option value="" className="bg-white">All chargers</option>
+              {chargerOptions.map((charger) => (
+                <option key={charger} value={charger} className="bg-white">{charger}</option>
+              ))}
+            </select>
+            <select
+              value={filters.current}
+              onChange={(event) => updateFilter("current", event.target.value as TransactionFilters["current"])}
+              className={filterSelectClass}
+              aria-label="AC or DC"
+            >
+              <option value="" className="bg-white">AC &amp; DC</option>
+              <option value="ac" className="bg-white">AC only</option>
+              <option value="dc" className="bg-white">DC only</option>
+            </select>
+            <select
+              value={filters.status}
+              onChange={(event) => updateFilter("status", event.target.value as TransactionFilters["status"])}
+              className={filterSelectClass}
+              aria-label="Status"
+            >
+              <option value="" className="bg-white">All statuses</option>
+              <option value="live" className="bg-white">Live</option>
+              <option value="completed" className="bg-white">Completed</option>
+              <option value="failed" className="bg-white">Failed (0 kWh)</option>
+            </select>
+            <label className="flex items-center gap-2 text-xs text-slate-500">
+              <span>Min kWh:</span>
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                value={filters.minKwh}
+                onChange={(event) => updateFilter("minKwh", event.target.value)}
+                placeholder="0"
+                className={`${filterSelectClass} w-20`}
+                aria-label="Minimum energy in kWh"
+              />
+            </label>
+            {filtersActive && (
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              >
+                <RotateCcw size={13} /> Clear filters
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto">

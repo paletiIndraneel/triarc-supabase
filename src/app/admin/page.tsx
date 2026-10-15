@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AdminApp from "@/components/admin/AdminApp";
+import { parseAdminModule } from "@/components/admin/adminNavigation";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -17,12 +18,19 @@ type Enquiry = {
   created_at: string;
 };
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ module?: string | string[] }> }) {
+  const { module } = await searchParams;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("enquiries")
     .select("id, name, email, phone, message, status, created_at")
     .order("created_at", { ascending: false });
 
-  return <AdminApp enquiries={(data ?? []) as Enquiry[]} enquiryError={Boolean(error)} />;
+  return (
+    <AdminApp
+      enquiries={(data ?? []) as Enquiry[]}
+      enquiryError={Boolean(error)}
+      initialModule={parseAdminModule(typeof module === "string" ? module : null)}
+    />
+  );
 }

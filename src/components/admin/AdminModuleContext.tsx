@@ -2,7 +2,9 @@
 
 import { createContext, useContext } from "react";
 
-export type AdminModule = "cms" | "billing" | "inventory" | "enquiries" | "cpo-settings";
+import type { AdminModule } from "@/components/admin/adminNavigation";
+
+export type { AdminModule };
 
 type AdminModuleContextValue = {
   activeModule: AdminModule;

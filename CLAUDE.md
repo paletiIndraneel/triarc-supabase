@@ -40,7 +40,7 @@ Next.js 16 App Router site (React 19, Tailwind 4, TypeScript) served to users fr
 2. Each `src/app/api/**/route.ts` re-checks admin by calling `getAdminClient()` from `src/lib/supabase/server.ts` (the proxy matcher does not cover `/api`).
 3. RLS policies in Postgres check the same `admin_users` condition (see `supabase/migrations/`, `supabase/rls-audit.sql`).
 
-**Admin UI** is a single client shell: `/admin` (`src/app/admin/page.tsx`) loads enquiries server-side and renders `src/components/admin/AdminApp.tsx`, which switches modules (cms, billing, enquiries, inventory, cpo-settings) via `AdminModuleContext` state, not routing. **`/admin` is the only admin route**: module components under `src/app/admin/*/` must not be named `page.tsx`, and `next.config.ts` redirects any `/admin/*` URL to `/admin`. Nav items are in `src/components/admin/adminNavigation.ts`.
+**Admin UI** is a single client shell: `/admin` (`src/app/admin/page.tsx`) loads enquiries server-side and renders `src/components/admin/AdminApp.tsx`, which switches modules (cms, billing, enquiries, cpo-settings) via `AdminModuleContext` state, not routing; the active module is mirrored in `/admin?module=…` (pushState + popstate) so refresh and Back keep it. **`/admin` is the only admin route**: module components under `src/app/admin/*/` must not be named `page.tsx`, and `next.config.ts` redirects any `/admin/*` URL to `/admin`. Nav items are in `src/components/admin/adminNavigation.ts`.
 
 **Supabase clients**: `src/lib/supabase/server.ts` (cookie-based, for server components/route handlers) and `client.ts` (browser). `billing.ts` exports a browser singleton used by the billing module.
 

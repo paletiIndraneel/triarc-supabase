@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Download, Plus, Trash2, RefreshCw, X } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/supabase/billing';
@@ -244,7 +244,13 @@ function pdf(inv,items,cfg){
 const INVOICE_STATUSES=[['draft','Draft'],['issued','Generated'],['sent','Sent'],['partially_paid','Partially Paid'],['paid','Paid'],['cancelled','Cancelled']];
 const STATUS_COLORS={draft:['#f1f3f5','#495057'],issued:['#e7f0ff','#1c5bd8'],sent:['#efe9ff','#6741d9'],partially_paid:['#fff4e0','#b35c00'],paid:['#e6f7ec','#1e7b3c'],cancelled:['#fdecec','#c92a2a']};
 const statusLabel=v=>(INVOICE_STATUSES.find(x=>x[0]===v)||[,v||'-'])[1];
-function Modal({title,children,onClose}){return <div className="modal-backdrop"><div className="modal-card"><div className="modal-header"><h3>{title}</h3><button className="icon-btn" onClick={onClose}><X size={18}/></button></div>{children}</div></div>;}
+// Native <dialog>: Escape, focus kept inside, background inert and announced as a dialog.
+function Modal({title,children,onClose}){
+ const ref=useRef(null),titleId=useId(),downOnBackdrop=useRef(false);
+ useEffect(()=>{const d=ref.current,opener=document.activeElement;d.showModal();d.querySelector('input,select,textarea')?.focus();return()=>{if(d.open)d.close();opener?.focus?.()}},[]);
+ // Close on a backdrop click only when the press also started there (not a text drag that ends outside).
+ return <dialog ref={ref} className="modal-card" aria-labelledby={titleId} onCancel={e=>{e.preventDefault();onClose()}} onMouseDown={e=>{downOnBackdrop.current=e.target===e.currentTarget}} onClick={e=>{if(downOnBackdrop.current&&e.target===e.currentTarget)onClose()}}><div className="modal-body"><div className="modal-header"><h3 id={titleId}>{title}</h3><button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><X size={18}/></button></div>{children}</div></dialog>;
+}
 
 export default function EVBilling(){
  const toast=useToast(),[tab,setTab]=useState('overview'),[customers,setCustomers]=useState([]),[inventory,setInventory]=useState([]),[invoices,setInvoices]=useState([]),[billingLines,setBillingLines]=useState([]),[settings,setSettings]=useState(null);

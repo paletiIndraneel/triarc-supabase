@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import CmsDashboard from "@/app/admin/cms/CmsDashboard";
 import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
 import { ToastProvider } from "@/components/BillingToast";
-import { AdminModuleContext, type AdminModule } from "@/components/admin/AdminModuleContext";
+import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
+import { parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
 import styles from "@/app/admin/billing/billing.module.css";
 
 type Enquiry = {
@@ -20,8 +21,23 @@ type Enquiry = {
   created_at: string;
 };
 
-export default function AdminApp({ enquiries, enquiryError }: { enquiries: Enquiry[]; enquiryError: boolean }) {
-  const [activeModule, setActiveModule] = useState<AdminModule>("cms");
+export default function AdminApp({ enquiries, enquiryError, initialModule }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule }) {
+  const [activeModule, setModuleState] = useState<AdminModule>(initialModule);
+
+  const setActiveModule = useCallback((module: AdminModule) => {
+    setModuleState(module);
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("module") === module) return;
+    url.searchParams.set("module", module);
+    window.history.pushState(null, "", url);
+  }, []);
+
+  // Back/Forward move between modules instead of leaving the admin.
+  useEffect(() => {
+    const onPopState = () => setModuleState(parseAdminModule(new URL(window.location.href).searchParams.get("module")));
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   return (
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule }}>
@@ -44,14 +60,6 @@ export default function AdminApp({ enquiries, enquiryError }: { enquiries: Enqui
         </main>
       )}
       {activeModule === "cpo-settings" && <CpoSettings />}
-      {activeModule === "inventory" && (
-        <main className="min-h-screen bg-[#f8f9ff] px-6 py-8 text-slate-900">
-          <div className="mx-auto max-w-[1440px]">
-            <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-            <p className="mt-1 text-sm text-slate-500">Inventory module is available from the Admin shell.</p>
-          </div>
-        </main>
-      )}
     </AdminModuleContext.Provider>
   );
 }

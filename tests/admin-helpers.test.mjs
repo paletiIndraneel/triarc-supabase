@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { calc, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
+import { getSafeCallbackUrl } from "../src/lib/security.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
 
@@ -65,4 +66,13 @@ test("weeks start on Monday IST", () => {
 test("today and yesterday follow the IST calendar day", () => {
   assert.deepEqual(at("today", "2026-10-01T00:10:00+05:30"), ["2026-09-30T18:30:00.000Z", "2026-09-30T18:40:00.000Z"]);
   assert.deepEqual(at("yesterday", "2026-10-01T00:10:00+05:30"), ["2026-09-29T18:30:00.000Z", "2026-09-30T18:30:00.000Z"]);
+});
+
+test("getSafeCallbackUrl keeps same-origin paths and blocks dot-segment redirects", () => {
+  const origin = "https://site.example";
+  assert.equal(getSafeCallbackUrl("/admin?tab=cms#x", origin), "/admin?tab=cms#x");
+  assert.equal(getSafeCallbackUrl("/admin/../signin", origin), "/signin");
+  for (const raw of ["//evil.example", "/..//evil.example", "/.//evil.example", "/admin/..//evil.example", "/admin/%2e%2e//evil.example", "/%2e//evil.example"]) {
+    assert.equal(getSafeCallbackUrl(raw, origin), "/admin", raw);
+  }
 });

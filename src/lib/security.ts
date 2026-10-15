@@ -25,7 +25,10 @@ export function getSafeCallbackUrl(
     const base = new URL(origin);
     const parsed = new URL(raw, base);
     if (parsed.origin !== base.origin) return fallback;
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    // Dot segments can normalise "/..//evil.example" into the protocol-relative "//evil.example".
+    if (path.startsWith("//") || new URL(path, base).origin !== base.origin) return fallback;
+    return path;
   } catch {
     return fallback;
   }

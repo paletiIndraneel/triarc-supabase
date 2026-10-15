@@ -7,6 +7,8 @@ export default function LogoutButton({ compact = false, className }: { compact?:
     const supabase = createClient();
 
     await supabase.auth.signOut();
+    // The CMS dashboard caches customer PII in sessionStorage; it must not outlive the session.
+    window.sessionStorage.clear();
 
     window.location.href = "/signin";
   }

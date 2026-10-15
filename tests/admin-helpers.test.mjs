@@ -2,9 +2,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { calc, words } from "../src/app/admin/billing/invoiceMath.mjs";
-import { getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
+import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { EMPTY_TRANSACTION_FILTERS, matchesTransactionFilters } from "../src/app/admin/cms/transactionFilters.ts";
+import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
 
@@ -86,16 +86,33 @@ test("last month spans the previous IST calendar month, across a year boundary",
 test("transaction filters match location, AC/DC, status, min kWh and search", () => {
   const row = {
     id: "1", transactionId: "TX-9", chargerId: "C1", chargerName: "Bay 2 DC Charger", stationType: null,
-    location: "Bhadrachalam", userName: "Ravi", mobile: "9876543210", vehicleNumber: "TS09AB1234", energyKwh: 0,
+    location: "Bhadrachalam", type: null, userName: "Ravi", mobile: "9876543210", vehicleNumber: "TS09AB1234", energyKwh: 0,
   };
   const f = (over) => ({ ...EMPTY_TRANSACTION_FILTERS, ...over });
-  assert.equal(matchesTransactionFilters(row, f({}), false), true);
-  assert.equal(matchesTransactionFilters(row, f({ location: "Other" }), false), false);
-  assert.equal(matchesTransactionFilters(row, f({ current: "dc" }), false), true);
-  assert.equal(matchesTransactionFilters(row, f({ current: "ac" }), false), false);
-  assert.equal(matchesTransactionFilters(row, f({ status: "failed" }), false), true);
-  assert.equal(matchesTransactionFilters(row, f({ status: "live" }), true), true);
-  assert.equal(matchesTransactionFilters(row, f({ minKwh: "0.5" }), false), false);
-  assert.equal(matchesTransactionFilters(row, f({ search: "ts09ab" }), false), true);
-  assert.equal(matchesTransactionFilters(row, f({ search: "nobody" }), false), false);
+  assert.equal(matchesTransactionFilters(row, f({}), false, new Set()), true);
+  assert.equal(matchesTransactionFilters(row, f({ location: "Other" }), false, new Set()), false);
+  assert.equal(matchesTransactionFilters(row, f({ current: "dc" }), false, new Set()), true);
+  assert.equal(matchesTransactionFilters(row, f({ current: "ac" }), false, new Set()), false);
+  assert.equal(matchesTransactionFilters(row, f({ status: "failed" }), false, new Set()), true);
+  assert.equal(matchesTransactionFilters(row, f({ status: "live" }), true, new Set()), true);
+  assert.equal(matchesTransactionFilters(row, f({ minKwh: "0.5" }), false, new Set()), false);
+  assert.equal(matchesTransactionFilters(row, f({ search: "ts09ab" }), false, new Set()), true);
+  assert.equal(matchesTransactionFilters(row, f({ search: "nobody" }), false, new Set()), false);
+});
+
+test("custom range covers whole IST days inclusive, swapping a reversed pair", () => {
+  const expected = { startDate: "2026-09-30T18:30:00.000Z", endDate: "2026-10-05T18:30:00.000Z" };
+  assert.deepEqual(getCustomRangeIST("2026-10-01", "2026-10-05"), expected);
+  assert.deepEqual(getCustomRangeIST("2026-10-05", "2026-10-01"), expected);
+});
+
+test("CPO rule: ChargeMOD type wins, else a CPO Settings mobile in any format matches", () => {
+  const cpo = new Set(["9876543210"]);
+  const row = (type, mobile) => ({ type, mobile });
+  assert.equal(isCpoTransaction(row("CPO", null), cpo), true);
+  assert.equal(isCpoTransaction(row("PUBLIC", "9876543210"), cpo), false);
+  assert.equal(isCpoTransaction(row(null, "+91 98765-43210"), cpo), true);
+  assert.equal(isCpoTransaction(row("", "9000000000"), cpo), false);
+  const f = { ...EMPTY_TRANSACTION_FILTERS, customer: "regular" };
+  assert.equal(matchesTransactionFilters({ ...row("CPO", null), energyKwh: 1 }, f, false, cpo), false);
 });

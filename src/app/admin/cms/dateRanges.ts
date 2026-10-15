@@ -68,3 +68,16 @@ export function getDateRangeIST(preset: DatePreset, now = new Date()) {
       };
   }
 }
+
+// "YYYY-MM-DD" of the IST calendar day, the format <input type="date"> uses.
+export function istDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(date);
+}
+
+// Inclusive IST calendar days from..to; a reversed pair is swapped.
+export function getCustomRangeIST(from: string, to: string) {
+  const [first, last] = from <= to ? [from, to] : [to, from];
+  const start = new Date(`${first}T00:00:00+05:30`);
+  const end = new Date(new Date(`${last}T00:00:00+05:30`).getTime() + 24 * 60 * 60 * 1000);
+  return { startDate: start.toISOString(), endDate: end.toISOString() };
+}

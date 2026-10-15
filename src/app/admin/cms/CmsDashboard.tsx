@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
-import { type DatePreset, getDateRangeIST } from "./dateRanges";
+import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } from "./dateRanges";
 import {
   EMPTY_TRANSACTION_FILTERS,
   type TransactionFilters,
   chargerCurrent,
   chargerLabel,
+  isCpoTransaction,
   matchesTransactionFilters,
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
@@ -191,10 +192,6 @@ function fetchOperatorData(query: string, key: string) {
   return request;
 }
 
-function normalizeMobile(value: string | null | undefined) {
-  const digits = String(value ?? "").replace(/D/g, "");
-  return digits.length >= 10 ? digits.slice(-10) : null;
-}
 
 // CPO Settings numbers; only consulted when ChargeMOD leaves a transaction's type empty.
 async function fetchCpoMobileNumbers(): Promise<Set<string>> {
@@ -400,8 +397,11 @@ export default function CmsOperatorDashboard() {
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [datePreset, setDatePreset] = useState<DatePreset>("today");
+  const [datePreset, setDatePreset] = useState<DatePreset | "custom">("today");
+  const [customFrom, setCustomFrom] = useState(() => istDateString().slice(0, 8) + "01");
+  const [customTo, setCustomTo] = useState(() => istDateString());
   const [filters, setFilters] = useState<TransactionFilters>(EMPTY_TRANSACTION_FILTERS);
+  const [cpoMobileNumbers, setCpoMobileNumbers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
@@ -656,16 +656,8 @@ export default function CmsOperatorDashboard() {
         setTotalEnergyToday(todayTransactions.reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0));
         setTotalRevenueToday(todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0));
 
-        // ChargeMOD marks CPO transactions directly on the transaction record, and
-        // that type always wins. Only when ChargeMOD leaves the type empty do the
-        // CPO Settings mobile numbers decide.
         const cpoMobileNumbers = await cpoMobileNumbersRequest;
-        const isCpoTransaction = (transaction: Transaction) => {
-          const type = transaction.type?.trim().toUpperCase();
-          if (type) return type === "CPO";
-          const mobile = normalizeMobile(transaction.mobile);
-          return mobile !== null && cpoMobileNumbers.has(mobile);
-        };
+        setCpoMobileNumbers(cpoMobileNumbers);
         const mtdTransactions = filterTransactionsByRange(
           metricTransactions,
           currentMonthRange.startDate,
@@ -676,7 +668,7 @@ export default function CmsOperatorDashboard() {
         const mtdEnergyTotals = mtdTransactions.reduce((totals, transaction) => {
           const energy = Number(transaction.energyKwh);
           if (!Number.isFinite(energy) || energy <= 0) return totals;
-          if (isCpoTransaction(transaction)) {
+          if (isCpoTransaction(transaction, cpoMobileNumbers)) {
             totals.cpo += energy;
           } else {
             totals.total += energy;
@@ -698,7 +690,7 @@ export default function CmsOperatorDashboard() {
         const mtdRevenueTotals = mtdTransactions.reduce((totals, transaction) => {
           const amount = Number(transaction.tariffAmount);
           if (!Number.isFinite(amount)) return totals;
-          if (!isCpoTransaction(transaction)) {
+          if (!isCpoTransaction(transaction, cpoMobileNumbers)) {
             const current = chargerCurrent(transaction);
             if (current) totals[current] += amount;
           }
@@ -746,7 +738,8 @@ export default function CmsOperatorDashboard() {
   }, [load]);
 
   const transactions = useMemo(() => {
-    const dateRange = getDateRangeIST(datePreset);
+    const dateRange =
+      datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
     const filtered = filterTransactionsByRange(allTransactions, dateRange.startDate, dateRange.endDate);
     const live = activeTransactions.filter(
       (activeTransaction) =>
@@ -759,9 +752,9 @@ export default function CmsOperatorDashboard() {
     const isLive = (transaction: Transaction) =>
       activeTransactionIds.has(transaction.id) || activeTransactionIds.has(transaction.transactionId);
     return [...live, ...filtered].filter((transaction) =>
-      matchesTransactionFilters(transaction, filters, isLive(transaction))
+      matchesTransactionFilters(transaction, filters, isLive(transaction), cpoMobileNumbers)
     );
-  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, filters]);
+  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers]);
   const locationOptions = useMemo(
     () => [...new Set(allTransactions.map((transaction) => transaction.location).filter(Boolean))].sort(),
     [allTransactions]
@@ -806,7 +799,7 @@ export default function CmsOperatorDashboard() {
       day: "2-digit",
     }).format(new Date());
     link.href = url;
-    link.download = `cms-transactions-${datePreset}-${dateStamp}.csv`;
+    link.download = `cms-transactions-${datePreset === "custom" ? `${customFrom}_to_${customTo}` : datePreset}-${dateStamp}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -824,7 +817,7 @@ export default function CmsOperatorDashboard() {
       ? Number((dashboard?.locations as Record<string, unknown>).localCount)
       : collectionLength(dashboard?.locations);
 
-  function selectDatePreset(preset: DatePreset) {
+  function selectDatePreset(preset: DatePreset | "custom") {
     setDatePreset(preset);
     setPage(1);
   }
@@ -844,14 +837,18 @@ export default function CmsOperatorDashboard() {
     setPage(1);
   }
 
-  const datePresets: Array<{ value: DatePreset; label: string }> = [
+  const datePresets: Array<{ value: DatePreset | "custom"; label: string }> = [
     { value: "today", label: "Today" },
     { value: "yesterday", label: "Yesterday" },
     { value: "this-week", label: "This Week" },
     { value: "last-week", label: "Last Week" },
     { value: "this-month", label: "This Month" },
     { value: "last-month", label: "Last Month" },
+    { value: "custom", label: "Custom range" },
   ];
+  // Only last month + month-to-date are loaded, so the picker can't reach further back.
+  const customMinDate = istDateString(new Date(getDateRangeIST("last-month").startDate));
+  const customMaxDate = istDateString();
   const filterSelectClass =
     "rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]";
 
@@ -1039,6 +1036,29 @@ export default function CmsOperatorDashboard() {
                   ))}
                 </select>
               </label>
+              {datePreset === "custom" && (
+                <>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    min={customMinDate}
+                    max={customMaxDate}
+                    onChange={(event) => { if (event.target.value) { setCustomFrom(event.target.value); setPage(1); } }}
+                    className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                    aria-label="From date"
+                  />
+                  <span className="text-xs text-slate-500">to</span>
+                  <input
+                    type="date"
+                    value={customTo}
+                    min={customMinDate}
+                    max={customMaxDate}
+                    onChange={(event) => { if (event.target.value) { setCustomTo(event.target.value); setPage(1); } }}
+                    className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                    aria-label="To date"
+                  />
+                </>
+              )}
               <label className="flex items-center gap-2 text-xs text-slate-500">
                 <span>Rows:</span>
                 <select
@@ -1175,6 +1195,16 @@ export default function CmsOperatorDashboard() {
               <option value="live" className="bg-white">Live</option>
               <option value="completed" className="bg-white">Completed</option>
               <option value="failed" className="bg-white">Failed (0 kWh)</option>
+            </select>
+            <select
+              value={filters.customer}
+              onChange={(event) => updateFilter("customer", event.target.value as TransactionFilters["customer"])}
+              className={filterSelectClass}
+              aria-label="Customer type"
+            >
+              <option value="" className="bg-white">All customers</option>
+              <option value="cpo" className="bg-white">CPO</option>
+              <option value="regular" className="bg-white">Regular</option>
             </select>
             <label className="flex items-center gap-2 text-xs text-slate-500">
               <span>Min kWh:</span>

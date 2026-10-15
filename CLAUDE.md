@@ -25,7 +25,7 @@ Code must run on Cloudflare Workers, not just Vercel: don't rely on Vercel-only 
 
 `npm test` runs unit tests for the pure admin helpers (`tests/`, Node's built-in runner: invoice `calc`/`words`, IST date ranges). Verify everything else with `npm run build` (it type-checks).
 
-Env vars: copy `.env.example`. `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required; the `CMS_*` vars enable the optional CMS operator dashboard and are set as Cloudflare Worker variables/secrets in production.
+Env vars: copy `.env.example`. `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_…` key) are required. They have no `NEXT_PUBLIC_` prefix: `next.config.ts` `env` inlines them at build time (so they are still public in the browser bundle and a change needs a rebuild), falling back to the old `NEXT_PUBLIC_SUPABASE_*` names; the `CMS_*` vars enable the optional CMS operator dashboard and are set as Cloudflare Worker variables/secrets in production.
 
 ## Architecture
 

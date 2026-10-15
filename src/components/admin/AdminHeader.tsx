@@ -10,28 +10,43 @@ export default function AdminHeader() {
   const { activeModule, setActiveModule } = useAdminModule();
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 w-full items-center gap-7 border-b border-[#e8e9f0] bg-white px-7 shadow-[0_1px_3px_rgba(16,24,40,0.04)]">
-      <div className="flex min-w-[230px] shrink-0 items-center gap-[9px] whitespace-nowrap font-bold text-[#172033]">
+    // Below md the nav drops to its own row and scrolls sideways instead of pushing Sign out off-screen.
+    <header className="admin-topbar sticky top-0 z-20 flex w-full flex-wrap items-center gap-x-7 gap-y-2 border-b border-[#e8e9f0] px-4 py-2.5 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:px-7 md:h-16 md:flex-nowrap md:py-0">
+      <div className="flex shrink-0 items-center gap-[9px] whitespace-nowrap font-bold text-[#172033]">
         <button type="button" onClick={() => setActiveModule("cms")} className="text-[16px] font-bold tracking-tight text-[#172033]">Triarc EV</button>
         <span className="rounded-md bg-[#eeeaff] px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-[#7157d9]">ADMIN</span>
       </div>
-      <nav className="flex h-full flex-1 items-center gap-1" aria-label="Admin modules">
+      <nav className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:px-0" aria-label="Admin modules">
+
         {ADMIN_NAV_ITEMS.map((item) => (
           <button
             key={item.key}
             type="button"
             onClick={() => setActiveModule(item.key)}
-            className={activeModule === item.key ? "rounded-[10px] bg-[#7157d9] px-[14px] py-[9px] text-[13px] font-semibold transition" : "rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold transition hover:bg-[#f5f3ff]"}
+            aria-current={activeModule === item.key ? "page" : undefined}
+            className={activeModule === item.key ? "shrink-0 rounded-[10px] bg-[#7157d9] px-[14px] py-[9px] text-[13px] font-semibold transition" : "shrink-0 rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold transition hover:bg-[#f5f3ff]"}
             style={{ color: activeModule === item.key ? "#ffffff" : "#172033" }}
           >
             {item.label}
           </button>
         ))}
-        <button type="button" onClick={() => setActiveModule("cpo-settings")} className={`ml-2 inline-flex items-center gap-2 rounded-[10px] border border-[#e2e4ec] px-[12px] py-[9px] text-[13px] font-semibold transition hover:bg-[#f5f3ff] hover:text-[#7157d9] ${activeModule === "cpo-settings" ? "text-[#7157d9]" : "text-[#172033]"}`}><Settings2 size={15} /> CPO Settings</button>
+
+        <button
+          type="button"
+          onClick={() => setActiveModule("cpo-settings")}
+          aria-current={activeModule === "cpo-settings" ? "page" : undefined}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold transition ${activeModule === "cpo-settings" ? "bg-[#7157d9] text-white" : "text-[#172033] hover:bg-[#f5f3ff]"}`}
+        >
+          <Settings2 size={15} /> CPO Settings
+        </button>
+
       </nav>
-      <div className="flex items-center gap-4 text-[#667085]">
-        <AdminUserBadge />
+      <div className="ml-auto flex items-center gap-4 text-[#667085]">
+
+        <span className="hidden sm:block"><AdminUserBadge /></span>
+
         <LogoutButton className="rounded-[10px] border border-[#e2e4ec] px-[12px] py-[7px] text-[13px] font-semibold text-[#172033] transition hover:bg-[#f5f3ff] hover:text-[#7157d9]" />
+
       </div>
     </header>
   );

@@ -1,0 +1,39 @@
+/* Admin-wide feel: instant press feedback, translucent sticky header, and the reduced-motion/transparency fallbacks. */
+.adminShell :global(button:not(:disabled)),
+.adminShell :global(a[href]) {
+  /* Keeps the colour transitions Tailwind's `transition` class would have given. */
+  transition: transform 100ms ease-out, color 150ms ease, background-color 150ms ease,
+    border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+.adminShell :global(button:not(:disabled):active),
+.adminShell :global(a[href]:active) {
+  transform: scale(0.97);
+}
+
+.adminShell :global(.admin-topbar) {
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminShell :global(button:not(:disabled):active),
+  .adminShell :global(a[href]:active) {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .adminShell :global(.admin-topbar) {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .adminShell :global(.admin-topbar) {
+    background: #fff;
+    border-bottom-color: #98a2b3;
+  }
+}

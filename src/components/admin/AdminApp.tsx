@@ -10,6 +10,7 @@ import { ToastProvider } from "@/components/BillingToast";
 import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
 import { parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
 import styles from "@/app/admin/billing/billing.module.css";
+import adminStyles from "@/components/admin/admin.module.css";
 
 type Enquiry = {
   id: string;
@@ -41,6 +42,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule }: { e
 
   return (
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule }}>
+      <div className={adminStyles.adminShell}>
       <AdminHeader />
       {activeModule === "cms" && <CmsDashboard />}
       {activeModule === "billing" && (
@@ -60,6 +62,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule }: { e
         </main>
       )}
       {activeModule === "cpo-settings" && <CpoSettings />}
+      </div>
     </AdminModuleContext.Provider>
   );
 }

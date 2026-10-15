@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Mail, Phone, RefreshCw, Search, ChevronDown, ChevronUp, AlertCircle, Inbox } from "lucide-react";
 import { safeMailtoHref, safeTelHref } from "@/lib/security";
+import { supabase } from "@/lib/supabase/billing";
 
 type Enquiry = {
   id: string;
@@ -19,12 +20,38 @@ type Props = {
   error?: boolean;
 };
 
-const filters = ["New", "Contacted", "Closed", "All"] as const;
+const statuses = ["New", "Contacted", "Closed"] as const;
+const filters = [...statuses, "All"] as const;
+const STATUS_STYLE: Record<Enquiry["status"], string> = {
+  New: "border-violet-200 bg-violet-50 text-violet-700",
+  Contacted: "border-amber-200 bg-amber-50 text-amber-800",
+  Closed: "border-slate-200 bg-slate-100 text-slate-600",
+};
 
-export default function EnquiriesTable({ enquiries, error = false }: Props) {
+export default function EnquiriesTable({ enquiries: initialEnquiries, error = false }: Props) {
+  const [enquiries, setEnquiries] = useState(initialEnquiries);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("New");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState("");
+  const [lastChange, setLastChange] = useState<{ item: Enquiry; previous: Enquiry["status"] } | null>(null);
+
+  // RLS lets only active admins update enquiries; the row stays put on failure.
+  async function changeStatus(item: Enquiry, status: Enquiry["status"], isUndo = false) {
+    if (status === item.status) return;
+    setSavingId(item.id);
+    setStatusError("");
+    const { error: updateError } = await supabase.from("enquiries").update({ status }).eq("id", item.id);
+    setSavingId(null);
+    if (updateError) {
+      setStatusError(`Couldn't update ${item.name}: ${updateError.message}`);
+      return;
+    }
+    setEnquiries((current) => current.map((row) => (row.id === item.id ? { ...row, status } : row)));
+    // The row may leave the filtered view, so offer a one-step undo instead of a confirm.
+    setLastChange(isUndo ? null : { item: { ...item, status }, previous: item.status });
+  }
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -42,7 +69,7 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
 
   return (
     <>
-      <div className="mt-7 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <div className="relative min-w-0 flex-1">
             <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -63,7 +90,7 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
               {filters.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
             <span className="whitespace-nowrap rounded-full bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700">
-              Showing {rows.length} Enquiries
+              {rows.length} {rows.length === 1 ? "enquiry" : "enquiries"}
             </span>
             <button
               type="button"
@@ -75,6 +102,20 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
           </div>
         </div>
       </div>
+
+      {lastChange && (
+        <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+          <span>Marked {lastChange.item.name} as {lastChange.item.status}.</span>
+          <span className="flex items-center gap-3">
+            <button type="button" onClick={() => void changeStatus(lastChange.item, lastChange.previous, true)} className="font-semibold text-violet-700 hover:text-violet-900">Undo</button>
+            <button type="button" onClick={() => setLastChange(null)} aria-label="Dismiss" className="text-violet-500 hover:text-violet-800">✕</button>
+          </span>
+        </div>
+      )}
+
+      {statusError && (
+        <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{statusError}</p>
+      )}
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {error ? (
@@ -98,9 +139,10 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
               <table className="w-full min-w-[1120px] text-left text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50/80">
                   <tr>
-                    {["Name", "Email", "Phone", "Message", "Submitted", "Actions"].map((label) => (
+                    {["Name", "Email", "Phone", "Message", "Submitted", "Status"].map((label) => (
                       <th key={label} className="px-5 py-3.5 font-semibold text-slate-600">{label}</th>
                     ))}
+                    <th className="px-5 py-3.5 text-right font-semibold text-slate-600">Contact</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -129,6 +171,17 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
                           {new Date(item.created_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
                         </td>
                         <td className="px-5 py-4">
+                          <select
+                            value={item.status}
+                            disabled={savingId === item.id}
+                            onChange={(e) => void changeStatus(item, e.target.value as Enquiry["status"])}
+                            aria-label={`Status of enquiry from ${item.name}`}
+                            className={`rounded-full border px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-violet-200 disabled:opacity-60 ${STATUS_STYLE[item.status]}`}
+                          >
+                            {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-5 py-4">
                           <div className="flex justify-end gap-2">
                             <a href={safeMailtoHref(item.email)} aria-label={`Email ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Mail size={15} /></a>
                             {item.phone && <a href={safeTelHref(item.phone)} aria-label={`Call ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Phone size={15} /></a>}
@@ -139,14 +192,6 @@ export default function EnquiriesTable({ enquiries, error = false }: Props) {
                   })}
                 </tbody>
               </table>
-            </div>
-            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm text-slate-500">
-              <span>Showing {rows.length} of {rows.length} Enquiries</span>
-              <div className="flex items-center gap-1">
-                <button disabled className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-300">Previous</button>
-                <span className="rounded-lg bg-violet-600 px-3 py-1.5 font-semibold text-white">1</span>
-                <button disabled className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-300">Next</button>
-              </div>
             </div>
           </>
         )}

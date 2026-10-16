@@ -112,7 +112,7 @@ function pdf(inv,items,cfg){
   }
   left('State Name: '+safe(inv.billing_state)+'   Code: '+stateCode,L,y[11]+4.6,7.6);
   left('GSTIN/UIN: '+safe(inv.billing_gstin),L,y[12]+4.6,7.6);
-  left('Place of Supply: '+stateName,L,y[13]+4.6,7.6);
+  left('Place of Supply: '+stateName+(inv.place_of_supply_state_code?' ('+safe(inv.place_of_supply_state_code)+')':''),L,y[13]+4.6,7.6);
   left('Station: '+safe(inv.station),L,y[14]+5.0,8.5);
 
   // Metadata is a narrow right-hand block in the reference. Keep labels and values

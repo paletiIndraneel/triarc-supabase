@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail, Phone, RefreshCw, Search, ChevronDown, ChevronUp, AlertCircle, Inbox } from "lucide-react";
+import { Mail, Phone, Search, ChevronDown, ChevronUp, AlertCircle, Inbox } from "lucide-react";
 import { safeMailtoHref, safeTelHref } from "@/lib/security";
 import { supabase } from "@/lib/supabase/billing";
 
@@ -92,13 +92,6 @@ export default function EnquiriesTable({ enquiries: initialEnquiries, error = fa
             <span className="whitespace-nowrap rounded-full bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700">
               {rows.length} {rows.length === 1 ? "enquiry" : "enquiries"}
             </span>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="inline-flex h-11 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              <RefreshCw size={15} /> Refresh
-            </button>
           </div>
         </div>
       </div>

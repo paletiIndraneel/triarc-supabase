@@ -24,3 +24,9 @@ tsconfig.tsbuildinfo
 
 # Claude Code machine-local settings
 .claude/settings.local.json
+
+# Local clutter: stray skill clone, other agents' skill links, Python caches
+/~/
+/.devin/
+/.grok/
+__pycache__/

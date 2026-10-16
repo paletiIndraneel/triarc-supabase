@@ -6,6 +6,7 @@ import {
   getOperatorData,
 } from "@/lib/cms/operator";
 import { fromStoredRow, syncStartDate, toStoredRow } from "@/lib/cms/transactionStore";
+import type { CmsTransactionRow } from "@/lib/cms/types";
 
 export const dynamic = "force-dynamic";
 
@@ -35,20 +36,21 @@ export async function GET(request: Request) {
     const searchField = url.searchParams.get("searchField") ?? "";
     const searchKey = url.searchParams.get("searchKey") ?? "";
 
-    // Delta sync: ChargeMOD is only asked for sessions from a few days before the newest
-    // stored one (see syncStartDate); older sessions in the window come from cms_transactions.
-    // Searches and a missing/unreadable table fall back to fetching the whole window.
+    // Delta sync: ChargeMOD is only asked for sessions from the newest stored one onward, or
+    // from the oldest stored session still charging (see syncStartDate); older sessions in
+    // the window come from cms_transactions. Searches and a missing/unreadable table fall
+    // back to fetching the whole window.
     let syncStart = startDate;
     if (!searchKey) {
-      const { data: newest, error } = await supabase
-        .from("cms_transactions")
-        .select("started_at")
-        .not("started_at", "is", null)
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const latestStart = (open: boolean) => {
+        let query = supabase.from("cms_transactions").select("started_at").not("started_at", "is", null);
+        if (open) query = query.is("stopped_at", null);
+        return query.order("started_at", { ascending: open }).limit(1).maybeSingle();
+      };
+      const [newest, oldestOpen] = await Promise.all([latestStart(false), latestStart(true)]);
+      const error = newest.error ?? oldestOpen.error;
       if (error) console.error("[cms/operator] reading stored transactions failed:", error.message);
-      else syncStart = syncStartDate(startDate, newest?.started_at);
+      else syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
     }
 
     const data = await getOperatorData(config, supabase, {
@@ -64,7 +66,15 @@ export async function GET(request: Request) {
     // write; a failed save is logged and never blocks the dashboard.
     if (isPartner) {
       const syncedAt = new Date().toISOString();
-      const rows = data.transactions.transactions.map((t) => toStoredRow(t, syncedAt));
+      // Sessions still charging are saved too (no stop time), so the next sync starts from
+      // them; a finished copy from the session list wins over the active one.
+      const byId = new Map(
+        [...data.active.transactions, ...data.transactions.transactions].map((t) => {
+          const row = toStoredRow(t, syncedAt);
+          return [row.transaction_id, row] as const;
+        })
+      );
+      const rows = Array.from(byId.values());
       for (let i = 0; i < rows.length; i += 500) {
         const { error } = await supabase
           .from("cms_transactions")
@@ -77,7 +87,7 @@ export async function GET(request: Request) {
     }
 
     if (syncStart !== startDate) {
-      const stored: Record<string, unknown>[] = [];
+      const stored: CmsTransactionRow[] = [];
       for (let from = 0; ; from += 1000) {
         const { data: batch, error } = await supabase
           .from("cms_transactions")
@@ -88,11 +98,11 @@ export async function GET(request: Request) {
           .order("transaction_id")
           .range(from, from + 999);
         if (error) throw new Error(`Stored CMS transactions could not be read: ${error.message}`);
-        stored.push(...batch);
+        stored.push(...(batch as CmsTransactionRow[]));
         if (batch.length < 1000) break;
       }
       const transactions = [
-        ...(stored.map(fromStoredRow) as typeof data.transactions.transactions),
+        ...stored.map(fromStoredRow),
         ...data.transactions.transactions,
       ];
       data.transactions = {

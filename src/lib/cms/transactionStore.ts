@@ -1,31 +1,41 @@
 // Pure helpers for the cms_transactions table (migration 20261016000700): column mapping
-// and the delta-sync window. No imports, so tests/ can load this file directly.
+// and the delta-sync start. Only type imports, so tests/ can load this file directly.
+import type { CmsTransaction, CmsTransactionRow } from "./types";
 
-// Sessions can't stay active for days, so every sync re-fetches this far back from the
-// newest stored session; sessions saved while still charging get their final values.
-export const RESYNC_OVERLAP_MS = 3 * 24 * 60 * 60 * 1000;
+// Sessions can't stay active for days, so a stored session with no stop time that started
+// this long before the newest one is treated as stuck and no longer holds the sync back.
+export const MAX_ACTIVE_MS = 2 * 24 * 60 * 60 * 1000;
 
 const toSnake = (key: string) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 const toCamel = (key: string) => key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
-// A sanitized transaction as a table row. A new sanitizeTransaction field needs a matching column.
-export function toStoredRow(transaction: Record<string, unknown>, syncedAt: string) {
+// transaction_id is the primary key, so an empty transactionId is stored as id.
+export function toStoredRow(transaction: CmsTransaction, syncedAt: string): CmsTransactionRow {
   return {
     ...Object.fromEntries(Object.entries(transaction).map(([key, value]) => [toSnake(key), value])),
-    transaction_id: String(transaction.transactionId || transaction.id),
+    transaction_id: transaction.transactionId || transaction.id,
     synced_at: syncedAt,
-  };
+  } as CmsTransactionRow;
 }
 
-export function fromStoredRow(row: Record<string, unknown>) {
+export function fromStoredRow(row: CmsTransactionRow): CmsTransaction {
   const { synced_at: _syncedAt, ...rest } = row;
-  return Object.fromEntries(Object.entries(rest).map(([key, value]) => [toCamel(key), value]));
+  return Object.fromEntries(Object.entries(rest).map(([key, value]) => [toCamel(key), value])) as CmsTransaction;
 }
 
-// Where the ChargeMOD fetch starts: the whole window when nothing is stored yet, otherwise
-// RESYNC_OVERLAP_MS before the newest stored session (never before the window itself).
-export function syncStartDate(windowStart: string, newestStoredStart: string | null | undefined) {
+// Where the ChargeMOD fetch starts: the whole window when nothing is stored yet; otherwise
+// the newest stored session's start, or the oldest still-charging stored session's start
+// when that is earlier (so it gets its final values). Never before the window itself.
+export function syncStartDate(
+  windowStart: string,
+  newestStoredStart: string | null | undefined,
+  oldestOpenStart?: string | null
+) {
   if (!newestStoredStart) return windowStart;
-  const overlapStart = new Date(newestStoredStart).getTime() - RESYNC_OVERLAP_MS;
-  return overlapStart > new Date(windowStart).getTime() ? new Date(overlapStart).toISOString() : windowStart;
+  let start = new Date(newestStoredStart).getTime();
+  if (oldestOpenStart) {
+    const open = new Date(oldestOpenStart).getTime();
+    if (open < start && start - open <= MAX_ACTIVE_MS) start = open;
+  }
+  return start > new Date(windowStart).getTime() ? new Date(start).toISOString() : windowStart;
 }

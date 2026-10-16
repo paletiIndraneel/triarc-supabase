@@ -13,6 +13,7 @@ import {
   matchesTransactionFilters,
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
+import type { CmsTransaction } from "@/lib/cms/types";
 
 type Dashboard = {
   summary: Record<string, unknown>;
@@ -21,45 +22,7 @@ type Dashboard = {
   locations: Record<string, unknown>;
 };
 
-export type Transaction = {
-  id: string;
-  transactionId: string;
-  chargerId: string;
-  connectorId: number | null;
-  startedAt: string | null;
-  stoppedAt: string | null;
-  userName: string;
-  mobile: string | null;
-  userType: string | null;
-  tagReference: string | null;
-  location: string;
-  locationId: number | null;
-  chargerName: string;
-  stationType: string | null;
-  type: string | null;
-  stopReason: string | null;
-  energyKwh: number | null;
-  startSoc: number | null;
-  endSoc: number | null;
-  vehicleName: string | null;
-  vehicleNumber: string | null;
-  tariffAmount: number | null;
-  vat: number | null;
-  invoiceAvailable: boolean;
-  userId: string | null;
-  vehicleId: string | null;
-  geoLatitude: number | null;
-  geoLongitude: number | null;
-  idTag: string | null;
-  isFree: boolean | null;
-  baseDeductiveAmount: number | null;
-  isAlphaGuaranteed: boolean | null;
-  isTimeBasedTariff: boolean | null;
-  startValue: number | null;
-  stopValue: number | null;
-  createdAt: string | null;
-  updatedAt: string | null;
-};
+export type Transaction = CmsTransaction;
 
 type TransactionResponse = {
   transactions?: Transaction[];

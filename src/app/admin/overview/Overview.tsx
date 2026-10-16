@@ -23,6 +23,7 @@ const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 const kwh = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: n >= 100 ? 0 : 1 });
 const istDay = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 const istTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
+const dataTill = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
 const istDate = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d);
 const statusLabel = (v: string | null) => (INVOICE_STATUSES.find((x) => x[0] === v) ?? [null, v ?? "-"])[1];
 const METRICS: Array<[Metric, string]> = [["kwh", "kWh"], ["revenue", "Revenue"], ["sessions", "Sessions"]];
@@ -102,9 +103,20 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
               {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "short", year: "numeric" }).format(new Date())}
             </p>
           </div>
-          {cms.status === "ok" && cms.updatedAt && (
-            <p className="text-xs text-[#5d6577]">Charging data as of {istTime.format(new Date(cms.updatedAt))}</p>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {cms.status === "ok" && cms.updatedAt && (
+              <p className="text-xs text-[#5d6577]">Data till {dataTill.format(new Date(cms.updatedAt))}</p>
+            )}
+            <button
+              type="button"
+              onClick={() => void loadCms(true)}
+              disabled={cms.status === "loading"}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw size={16} aria-hidden="true" className={cms.status === "loading" ? "motion-safe:animate-spin" : ""} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {cms.status === "error" ? (

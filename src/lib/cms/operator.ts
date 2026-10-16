@@ -1,5 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ChargeModTransaction, CmsTransaction } from "./types";
 
 type CmsConfig = {
   enabled: boolean;
@@ -660,7 +661,7 @@ export async function getOperatorData(
   };
 }
 
-type TransactionRecord = ReturnType<typeof sanitizeTransaction>;
+type TransactionRecord = CmsTransaction;
 
 function mergeSanitizedTransactions(
   existing: TransactionRecord,
@@ -892,7 +893,7 @@ export async function getActiveTransactions(config: CmsConfig) {
   );
 }
 
-export function sanitizeTransaction(raw: Record<string, unknown>) {
+export function sanitizeTransaction(raw: ChargeModTransaction): CmsTransaction {
   const startValue = toNumber(raw.startValue);
   const stopValue = toNumber(raw.stopValue);
   // ChargeMOD sends geoLocation as GeoJSON: coordinates are [longitude, latitude].

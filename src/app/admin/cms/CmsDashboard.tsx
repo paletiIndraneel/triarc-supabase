@@ -79,7 +79,7 @@ type CmsCache = {
   active?: ActiveTransactionResponse;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v5";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v6";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };

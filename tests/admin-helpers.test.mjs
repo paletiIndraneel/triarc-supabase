@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
+import { fromStoredRow, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
@@ -156,4 +157,21 @@ test("overviewMetrics totals today, month-to-date and the same days last month i
   assert.equal(m.days.length, 30);
   assert.equal(m.days[0].label, "17 Sept");
   assert.equal(m.days[28].kwh, 5);
+});
+
+test("cms_transactions rows round-trip camelCase fields through snake_case columns", () => {
+  const t = { id: "m1", transactionId: "", energyKwh: 4.026, startedAt: "2026-09-01T01:42:01.899Z", isTimeBasedTariff: false };
+  const row = toStoredRow(t, "2026-10-16T00:00:00.000Z");
+  assert.equal(row.transaction_id, "m1");
+  assert.equal(row.energy_kwh, 4.026);
+  assert.equal(row.is_time_based_tariff, false);
+  // transaction_id is the primary key, so an empty transactionId is stored (and read back) as id.
+  assert.deepEqual(fromStoredRow(row), { ...t, transactionId: "m1" });
+});
+
+test("delta sync starts 3 days before the newest stored session, never before the window", () => {
+  const windowStart = "2026-08-31T18:30:00.000Z";
+  assert.equal(syncStartDate(windowStart, null), windowStart);
+  assert.equal(syncStartDate(windowStart, "2026-10-16T10:00:00.000Z"), "2026-10-13T10:00:00.000Z");
+  assert.equal(syncStartDate(windowStart, "2026-09-02T00:00:00.000Z"), windowStart);
 });

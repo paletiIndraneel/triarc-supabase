@@ -895,6 +895,11 @@ export async function getActiveTransactions(config: CmsConfig) {
 export function sanitizeTransaction(raw: Record<string, unknown>) {
   const startValue = toNumber(raw.startValue);
   const stopValue = toNumber(raw.stopValue);
+  // ChargeMOD sends geoLocation as GeoJSON: coordinates are [longitude, latitude].
+  const geo = raw.geoLocation as { coordinates?: unknown } | null | undefined;
+  const coordinates = Array.isArray(geo?.coordinates) ? geo.coordinates : [];
+  // userType arrives as an array of type objects; keep the type's name.
+  const userType = Array.isArray(raw.userType) ? raw.userType[0] : raw.userType;
 
   return {
     id: String(raw._id ?? ""),
@@ -908,8 +913,13 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
       raw.userMobile !== null && raw.userMobile !== undefined && String(raw.userMobile).trim() !== ""
         ? String(raw.userMobile)
         : null,
-    userType: raw.userType ? String(raw.userType) : null,
-    tagReference: tagLabel(raw.tagReference),
+    userType:
+      userType && typeof userType === "object"
+        ? String((userType as Record<string, unknown>).typeName ?? "") || null
+        : userType
+          ? String(userType)
+          : null,
+    tagReference: tagLabel(raw.tagReference ?? (raw.tagReferenceNo === "Nill" ? null : raw.tagReferenceNo)),
     location: String(raw.locationName ?? ""),
     locationId: toNumber(raw.locationId),
     chargerName: String(raw.chargerName ?? ""),
@@ -939,8 +949,8 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     invoiceAvailable: Boolean(raw.invoiceAvailable),
     userId: raw.userId ? String(raw.userId) : null,
     vehicleId: raw.vehicleId ? String(raw.vehicleId) : null,
-    geoLatitude: toNumber(raw.geoLatitude),
-    geoLongitude: toNumber(raw.geoLongitude),
+    geoLatitude: toNumber(raw.geoLatitude ?? coordinates[1]),
+    geoLongitude: toNumber(raw.geoLongitude ?? coordinates[0]),
     idTag: raw.idTag ? String(raw.idTag) : null,
     isFree: typeof raw.isFree === "boolean" ? raw.isFree : null,
     baseDeductiveAmount: toNumber(raw.baseDeductiveAmount),
@@ -950,6 +960,15 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     stopValue,
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : null,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : null,
+    invoiceLink: typeof raw.invoiceLink === "string" ? raw.invoiceLink : null,
+    organizationId: raw.organizationId ? String(raw.organizationId) : null,
+    projectId: raw.projectId ? String(raw.projectId) : null,
+    solarType: raw.solarType ? String(raw.solarType) : null,
+    userEmail: raw.userEmail ? String(raw.userEmail) : null,
+    vehicleModelId: raw.vehicleModelId ? String(raw.vehicleModelId) : null,
+    startingBalance: toNumber(raw.startingBalance),
+    endingBalance: toNumber(raw.endingBalance),
+    // employeeDetails is deliberately dropped: it carries the customer's ChargeMOD refresh and FCM tokens.
   };
 }
 

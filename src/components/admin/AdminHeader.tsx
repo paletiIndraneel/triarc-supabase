@@ -13,7 +13,7 @@ export default function AdminHeader() {
     // Below md the nav drops to its own row and scrolls sideways instead of pushing Sign out off-screen.
     <header className="admin-topbar sticky top-0 z-20 flex w-full flex-wrap items-center gap-x-7 gap-y-2 border-b border-[#e8e9f0] px-4 py-2.5 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:px-7 md:h-16 md:flex-nowrap md:py-0">
       <div className="flex shrink-0 items-center gap-[9px] whitespace-nowrap font-bold text-[#172033]">
-        <button type="button" onClick={() => setActiveModule("cms")} className="text-[16px] font-bold tracking-tight text-[#172033]">Triarc EV</button>
+        <button type="button" onClick={() => setActiveModule("overview")} className="text-[16px] font-bold tracking-tight text-[#172033]">Triarc EV</button>
         <span className="rounded-md bg-[#eeeaff] px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-[#7157d9]">ADMIN</span>
       </div>
       <nav className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:px-0" aria-label="Admin modules">

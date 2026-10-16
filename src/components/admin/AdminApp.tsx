@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import CmsDashboard from "@/app/admin/cms/CmsDashboard";
 import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
+import Overview from "@/app/admin/overview/Overview";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
 import { ToastProvider } from "@/components/BillingToast";
@@ -24,8 +25,8 @@ type Enquiry = {
 
 export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean }) {
   const [moduleState, setModuleState] = useState<AdminModule>(initialModule);
-  // A module the user may not open (e.g. an investor following a ?module=billing link) shows the dashboard.
-  const activeModule = canOpenModule(moduleState, isPartner) ? moduleState : "cms";
+  // A module the user may not open (e.g. an investor following a ?module=billing link) shows the Overview.
+  const activeModule = canOpenModule(moduleState, isPartner) ? moduleState : "overview";
 
   const setActiveModule = useCallback((module: AdminModule) => {
     if (!canOpenModule(module, isPartner)) return;
@@ -47,6 +48,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner }}>
       <div className={adminStyles.adminShell}>
       <AdminHeader />
+      {activeModule === "overview" && <Overview enquiries={enquiries} />}
       {activeModule === "cms" && <CmsDashboard />}
       {activeModule === "billing" && (
         <div className={styles.billingScope}>

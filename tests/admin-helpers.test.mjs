@@ -137,3 +137,23 @@ test("investors can open only the CMS dashboard and enquiries; partners open eve
   assert.deepEqual(["cms", "billing", "enquiries", "cpo-settings"].map((m) => canOpenModule(m, false)), [true, false, true, false]);
   assert.ok(["cms", "billing", "enquiries", "cpo-settings"].every((m) => canOpenModule(m, true)));
 });
+
+test("overviewMetrics totals today, month-to-date and the same days last month in IST", async () => {
+  const { overviewMetrics } = await import("../src/app/admin/overview/overviewMetrics.ts");
+  const now = new Date("2026-10-16T10:00:00+05:30");
+  const row = (startedAt, energyKwh, tariffAmount) => ({ startedAt, energyKwh, tariffAmount });
+  const m = overviewMetrics([
+    row("2026-10-16T00:10:00+05:30", 10, 200),   // today
+    row("2026-10-15T23:50:00+05:30", 5, 100),    // yesterday in IST, same UTC date as today
+    row("2026-10-01T00:00:00+05:30", -3, 50),    // negative reading counts as 0 kWh
+    row("2026-09-16T09:00:00+05:30", 7, 70),     // last month, inside 1st–16th 10:00
+    row("2026-09-16T11:00:00+05:30", 7, 999),    // last month, after the same time of day
+    row(null, 99, 99),
+  ], now);
+  assert.deepEqual(m.today, { label: "16 Oct", kwh: 10, revenue: 200, sessions: 1 });
+  assert.deepEqual(m.monthToDate, { kwh: 15, revenue: 350, sessions: 3 });
+  assert.equal(m.lastMonthSameDaysRevenue, 70);
+  assert.equal(m.days.length, 30);
+  assert.equal(m.days[0].label, "17 Sept");
+  assert.equal(m.days[28].kwh, 5);
+});

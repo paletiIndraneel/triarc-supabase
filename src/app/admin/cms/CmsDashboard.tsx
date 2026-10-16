@@ -21,7 +21,7 @@ type Dashboard = {
   locations: Record<string, unknown>;
 };
 
-type Transaction = {
+export type Transaction = {
   id: string;
   transactionId: string;
   chargerId: string;
@@ -105,7 +105,7 @@ function writeCmsCache(cache: CmsCache) {
   } catch {}
 }
 
-function mergeTransactionData(existing: Transaction, incoming: Transaction): Transaction {
+export function mergeTransactionData(existing: Transaction, incoming: Transaction): Transaction {
   const merged = { ...existing, ...incoming };
   const existingEnergy = existing.energyKwh;
   const incomingEnergy = incoming.energyKwh;
@@ -210,6 +210,75 @@ async function fetchCpoMobileNumbers(): Promise<Set<string>> {
   } catch {
     return new Set();
   }
+}
+
+// The CMS dashboard and the admin Overview share this window (previous calendar month
+// through now) and its sessionStorage cache, so opening both costs one ChargeMOD call.
+export async function loadCmsWindow(forceRefresh = false): Promise<CmsCache> {
+  const nowForMetrics = new Date();
+  const istDateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(nowForMetrics);
+  const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
+  const metricFetchStart = new Date(
+    Date.UTC(Number(istDateValues.year), Number(istDateValues.month) - 2, 1) -
+      330 * 60 * 1000
+  );
+  const metricFetchRange = {
+    startDate: metricFetchStart.toISOString(),
+    endDate: nowForMetrics.toISOString(),
+  };
+  let cache = readCmsCache();
+
+  if (forceRefresh) {
+    cache = { transactions: [], coverage: [] };
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(CMS_CACHE_KEY);
+    }
+  }
+
+  if (rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) return cache;
+
+  const params = new URLSearchParams({
+    page: "1",
+    perPage: "100",
+    startDate: metricFetchRange.startDate,
+    endDate: metricFetchRange.endDate,
+  });
+
+  const response = await fetchOperatorData(params.toString(), metricFetchRange.startDate);
+
+  const data = response.data as {
+    error?: string;
+    dashboard?: Dashboard;
+    transactions?: TransactionResponse & {
+      coverage?: { startDate: string; endDate: string };
+    };
+    active?: ActiveTransactionResponse;
+  };
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "CMS request failed.");
+  }
+
+  const dashboardData = data.dashboard;
+  if (!dashboardData) {
+    throw new Error(data.error ?? "CMS dashboard data was not returned.");
+  }
+
+  const incoming = data.transactions?.transactions ?? [];
+  const coverage = data.transactions?.coverage ?? metricFetchRange;
+
+  cache = {
+    transactions: mergeCmsTransactions(cache.transactions, incoming),
+    coverage: [...cache.coverage, coverage],
+    dashboard: dashboardData,
+    active: data.active ?? {},
+  };
+  writeCmsCache(cache);
+  return cache;
 }
 
 function filterTransactionsByRange(
@@ -525,70 +594,8 @@ export default function CmsOperatorDashboard() {
       // Fetch one consistent transaction window for all dashboard metrics and the
       // table; the table's date filter is applied client-side and never refetches. It covers the previous
       // calendar month and the current month-to-date.
-      const nowForMetrics = new Date();
-      const istDateParts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "Asia/Kolkata",
-        year: "numeric",
-        month: "2-digit",
-      }).formatToParts(nowForMetrics);
-      const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
-      const metricFetchStart = new Date(
-        Date.UTC(Number(istDateValues.year), Number(istDateValues.month) - 2, 1) -
-          330 * 60 * 1000
-      );
-      const metricFetchRange = {
-        startDate: metricFetchStart.toISOString(),
-        endDate: nowForMetrics.toISOString(),
-      };
-      let cache = readCmsCache();
       const cpoMobileNumbersRequest = fetchCpoMobileNumbers();
-
-      if (forceRefresh) {
-        cache = { transactions: [], coverage: [] };
-        if (typeof window !== "undefined") {
-          window.sessionStorage.removeItem(CMS_CACHE_KEY);
-        }
-      }
-
-      if (!rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) {
-        const params = new URLSearchParams({
-          page: "1",
-          perPage: "100",
-          startDate: metricFetchRange.startDate,
-          endDate: metricFetchRange.endDate,
-        });
-
-        const response = await fetchOperatorData(params.toString(), metricFetchRange.startDate);
-
-        const data = response.data as {
-          error?: string;
-          dashboard?: Dashboard;
-          transactions?: TransactionResponse & {
-            coverage?: { startDate: string; endDate: string };
-          };
-          active?: ActiveTransactionResponse;
-        };
-
-        if (!response.ok) {
-          throw new Error(data.error ?? "CMS request failed.");
-        }
-
-        const dashboardData = data.dashboard;
-        if (!dashboardData) {
-          throw new Error(data.error ?? "CMS dashboard data was not returned.");
-        }
-
-        const incoming = data.transactions?.transactions ?? [];
-        const coverage = data.transactions?.coverage ?? metricFetchRange;
-
-        cache = {
-          transactions: mergeCmsTransactions(cache.transactions, incoming),
-          coverage: [...cache.coverage, coverage],
-          dashboard: dashboardData,
-          active: data.active ?? {},
-        };
-        writeCmsCache(cache);
-      }
+      const cache = await loadCmsWindow(forceRefresh);
 
       if (cache.dashboard) setBaseDashboard(cache.dashboard);
       const activeData = cache.active ?? {};

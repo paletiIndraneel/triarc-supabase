@@ -56,6 +56,7 @@ export default function SignInForm() {
 
   return (
     <form
+      method="post" // never GET: a submit without JS must not put the password in the URL
       onSubmit={handleSubmit}
       className="mt-6 grid gap-4"
       noValidate

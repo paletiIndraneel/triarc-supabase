@@ -909,7 +909,7 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
         ? String(raw.userMobile)
         : null,
     userType: raw.userType ? String(raw.userType) : null,
-    tagReference: raw.tagReference ? String(raw.tagReference) : null,
+    tagReference: tagLabel(raw.tagReference),
     location: String(raw.locationName ?? ""),
     locationId: toNumber(raw.locationId),
     chargerName: String(raw.chargerName ?? ""),
@@ -951,6 +951,17 @@ export function sanitizeTransaction(raw: Record<string, unknown>) {
     createdAt: typeof raw.createdAt === "string" ? raw.createdAt : null,
     updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : null,
   };
+}
+
+// ChargeMOD sends tagReference as an object on completed sessions; show one readable field.
+function tagLabel(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (typeof value !== "object") return String(value);
+  const tag = value as Record<string, unknown>;
+  for (const key of ["name", "tagName", "idTag", "tagId", "reference", "id", "_id"]) {
+    if (typeof tag[key] === "string" || typeof tag[key] === "number") return String(tag[key]);
+  }
+  return null;
 }
 
 function toNumber(value: unknown): number | null {

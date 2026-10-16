@@ -94,8 +94,9 @@ export default function CpoSettings() {
               <div className="min-w-0">{editingId === number.id ? <input value={editingValue} onChange={(event) => setEditingValue(event.target.value)} aria-label="Edit mobile number" className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"/> : <span className="break-words text-sm font-semibold">{number.mobileNumber}</span>}</div>
               <span className="break-words font-mono text-xs text-slate-500">{number.normalizedMobile}</span>
               <div className="flex items-center justify-end gap-1">{editingId === number.id ? <>
-                <button type="button" title="Save number" aria-label="Save number" disabled={saving} onClick={() => void saveEdit(number.id)} className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><Check size={16}/></button>
+                {/* Cancel takes the Edit pencil's spot, so a double-click can't save. */}
                 <button type="button" title="Cancel edit" aria-label="Cancel edit" onClick={() => { setEditingId(null); setEditingValue(""); }} className="rounded-md p-2 text-slate-500 hover:bg-slate-100"><X size={16}/></button>
+                <button type="button" title="Save number" aria-label="Save number" disabled={saving} onClick={() => void saveEdit(number.id)} className="rounded-md p-2 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"><Check size={16}/></button>
               </> : <>
                 <button type="button" title="Edit number" aria-label={`Edit ${number.mobileNumber}`} disabled={saving} onClick={() => { setEditingId(number.id); setEditingValue(number.mobileNumber); }} className="rounded-md p-2 text-slate-600 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-50"><Pencil size={16}/></button>
                 <button type="button" title="Remove number" aria-label={`Remove ${number.mobileNumber}`} disabled={saving} onClick={() => void removeNumber(number)} className="rounded-md p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={16}/></button>
@@ -105,7 +106,7 @@ export default function CpoSettings() {
         </div>
         <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-sm leading-6 text-blue-900"><p className="font-semibold">How matching works</p>
           <p className="mt-1">Formatting is normalized before matching. 9876543210, +91 98765-43210 and 91-9876543210 match the same 10-digit Indian mobile number. Transactions with missing or unmatched mobile numbers are non-CPO.</p>
-          <p className="mt-1">CPO energy appears below DC in Total Energy (MTD). Revenue and Duration cards are unchanged.</p>
+          <p className="mt-1">CPO energy appears below DC in the Total energy card. The Revenue card is unchanged.</p>
         </div>
       </section>
     </div>

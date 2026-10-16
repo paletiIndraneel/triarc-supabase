@@ -11,3 +11,17 @@ export function calc(items,type){
  const tax=cgst+sgst+igst,total=taxable+tax,round=Math.round(total)-total;
  return {rows,taxable,cgst,sgst,igst,tax,round,total:total+round};
 }
+// Why a GSTIN is invalid, or null. Format plus the mod-36 check digit (15th character).
+export function gstinError(gstin){
+ const g=String(gstin||'').trim().toUpperCase();
+ if(!/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g))return 'GSTIN must look like 36AAAAA0000A1Z5: state code, PAN, entity number, Z, check digit.';
+ const cs='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';let sum=0;
+ for(let i=0;i<14;i++){const v=cs.indexOf(g[i])*(i%2?2:1);sum+=Math.floor(v/36)+v%36}
+ return cs[(36-sum%36)%36]===g[14]?null:'GSTIN check digit does not match. Check for a typo.';
+}
+// Lines for the same item at the same rate become one line with the quantities added.
+export function mergeLines(items){
+ const out=new Map();
+ for(const x of items){const k=[x.inventory_id,x.description,x.hsn,x.unit,+x.unit_price,+x.gst_rate,+x.discount_percent||0].join('|'),prev=out.get(k);out.set(k,prev?{...prev,quantity:Math.round((+prev.quantity+ +x.quantity)*1000)/1000}:{...x})}
+ return [...out.values()];
+}

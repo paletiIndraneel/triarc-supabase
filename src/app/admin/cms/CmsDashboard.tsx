@@ -74,9 +74,12 @@ type ActiveTransactionResponse = {
 type CmsCache = {
   transactions: Transaction[];
   coverage: Array<{ startDate: string; endDate: string }>;
+  // Kept with the rows so a reload served from cache still shows locations and live sessions.
+  dashboard?: Dashboard;
+  active?: ActiveTransactionResponse;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v4";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v5";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };
@@ -87,6 +90,8 @@ function readCmsCache(): CmsCache {
     return {
       transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
       coverage: Array.isArray(parsed.coverage) ? parsed.coverage : [],
+      dashboard: parsed.dashboard,
+      active: parsed.active,
     };
   } catch {
     return { transactions: [], coverage: [] };
@@ -282,9 +287,6 @@ function buildLocalDashboard(base: Dashboard | null, transactions: Transaction[]
   const chargers = new Set(
     transactions.map((transaction) => transaction.chargerId).filter(Boolean)
   );
-  const locations = new Set(
-    transactions.map((transaction) => transaction.location).filter(Boolean)
-  );
   const totalEnergy = transactions.reduce(
     (sum, transaction) => sum + (transaction.energyKwh ?? 0) * 1000,
     0
@@ -317,12 +319,6 @@ function buildLocalDashboard(base: Dashboard | null, transactions: Transaction[]
         totalRevenue,
         totalTime,
       },
-    },
-    locations: {
-      ...(base.locations && typeof base.locations === "object"
-        ? base.locations
-        : {}),
-      localCount: locations.size,
     },
   };
 }
@@ -554,8 +550,6 @@ export default function CmsOperatorDashboard() {
         }
       }
 
-      let activeData: ActiveTransactionResponse = {};
-
       if (!rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) {
         const params = new URLSearchParams({
           page: "1",
@@ -590,11 +584,14 @@ export default function CmsOperatorDashboard() {
         cache = {
           transactions: mergeCmsTransactions(cache.transactions, incoming),
           coverage: [...cache.coverage, coverage],
+          dashboard: dashboardData,
+          active: data.active ?? {},
         };
         writeCmsCache(cache);
-        setBaseDashboard(dashboardData);
-        activeData = data.active ?? {};
       }
+
+      if (cache.dashboard) setBaseDashboard(cache.dashboard);
+      const activeData = cache.active ?? {};
 
       const activeWasFetched =
         activeData.transactions !== undefined || activeData.count !== undefined;
@@ -812,10 +809,8 @@ export default function CmsOperatorDashboard() {
     typeof summary.transactionDetails === "object"
       ? (summary.transactionDetails as Record<string, unknown>)
       : {};
-  const locationCount =
-    typeof (dashboard?.locations as Record<string, unknown> | undefined)?.localCount === "number"
-      ? Number((dashboard?.locations as Record<string, unknown>).localCount)
-      : collectionLength(dashboard?.locations);
+  // From the location list, not the filtered rows, so a quiet day doesn't show 0.
+  const locationCount = Math.max(collectionLength(baseDashboard?.locations), locationOptions.length);
 
   function selectDatePreset(preset: DatePreset | "custom") {
     setDatePreset(preset);
@@ -849,6 +844,8 @@ export default function CmsOperatorDashboard() {
   // Only last month + month-to-date are loaded, so the picker can't reach further back.
   const customMinDate = istDateString(new Date(getDateRangeIST("last-month").startDate));
   const customMaxDate = istDateString();
+  // Month-to-date includes today, so name the range to set it apart from "This month (1–15)".
+  const mtdRange = `1–${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date())}`;
   const filterSelectClass =
     "rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]";
 
@@ -894,7 +891,7 @@ export default function CmsOperatorDashboard() {
           <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total energy (MTD)</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total energy ({mtdRange})</p>
                 <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
                   {monthToDateConsumption === null
                     ? "—"
@@ -933,7 +930,7 @@ export default function CmsOperatorDashboard() {
           <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue (MTD)</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue ({mtdRange})</p>
                 <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
                   {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
                 </p>

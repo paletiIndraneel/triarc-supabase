@@ -1,7 +1,7 @@
 // Unit tests for the admin's pure helpers. Run with `npm test` (Node's built-in runner).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calc, words } from "../src/app/admin/billing/invoiceMath.mjs";
+import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters } from "../src/app/admin/cms/transactionFilters.ts";
@@ -115,4 +115,19 @@ test("CPO rule: ChargeMOD type wins, else a CPO Settings mobile in any format ma
   assert.equal(isCpoTransaction(row("", "9000000000"), cpo), false);
   const f = { ...EMPTY_TRANSACTION_FILTERS, customer: "regular" };
   assert.equal(matchesTransactionFilters({ ...row("CPO", null), energyKwh: 1 }, f, false, cpo), false);
+});
+
+test("gstinError accepts a valid GSTIN and rejects bad format or check digit", () => {
+  assert.equal(gstinError("36AAYFT2036P1ZB"), null);
+  assert.match(gstinError("23ASDASDASDASDA"), /look like/);
+  assert.match(gstinError("36AAYFT2036P1ZC"), /check digit/);
+});
+
+test("mergeLines adds quantities of identical item lines and keeps different rates apart", () => {
+  const line = (inventory_id, quantity, unit_price) => ({ inventory_id, description: "AC", hsn: "996749", unit: "KWH", quantity, unit_price, gst_rate: 18 });
+  const merged = mergeLines([line("a", 1, 15), line("a", "0.1", 15), line("a", 0.2, 15), line("a", 2, 16)]);
+  assert.equal(merged.length, 2);
+  assert.equal(merged[0].quantity, 1.3);
+  assert.equal(merged[1].quantity, 2);
+  assert.equal(calc(merged, "IGST").total, calc([line("a", 1.3, 15), line("a", 2, 16)], "IGST").total);
 });

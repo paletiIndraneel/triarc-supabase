@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase/billing";
 
 export default function AdminUserBadge() {
   const [name, setName] = useState("Loading…");
-  const [role, setRole] = useState("Loading…");
 
   useEffect(() => {
     let mounted = true;
@@ -17,7 +16,6 @@ export default function AdminUserBadge() {
 
       const user = data.user;
       const metadata = user?.user_metadata ?? {};
-      const appMetadata = user?.app_metadata ?? {};
 
       const displayName =
         typeof metadata.display_name === "string" && metadata.display_name.trim()
@@ -28,17 +26,7 @@ export default function AdminUserBadge() {
               ? metadata.name.trim()
               : user?.email?.split("@")[0] || "User";
 
-      const userRole =
-        typeof appMetadata.role === "string" && appMetadata.role.trim()
-          ? appMetadata.role.trim()
-          : typeof metadata.role === "string" && metadata.role.trim()
-            ? metadata.role.trim()
-            : typeof metadata.user_role === "string" && metadata.user_role.trim()
-              ? metadata.user_role.trim()
-              : "Role not set";
-
       setName(displayName);
-      setRole(userRole);
     }
 
     void loadUser();
@@ -52,7 +40,7 @@ export default function AdminUserBadge() {
       <UserRound size={18} className="shrink-0 text-slate-600" />
       <span className="min-w-0 leading-tight">
         <b className="block max-w-[150px] truncate text-xs font-bold text-slate-900">{name}</b>
-        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">{role}</small>
+        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">Admin</small>{/* the proxy only lets active admins reach /admin */}
       </span>
     </div>
   );

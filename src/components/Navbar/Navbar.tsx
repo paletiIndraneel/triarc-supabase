@@ -64,9 +64,8 @@ export default function Navbar() {
               {navCta.label}
             </Link>
 
-            <div className="hidden lg:block">
-              {isAdminPage ? <LogoutButton compact /> : <Link href="/signin" className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white/80 transition hover:border-emerald-300/40 hover:bg-white/5">Admin Login</Link>}
-            </div>
+            {/* No public link to /signin; admins go to /admin directly. */}
+            {isAdminPage && <div className="hidden lg:block"><LogoutButton compact /></div>}
 
             <button
               type="button"
@@ -100,9 +99,7 @@ export default function Navbar() {
               >
                 {navCta.label}
               </Link>
-              <div className="mt-1">
-                {isAdminPage ? <LogoutButton compact /> : <Link href="/signin" className="block rounded-2xl border border-white/15 px-4 py-3 text-center text-sm font-semibold text-white/80 transition hover:border-emerald-300/40 hover:bg-white/5" onClick={() => setMobileOpen(false)}>Admin Login</Link>}
-              </div>
+              {isAdminPage && <div className="mt-1"><LogoutButton compact /></div>}
             </div>
           </div>
         ) : null}

@@ -34,7 +34,7 @@ type ActiveTransactionResponse = {
   count?: number;
 };
 
-type CmsCache = {
+export type CmsCache = {
   transactions: Transaction[];
   coverage: Array<{ startDate: string; endDate: string }>;
   // Kept with the rows so a reload served from cache still shows locations and live sessions.
@@ -177,7 +177,13 @@ async function fetchCpoMobileNumbers(): Promise<Set<string>> {
 
 // The CMS dashboard and the admin Overview share this window (previous calendar month
 // through now) and its sessionStorage cache, so opening both costs one ChargeMOD call.
-export async function loadCmsWindow(forceRefresh = false): Promise<CmsCache> {
+// onStored gets something to show while the live request runs: this tab's older cached copy,
+// or else what the database already holds (no ChargeMOD call). It is not called on Refresh
+// or when the cache is fresh, and the live result always follows.
+export async function loadCmsWindow(
+  forceRefresh = false,
+  onStored?: (cache: CmsCache) => void
+): Promise<CmsCache> {
   const nowForMetrics = new Date();
   const istDateParts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -203,6 +209,28 @@ export async function loadCmsWindow(forceRefresh = false): Promise<CmsCache> {
   }
 
   if (rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) return cache;
+
+  if (onStored && !forceRefresh) {
+    if (cache.transactions.length) {
+      onStored(cache);
+    } else {
+      try {
+        const query = new URLSearchParams({ stored: "1", ...metricFetchRange });
+        const response = await fetch(`/api/cms/operator?${query}`, { cache: "no-store" });
+        const data = response.ok ? await response.json() : null;
+        if (data?.transactions?.transactions?.length) {
+          onStored({
+            transactions: data.transactions.transactions,
+            coverage: [data.transactions.coverage],
+            dashboard: data.dashboard,
+            active: {},
+          });
+        }
+      } catch {
+        // The live request below still runs; the stored copy is only a head start.
+      }
+    }
+  }
 
   const params = new URLSearchParams({
     page: "1",
@@ -558,8 +586,7 @@ export default function CmsOperatorDashboard() {
       // table; the table's date filter is applied client-side and never refetches. It covers the previous
       // calendar month and the current month-to-date.
       const cpoMobileNumbersRequest = fetchCpoMobileNumbers();
-      const cache = await loadCmsWindow(forceRefresh);
-
+      const apply = async (cache: CmsCache) => {
       if (cache.dashboard) setBaseDashboard(cache.dashboard);
       const activeData = cache.active ?? {};
 
@@ -693,6 +720,10 @@ export default function CmsOperatorDashboard() {
       } catch {
         // Metric calculation must not prevent the dashboard from rendering.
       }
+      };
+
+      // Show stored sessions straight away, then the live result when ChargeMOD answers.
+      await apply(await loadCmsWindow(forceRefresh, (stored) => void apply(stored)));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CMS request failed.");
     } finally {
@@ -773,6 +804,8 @@ export default function CmsOperatorDashboard() {
     URL.revokeObjectURL(url);
   }
 
+  // Stored sessions stay usable while the live request runs; only an empty screen waits.
+  const waiting = loading && allTransactions.length === 0;
   const summary = dashboard?.summary ?? {};
   const details =
     summary.transactionDetails &&
@@ -987,7 +1020,7 @@ export default function CmsOperatorDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={exportTransactionsCsv}
-                disabled={loading || transactions.length === 0}
+                disabled={waiting || transactions.length === 0}
                 className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Export all ${count} transactions matching the selected filters`}
               >
@@ -998,7 +1031,7 @@ export default function CmsOperatorDashboard() {
                 <span>Date:</span>
                 <select
                   value={datePreset}
-                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)} disabled={loading}
+                  onChange={(event) => selectDatePreset(event.target.value as DatePreset)} disabled={waiting}
                   className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
                   aria-label="Date range"
                 >
@@ -1327,14 +1360,14 @@ export default function CmsOperatorDashboard() {
             </span>
             <div className="flex gap-2">
               <button
-                disabled={page <= 1 || loading}
+                disabled={page <= 1 || waiting}
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >
                 Previous
               </button>
               <button
-                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || loading}
+                disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || waiting}
                 onClick={() => setPage((value) => value + 1)}
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
               >

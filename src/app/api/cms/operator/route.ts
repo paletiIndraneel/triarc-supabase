@@ -36,6 +36,27 @@ export async function GET(request: Request) {
     const searchField = url.searchParams.get("searchField") ?? "";
     const searchKey = url.searchParams.get("searchKey") ?? "";
 
+    // stored=1: only what cms_transactions already holds for the window, no ChargeMOD call,
+    // so the dashboard can render at once and then swap in the live response.
+    if (url.searchParams.get("stored") === "1") {
+      const transactions = await readStoredTransactions(supabase, startDate, endDate);
+      const newest = transactions.reduce<string | null>(
+        (latest, t) => (t.startedAt && (!latest || t.startedAt > latest) ? t.startedAt : latest),
+        null
+      );
+      return NextResponse.json({
+        dashboard: { summary: {}, chart: {}, chargers: {}, locations: {} },
+        transactions: {
+          transactions,
+          count: transactions.length,
+          totalCount: transactions.length,
+          coverage: { startDate, endDate: newest ?? startDate },
+        },
+        active: {},
+        stored: true,
+      });
+    }
+
     // Delta sync: ChargeMOD is only asked for sessions from the newest stored one onward, or
     // from the oldest stored session still charging (see syncStartDate); older sessions in
     // the window come from cms_transactions. Searches and a missing/unreadable table fall
@@ -87,22 +108,9 @@ export async function GET(request: Request) {
     }
 
     if (syncStart !== startDate) {
-      const stored: CmsTransactionRow[] = [];
-      for (let from = 0; ; from += 1000) {
-        const { data: batch, error } = await supabase
-          .from("cms_transactions")
-          .select("*")
-          .gte("started_at", startDate)
-          .lt("started_at", syncStart)
-          .order("started_at")
-          .order("transaction_id")
-          .range(from, from + 999);
-        if (error) throw new Error(`Stored CMS transactions could not be read: ${error.message}`);
-        stored.push(...(batch as CmsTransactionRow[]));
-        if (batch.length < 1000) break;
-      }
+      const stored = await readStoredTransactions(supabase, startDate, syncStart);
       const transactions = [
-        ...stored.map(fromStoredRow),
+        ...stored,
         ...data.transactions.transactions,
       ];
       data.transactions = {
@@ -122,4 +130,27 @@ export async function GET(request: Request) {
       { status: 502 }
     );
   }
+}
+
+// Sessions saved in cms_transactions that started in [from, to), oldest first.
+async function readStoredTransactions(
+  supabase: Awaited<ReturnType<typeof getAdminClient>>["supabase"],
+  from: string,
+  to: string
+) {
+  const stored: CmsTransactionRow[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data: batch, error } = await supabase
+      .from("cms_transactions")
+      .select("*")
+      .gte("started_at", from)
+      .lt("started_at", to)
+      .order("started_at")
+      .order("transaction_id")
+      .range(offset, offset + 999);
+    if (error) throw new Error(`Stored CMS transactions could not be read: ${error.message}`);
+    stored.push(...(batch as CmsTransactionRow[]));
+    if (batch.length < 1000) break;
+  }
+  return stored.map(fromStoredRow);
 }

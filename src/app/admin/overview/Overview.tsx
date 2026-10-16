@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { loadCmsWindow, mergeTransactionData, type Transaction } from "@/app/admin/cms/CmsDashboard";
+import { loadCmsWindow, mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/CmsDashboard";
 import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";
@@ -17,7 +17,7 @@ type Metric = "kwh" | "revenue" | "sessions";
 type CmsState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; active: number; updatedAt: string | null };
+  | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; active: number | null; updatedAt: string | null; refreshing?: boolean };
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 const kwh = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: n >= 100 ? 0 : 1 });
@@ -48,22 +48,32 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
 
   // CMS (ChargeMOD) can fail on its own; Billing and Enquiries still show when it does.
   const loadCms = useCallback(async (force = false) => {
-    setCms({ status: "loading" });
-    try {
-      const cache = await loadCmsWindow(force);
+    setCms((current) => (current.status === "ok" ? { ...current, refreshing: true } : { status: "loading" }));
+    const show = (cache: CmsCache, refreshing: boolean) => {
       const merged = new Map<string, Transaction>();
       for (const t of [...cache.transactions, ...(cache.active?.transactions ?? [])]) {
         const key = t.transactionId || t.id;
         if (key) merged.set(key, merged.has(key) ? mergeTransactionData(merged.get(key)!, t) : t);
       }
-      setCms({
+      const active = cache.active?.count ?? cache.active?.transactions?.length ?? null;
+      setCms((current) => ({
         status: "ok",
         metrics: overviewMetrics([...merged.values()]),
-        active: cache.active?.count ?? cache.active?.transactions?.length ?? 0,
+        // The stored copy has no live count; keep the last one rather than flash 0.
+        active: active ?? (current.status === "ok" ? current.active : null),
         updatedAt: cache.coverage.at(-1)?.endDate ?? null,
-      });
+        refreshing,
+      }));
+    };
+    try {
+      // Stored sessions first, then the live result once ChargeMOD answers.
+      show(await loadCmsWindow(force, (stored) => show(stored, true)), false);
     } catch (error) {
-      setCms({ status: "error", message: error instanceof Error ? error.message : "Could not load charging data." });
+      setCms((current) =>
+        current.status === "ok"
+          ? { ...current, refreshing: false }
+          : { status: "error", message: error instanceof Error ? error.message : "Could not load charging data." }
+      );
     }
   }, []);
 
@@ -109,10 +119,10 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             <button
               type="button"
               onClick={() => void loadCms(true)}
-              disabled={cms.status === "loading"}
+              disabled={(cms.status === "loading" || (cms.status === "ok" && cms.refreshing))}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <RefreshCw size={16} aria-hidden="true" className={cms.status === "loading" ? "motion-safe:animate-spin" : ""} />
+              <RefreshCw size={16} aria-hidden="true" className={(cms.status === "loading" || (cms.status === "ok" && cms.refreshing)) ? "motion-safe:animate-spin" : ""} />
               Refresh
             </button>
           </div>
@@ -150,7 +160,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             <section aria-label="Charging now" className={`${card} flex flex-wrap items-center justify-between gap-3`}>
               <div className="flex items-center gap-3">
                 <p className="text-xs font-semibold text-[#5d6577]">Charging now</p>
-                {cms.status === "ok" ? (
+                {cms.status === "ok" && cms.active !== null ? (
                   <p className="flex items-center gap-2.5 text-[28px] font-bold">
                     <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${cms.active ? "bg-[#1e8a4c] shadow-[0_0_0_4px_#dcf3e5]" : "bg-slate-300"}`} />
                     {cms.active}

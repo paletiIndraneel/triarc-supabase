@@ -134,8 +134,9 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
               {[
                 { label: "Energy today", value: cms.status === "ok" ? `${kwh(cms.metrics.today.kwh)} kWh` : null, note: cms.status === "ok" ? `${cms.metrics.today.sessions} sessions` : null },
-                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.recent15Days.label : "last 15 days"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.recent15Days.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.recent15Days.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.recent15Days.sessions} sessions · ${inr(cms.metrics.lastMonthSameDaysRevenue)} same days last month` : null },
-                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.earlier15Days.label : "15 days before"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.earlier15Days.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.earlier15Days.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.earlier15Days.sessions} sessions` : null },
+                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.currentCycle.label : "this billing cycle"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.currentCycle.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.currentCycle.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.currentCycle.sessions} sessions · ${inr(cms.metrics.lastMonthSameDaysRevenue)} same days last month` : null },
+                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.previousCycle.label : "last billing cycle"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.previousCycle.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.previousCycle.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.previousCycle.sessions} sessions` : null },
+                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.olderCycle.label : "billing cycle before"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.olderCycle.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.olderCycle.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.olderCycle.sessions} sessions` : null },
               ].map((k) => (
                 <div key={k.label} className={card}>
                   <p className="text-xs font-semibold text-[#5d6577]">{k.label}</p>
@@ -144,16 +145,19 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                   {k.note && <p className="mt-1.5 text-xs text-[#5d6577]">{k.note}</p>}
                 </div>
               ))}
-              <div className={card}>
+            </section>
+
+            <section aria-label="Charging now" className={`${card} flex flex-wrap items-center justify-between gap-3`}>
+              <div className="flex items-center gap-3">
                 <p className="text-xs font-semibold text-[#5d6577]">Charging now</p>
                 {cms.status === "ok" ? (
-                  <p className="mt-2 flex items-center gap-2.5 text-[28px] font-bold">
+                  <p className="flex items-center gap-2.5 text-[28px] font-bold">
                     <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${cms.active ? "bg-[#1e8a4c] shadow-[0_0_0_4px_#dcf3e5]" : "bg-slate-300"}`} />
                     {cms.active}
                   </p>
-                ) : <div className="mt-3 h-8 w-16 rounded-md bg-slate-100 motion-safe:animate-pulse" />}
-                <button type="button" onClick={() => setActiveModule("cms")} className="mt-1.5 text-xs font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open CMS Dashboard</button>
+                ) : <div className="h-8 w-16 rounded-md bg-slate-100 motion-safe:animate-pulse" />}
               </div>
+              <button type="button" onClick={() => setActiveModule("cms")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open CMS Dashboard</button>
             </section>
 
             <section aria-labelledby="trend-h" className={card}>

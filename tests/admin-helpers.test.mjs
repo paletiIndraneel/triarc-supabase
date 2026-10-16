@@ -139,31 +139,41 @@ test("investors can open only the CMS dashboard and enquiries; partners open eve
   assert.ok(["cms", "billing", "enquiries", "cpo-settings"].every((m) => canOpenModule(m, true)));
 });
 
-test("overviewMetrics splits the last 30 days into two 15-day blocks in IST", async () => {
+test("overviewMetrics totals the current and previous half-month billing cycles in IST", async () => {
   const { overviewMetrics } = await import("../src/app/admin/overview/overviewMetrics.ts");
-  const now = new Date("2026-10-16T10:00:00+05:30");
   const row = (startedAt, energyKwh, tariffAmount) => ({ startedAt, energyKwh, tariffAmount });
-  const m = overviewMetrics([
+  const rows = [
     row("2026-10-16T00:10:00+05:30", 10, 200),   // today
     row("2026-10-15T23:50:00+05:30", 5, 100),    // yesterday in IST, same UTC date as today
-    row("2026-10-02T00:00:00+05:30", -3, 50),    // first day of the recent block; negative reading counts as 0 kWh
-    row("2026-10-01T23:59:00+05:30", 4, 40),     // last day of the earlier block
-    row("2026-09-17T00:00:00+05:30", 6, 60),     // first day of the earlier block
-    row("2026-09-16T23:00:00+05:30", 9, 90),     // 31 days ago: in neither block, but in "same days last month"
-    row("2026-09-16T11:00:00+05:30", 7, 999),    // last month, after the same time of day
-    row("2026-09-16T09:00:00+05:30", 7, 70),     // last month, before the same time of day
-    row("2026-09-01T12:00:00+05:30", 1, 500),    // last month, before the same dates
+    row("2026-10-02T00:00:00+05:30", -3, 50),    // negative reading counts as 0 kWh
+    row("2026-10-01T23:59:00+05:30", 4, 40),
+    row("2026-09-17T00:00:00+05:30", 6, 60),
+    row("2026-09-16T23:00:00+05:30", 9, 90),
+    row("2026-09-16T11:00:00+05:30", 7, 999),    // last month's 16th, after 10:00
+    row("2026-09-16T09:00:00+05:30", 7, 70),     // last month's 16th, before 10:00
+    row("2026-09-01T12:00:00+05:30", 1, 500),
     row(null, 99, 99),
-  ], now);
+  ];
+  // 16th onward: this cycle is 16th–month end, the previous one 1st–15th
+  const m = overviewMetrics(rows, new Date("2026-10-16T10:00:00+05:30"));
   assert.deepEqual(m.today, { label: "16 Oct", kwh: 10, revenue: 200, sessions: 1 });
-  assert.deepEqual(m.recent15Days, { label: "2 Oct–16 Oct", kwh: 15, revenue: 350, sessions: 3 });
-  assert.deepEqual(m.earlier15Days, { label: "17 Sept–1 Oct", kwh: 10, revenue: 100, sessions: 2 });
-  // same dates last month: 2–16 Sept up to 10:00 on the 16th
-  assert.equal(m.lastMonthSameDaysRevenue, 70);
+  assert.deepEqual(m.currentCycle, { label: "16 Oct–31 Oct", kwh: 10, revenue: 200, sessions: 1 });
+  assert.deepEqual(m.previousCycle, { label: "1 Oct–15 Oct", kwh: 9, revenue: 190, sessions: 3 });
+  assert.deepEqual(m.olderCycle, { label: "16 Sept–30 Sept", kwh: 29, revenue: 1219, sessions: 4 });
+  assert.equal(m.lastMonthSameDaysRevenue, 70); // 16 Sept up to 10:00
   assert.equal(m.days.length, 30);
   assert.equal(m.days[0].label, "17 Sept");
   assert.equal(m.days[28].kwh, 5);
+  // 1st–15th: this cycle is 1st–15th, the previous one 16th–end of last month
+  const early = overviewMetrics(rows, new Date("2026-10-05T10:00:00+05:30"));
+  assert.deepEqual(early.currentCycle, { label: "1 Oct–15 Oct", kwh: 4, revenue: 90, sessions: 2 });
+  assert.deepEqual(early.previousCycle, { label: "16 Sept–30 Sept", kwh: 29, revenue: 1219, sessions: 4 });
+  assert.deepEqual(early.olderCycle, { label: "1 Sept–15 Sept", kwh: 1, revenue: 500, sessions: 1 });
+  assert.equal(early.lastMonthSameDaysRevenue, 500); // 1 Sept up to 5 Sept 10:00
+  // February's second cycle ends on the 28th
+  assert.equal(overviewMetrics([], new Date("2027-02-20T10:00:00+05:30")).currentCycle.label, "16 Feb–28 Feb");
 });
+
 
 
 test("cms_transactions rows round-trip camelCase fields through snake_case columns", () => {

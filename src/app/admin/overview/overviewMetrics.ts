@@ -23,15 +23,17 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
   };
 
   const nowMs = now.getTime();
-  const DAY = 24 * 60 * MINUTE;
-  const todayStart = istMidnight(year, month, day);
-  // The last 30 days as two 15-day blocks: today and the 14 days before it, then the 15 before that.
-  const recentStart = todayStart - 14 * DAY;
-  const earlierStart = recentStart - 15 * DAY;
-  // Same dates a month earlier as the recent block, up to the same time of day.
-  // shortcut: Date.UTC rolls 29–31 over into the next month (31 Mar -> 3 Mar); fine for a comparison note.
-  const lastMonthToday = istMidnight(year, month - 1, day);
-  const lastMonthSameDays = sum(lastMonthToday - 14 * DAY, lastMonthToday + (nowMs - todayStart) + 1);
+  // Billing runs in half-month cycles: 1st–15th and 16th–month end (28–31, whatever the month has).
+  // The Overview shows the current one and the two before it (45 days).
+  const secondHalf = day > 15;
+  const currentStart = istMidnight(year, month, secondHalf ? 16 : 1);
+  const currentEnd = secondHalf ? istMidnight(year, month + 1, 1) : istMidnight(year, month, 16);
+  const previousStart = secondHalf ? istMidnight(year, month, 1) : istMidnight(year, month - 1, 16);
+  const olderStart = secondHalf ? istMidnight(year, month - 1, 16) : istMidnight(year, month - 1, 1);
+  // Same cycle last month, up to the same point into it (capped at that cycle's end).
+  const lastMonthStart = istMidnight(year, month - 1, secondHalf ? 16 : 1);
+  const lastMonthEnd = secondHalf ? istMidnight(year, month, 1) : istMidnight(year, month - 1, 16);
+  const lastMonthSameDays = sum(lastMonthStart, Math.min(lastMonthStart + (nowMs - currentStart) + 1, lastMonthEnd));
 
   const label = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
   const days: DayTotal[] = [];
@@ -44,8 +46,9 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
 
   return {
     today: days[days.length - 1],
-    recent15Days: { label: range(recentStart, todayStart + DAY), ...sum(recentStart, nowMs + 1) },
-    earlier15Days: { label: range(earlierStart, recentStart), ...sum(earlierStart, recentStart) },
+    currentCycle: { label: range(currentStart, currentEnd), ...sum(currentStart, nowMs + 1) },
+    previousCycle: { label: range(previousStart, currentStart), ...sum(previousStart, currentStart) },
+    olderCycle: { label: range(olderStart, previousStart), ...sum(olderStart, previousStart) },
     lastMonthSameDaysRevenue: lastMonthSameDays.revenue,
     days,
   };

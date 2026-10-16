@@ -23,10 +23,15 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
   };
 
   const nowMs = now.getTime();
-  const monthStart = istMidnight(year, month, 1);
-  // Same stretch of last month (1st up to this day and time), capped at its end.
-  const lastMonthStart = istMidnight(year, month - 1, 1);
-  const lastMonthSameDays = sum(lastMonthStart, Math.min(lastMonthStart + (nowMs - monthStart), monthStart));
+  const DAY = 24 * 60 * MINUTE;
+  const todayStart = istMidnight(year, month, day);
+  // The last 30 days as two 15-day blocks: today and the 14 days before it, then the 15 before that.
+  const recentStart = todayStart - 14 * DAY;
+  const earlierStart = recentStart - 15 * DAY;
+  // Same dates a month earlier as the recent block, up to the same time of day.
+  // shortcut: Date.UTC rolls 29–31 over into the next month (31 Mar -> 3 Mar); fine for a comparison note.
+  const lastMonthToday = istMidnight(year, month - 1, day);
+  const lastMonthSameDays = sum(lastMonthToday - 14 * DAY, lastMonthToday + (nowMs - todayStart) + 1);
 
   const label = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
   const days: DayTotal[] = [];
@@ -35,9 +40,12 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
     days.push({ label: label.format(new Date(start + 330 * MINUTE)), ...sum(start, start + 24 * 60 * MINUTE) });
   }
 
+  const range = (start: number, end: number) => `${label.format(new Date(start + 330 * MINUTE))}–${label.format(new Date(end - 1))}`;
+
   return {
     today: days[days.length - 1],
-    monthToDate: sum(monthStart, nowMs + 1),
+    recent15Days: { label: range(recentStart, todayStart + DAY), ...sum(recentStart, nowMs + 1) },
+    earlier15Days: { label: range(earlierStart, recentStart), ...sum(earlierStart, recentStart) },
     lastMonthSameDaysRevenue: lastMonthSameDays.revenue,
     days,
   };

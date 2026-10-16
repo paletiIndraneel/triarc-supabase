@@ -175,8 +175,8 @@ async function fetchCpoMobileNumbers(): Promise<Set<string>> {
   }
 }
 
-// The CMS dashboard and the admin Overview share this window (previous calendar month
-// through now) and its sessionStorage cache, so opening both costs one ChargeMOD call.
+// The CMS dashboard and the admin Overview share this window (previous calendar month,
+// plus 15 days, through now) and its sessionStorage cache, so opening both costs one ChargeMOD call.
 export async function loadCmsWindow(forceRefresh = false): Promise<CmsCache> {
   const nowForMetrics = new Date();
   const istDateParts = new Intl.DateTimeFormat("en-CA", {
@@ -185,8 +185,10 @@ export async function loadCmsWindow(forceRefresh = false): Promise<CmsCache> {
     month: "2-digit",
   }).formatToParts(nowForMetrics);
   const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
+  // Previous calendar month, plus 15 days before it for the Overview's "same days last month"
+  // comparison of the last 15 days.
   const metricFetchStart = new Date(
-    Date.UTC(Number(istDateValues.year), Number(istDateValues.month) - 2, 1) -
+    Date.UTC(Number(istDateValues.year), Number(istDateValues.month) - 2, 1 - 15) -
       330 * 60 * 1000
   );
   const metricFetchRange = {

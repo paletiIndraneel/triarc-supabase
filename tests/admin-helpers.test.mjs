@@ -139,25 +139,32 @@ test("investors can open only the CMS dashboard and enquiries; partners open eve
   assert.ok(["cms", "billing", "enquiries", "cpo-settings"].every((m) => canOpenModule(m, true)));
 });
 
-test("overviewMetrics totals today, month-to-date and the same days last month in IST", async () => {
+test("overviewMetrics splits the last 30 days into two 15-day blocks in IST", async () => {
   const { overviewMetrics } = await import("../src/app/admin/overview/overviewMetrics.ts");
   const now = new Date("2026-10-16T10:00:00+05:30");
   const row = (startedAt, energyKwh, tariffAmount) => ({ startedAt, energyKwh, tariffAmount });
   const m = overviewMetrics([
     row("2026-10-16T00:10:00+05:30", 10, 200),   // today
     row("2026-10-15T23:50:00+05:30", 5, 100),    // yesterday in IST, same UTC date as today
-    row("2026-10-01T00:00:00+05:30", -3, 50),    // negative reading counts as 0 kWh
-    row("2026-09-16T09:00:00+05:30", 7, 70),     // last month, inside 1st–16th 10:00
+    row("2026-10-02T00:00:00+05:30", -3, 50),    // first day of the recent block; negative reading counts as 0 kWh
+    row("2026-10-01T23:59:00+05:30", 4, 40),     // last day of the earlier block
+    row("2026-09-17T00:00:00+05:30", 6, 60),     // first day of the earlier block
+    row("2026-09-16T23:00:00+05:30", 9, 90),     // 31 days ago: in neither block, but in "same days last month"
     row("2026-09-16T11:00:00+05:30", 7, 999),    // last month, after the same time of day
+    row("2026-09-16T09:00:00+05:30", 7, 70),     // last month, before the same time of day
+    row("2026-09-01T12:00:00+05:30", 1, 500),    // last month, before the same dates
     row(null, 99, 99),
   ], now);
   assert.deepEqual(m.today, { label: "16 Oct", kwh: 10, revenue: 200, sessions: 1 });
-  assert.deepEqual(m.monthToDate, { kwh: 15, revenue: 350, sessions: 3 });
+  assert.deepEqual(m.recent15Days, { label: "2 Oct–16 Oct", kwh: 15, revenue: 350, sessions: 3 });
+  assert.deepEqual(m.earlier15Days, { label: "17 Sept–1 Oct", kwh: 10, revenue: 100, sessions: 2 });
+  // same dates last month: 2–16 Sept up to 10:00 on the 16th
   assert.equal(m.lastMonthSameDaysRevenue, 70);
   assert.equal(m.days.length, 30);
   assert.equal(m.days[0].label, "17 Sept");
   assert.equal(m.days[28].kwh, 5);
 });
+
 
 test("cms_transactions rows round-trip camelCase fields through snake_case columns", () => {
   const t = { id: "m1", transactionId: "", energyKwh: 4.026, startedAt: "2026-09-01T01:42:01.899Z", isTimeBasedTariff: false };

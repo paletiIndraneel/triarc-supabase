@@ -85,7 +85,6 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const billedFy = fyInvoices.reduce((s, i) => s + Number(i.grand_total || 0), 0);
   const unpaid = (invoices ?? []).filter((i) => ["issued", "sent", "partially_paid"].includes(i.invoice_status ?? ""));
   const newEnquiries = enquiries.filter((e) => e.status === "New").length;
-  const monthLabel = `1–${istDay.format(new Date())}`;
 
   const days = cms.status === "ok" ? cms.metrics.days : [];
   const values = days.map((d) => d[metric]);
@@ -135,12 +134,13 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
               {[
                 { label: "Energy today", value: cms.status === "ok" ? `${kwh(cms.metrics.today.kwh)} kWh` : null, note: cms.status === "ok" ? `${cms.metrics.today.sessions} sessions` : null },
-                { label: `Energy, ${monthLabel}`, value: cms.status === "ok" ? `${kwh(cms.metrics.monthToDate.kwh)} kWh` : null, note: cms.status === "ok" ? `${cms.metrics.monthToDate.sessions} sessions` : null },
-                { label: `Revenue, ${monthLabel}`, value: cms.status === "ok" ? inr(cms.metrics.monthToDate.revenue) : null, note: cms.status === "ok" ? `${inr(cms.metrics.lastMonthSameDaysRevenue)} same days last month` : null },
+                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.recent15Days.label : "last 15 days"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.recent15Days.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.recent15Days.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.recent15Days.sessions} sessions · ${inr(cms.metrics.lastMonthSameDaysRevenue)} same days last month` : null },
+                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.earlier15Days.label : "15 days before"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.earlier15Days.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.earlier15Days.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.earlier15Days.sessions} sessions` : null },
               ].map((k) => (
                 <div key={k.label} className={card}>
                   <p className="text-xs font-semibold text-[#5d6577]">{k.label}</p>
                   {k.value === null ? <div className="mt-3 h-8 w-32 rounded-md bg-slate-100 motion-safe:animate-pulse" /> : <p className="mt-2 text-[28px] font-bold tracking-tight">{k.value}</p>}
+                  {"value2" in k && k.value2 && <p className="text-xl font-bold tracking-tight text-[#3d4559]">{k.value2}</p>}
                   {k.note && <p className="mt-1.5 text-xs text-[#5d6577]">{k.note}</p>}
                 </div>
               ))}

@@ -8,7 +8,7 @@ import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
 import { ToastProvider } from "@/components/BillingToast";
 import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
-import { parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
+import { canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
 import styles from "@/app/admin/billing/billing.module.css";
 import adminStyles from "@/components/admin/admin.module.css";
 
@@ -22,16 +22,19 @@ type Enquiry = {
   created_at: string;
 };
 
-export default function AdminApp({ enquiries, enquiryError, initialModule }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule }) {
-  const [activeModule, setModuleState] = useState<AdminModule>(initialModule);
+export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean }) {
+  const [moduleState, setModuleState] = useState<AdminModule>(initialModule);
+  // A module the user may not open (e.g. an investor following a ?module=billing link) shows the dashboard.
+  const activeModule = canOpenModule(moduleState, isPartner) ? moduleState : "cms";
 
   const setActiveModule = useCallback((module: AdminModule) => {
+    if (!canOpenModule(module, isPartner)) return;
     setModuleState(module);
     const url = new URL(window.location.href);
     if (url.searchParams.get("module") === module) return;
     url.searchParams.set("module", module);
     window.history.pushState(null, "", url);
-  }, []);
+  }, [isPartner]);
 
   // Back/Forward move between modules instead of leaving the admin.
   useEffect(() => {
@@ -41,7 +44,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule }: { e
   }, []);
 
   return (
-    <AdminModuleContext.Provider value={{ activeModule, setActiveModule }}>
+    <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner }}>
       <div className={adminStyles.adminShell}>
       <AdminHeader />
       {activeModule === "cms" && <CmsDashboard />}

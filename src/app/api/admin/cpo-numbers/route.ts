@@ -27,8 +27,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { supabase, user } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 }); // investors can only read
   try {
     const body = await request.json() as { mobileNumber?: unknown };
     if (typeof body.mobileNumber !== "string" || !body.mobileNumber.trim())
@@ -49,8 +49,8 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const { supabase, user } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 }); // investors can only read
   try {
     const body = await request.json() as { id?: unknown; mobileNumber?: unknown };
     if (typeof body.id !== "string" || !body.id || typeof body.mobileNumber !== "string" || !body.mobileNumber.trim())
@@ -72,8 +72,8 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { supabase, user } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 }); // investors can only read
   try {
     const body = await request.json() as { id?: unknown };
     if (typeof body.id !== "string" || !body.id) return NextResponse.json({ error: "A number ID is required." }, { status: 400 });

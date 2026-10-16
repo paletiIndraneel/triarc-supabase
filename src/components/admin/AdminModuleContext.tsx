@@ -9,6 +9,7 @@ export type { AdminModule };
 type AdminModuleContextValue = {
   activeModule: AdminModule;
   setActiveModule: (module: AdminModule) => void;
+  isPartner: boolean;
 };
 
 export const AdminModuleContext = createContext<AdminModuleContextValue | null>(null);

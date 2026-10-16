@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import AdminApp from "@/components/admin/AdminApp";
 import { parseAdminModule } from "@/components/admin/adminNavigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -20,7 +20,8 @@ type Enquiry = {
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ module?: string | string[] }> }) {
   const { module } = await searchParams;
-  const supabase = await createClient();
+  // proxy.ts has already checked this is an active admin; this adds partner vs investor.
+  const { supabase, isPartner } = await getAdminClient();
   const { data, error } = await supabase
     .from("enquiries")
     .select("id, name, email, phone, message, status, created_at")
@@ -31,6 +32,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       enquiries={(data ?? []) as Enquiry[]}
       enquiryError={Boolean(error)}
       initialModule={parseAdminModule(typeof module === "string" ? module : null)}
+      isPartner={isPartner}
     />
   );
 }

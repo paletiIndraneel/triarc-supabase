@@ -39,15 +39,16 @@ export async function getAdminClient() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null };
+  if (!user) return { supabase, user: null, isPartner: false };
 
   const { data: admin, error } = await supabase
     .from("admin_users")
-    .select("user_id")
+    .select("access")
     .eq("user_id", user.id)
     .eq("role", "admin")
     .eq("active", true)
     .maybeSingle();
 
-  return { supabase, user: !error && admin ? user : null };
+  // Partners have the whole admin; investors only the CMS dashboard and enquiries.
+  return { supabase, user: !error && admin ? user : null, isPartner: !error && admin?.access === "partner" };
 }

@@ -3,11 +3,11 @@
 import { Settings2 } from "lucide-react";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
 import LogoutButton from "@/components/admin/LogoutButton";
-import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNavigation";
+import { ADMIN_NAV_ITEMS, canOpenModule } from "@/components/admin/adminNavigation";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 
 export default function AdminHeader() {
-  const { activeModule, setActiveModule } = useAdminModule();
+  const { activeModule, setActiveModule, isPartner } = useAdminModule();
 
   return (
     // Below md the nav drops to its own row and scrolls sideways instead of pushing Sign out off-screen.
@@ -18,7 +18,7 @@ export default function AdminHeader() {
       </div>
       <nav className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:px-0" aria-label="Admin modules">
 
-        {ADMIN_NAV_ITEMS.map((item) => (
+        {ADMIN_NAV_ITEMS.filter((item) => canOpenModule(item.key, isPartner)).map((item) => (
           <button
             key={item.key}
             type="button"
@@ -31,14 +31,14 @@ export default function AdminHeader() {
           </button>
         ))}
 
-        <button
+        {isPartner && <button
           type="button"
           onClick={() => setActiveModule("cpo-settings")}
           aria-current={activeModule === "cpo-settings" ? "page" : undefined}
           className={`inline-flex shrink-0 items-center gap-2 rounded-[10px] px-[14px] py-[9px] text-[13px] font-semibold transition ${activeModule === "cpo-settings" ? "bg-[#7157d9] text-white" : "text-[#172033] hover:bg-[#f5f3ff]"}`}
         >
           <Settings2 size={15} /> CPO Settings
-        </button>
+        </button>}
 
       </nav>
       <div className="ml-auto flex items-center gap-4 text-[#667085]">

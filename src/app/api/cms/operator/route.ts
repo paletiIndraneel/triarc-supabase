@@ -9,7 +9,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const { supabase, user } = await getAdminClient();
+  const { supabase, user, isPartner } = await getAdminClient();
   if (!user) {
     return new NextResponse("Forbidden", { status: 403 });
   }
@@ -39,6 +39,27 @@ export async function GET(request: Request) {
       searchField: url.searchParams.get("searchField") ?? "",
       searchKey: url.searchParams.get("searchKey") ?? "",
     });
+
+    // Keep a copy of every session in cms_transactions. RLS only lets partners write;
+    // a failed save is logged and never blocks the dashboard.
+    if (isPartner) {
+      const syncedAt = new Date().toISOString();
+      const rows = data.transactions.transactions.map((t) => ({
+        transaction_id: t.transactionId || t.id,
+        started_at: t.startedAt,
+        data: t,
+        synced_at: syncedAt,
+      }));
+      for (let i = 0; i < rows.length; i += 500) {
+        const { error } = await supabase
+          .from("cms_transactions")
+          .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
+        if (error) {
+          console.error("[cms/operator] saving transactions failed:", error.message);
+          break;
+        }
+      }
+    }
 
     return NextResponse.json(data);
   } catch (error) {

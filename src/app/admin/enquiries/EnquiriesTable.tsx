@@ -105,7 +105,7 @@ export default function EnquiriesTable({ enquiries: initialEnquiries, error = fa
 
       {lastChange && (
         <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
-          <span>Marked {lastChange.item.name} as {lastChange.item.status}.</span>
+          <span>Enquiry marked as {lastChange.item.status}.</span>
           <span className="flex items-center gap-3">
             <button type="button" onClick={() => void changeStatus(lastChange.item, lastChange.previous, true)} className="font-semibold text-violet-700 hover:text-violet-900">Undo</button>
             <button type="button" onClick={() => setLastChange(null)} aria-label="Dismiss" className="text-violet-500 hover:text-violet-800">✕</button>

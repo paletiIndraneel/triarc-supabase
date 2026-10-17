@@ -37,7 +37,13 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
     url.searchParams.set("module", module);
     window.history.pushState(null, "", url);
   }, [isPartner]);
-
+  
+  // Tab title follows the module, e.g. "TRIARC GROUP | Billing · EV Hub".
+  useEffect(() => {
+    const label = activeModule === "cpo-settings" ? "CPO Settings" : ADMIN_NAV_ITEMS.find((item) => item.key === activeModule)?.label ?? "Admin";
+    document.title = adminTabTitle(label, activeModule);
+  }, [activeModule]);
+  
   // Back/Forward move between modules instead of leaving the admin.
   useEffect(() => {
     const onPopState = () => setModuleState(parseAdminModule(new URL(window.location.href).searchParams.get("module")));

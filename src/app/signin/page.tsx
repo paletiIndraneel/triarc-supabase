@@ -4,7 +4,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import SignInForm from "@/components/admin/SignInForm";
 
 export const metadata: Metadata = {
-  title: "Sign In",
+  title: { absolute: "TRIARC GROUP | Sign in" },
   robots: { index: false, follow: false },
 };
 

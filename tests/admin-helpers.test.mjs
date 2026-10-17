@@ -157,18 +157,18 @@ test("overviewMetrics totals the current and previous half-month billing cycles 
   // 16th onward: this cycle is 16th–month end, the previous one 1st–15th
   const m = overviewMetrics(rows, new Date("2026-10-16T10:00:00+05:30"));
   assert.deepEqual(m.today, { label: "16 Oct", kwh: 10, revenue: 200, sessions: 1 });
-  assert.deepEqual(m.currentCycle, { label: "16 Oct–31 Oct", kwh: 10, revenue: 200, sessions: 1 });
-  assert.deepEqual(m.previousCycle, { label: "1 Oct–15 Oct", kwh: 9, revenue: 190, sessions: 3 });
-  assert.deepEqual(m.olderCycle, { label: "16 Sept–30 Sept", kwh: 29, revenue: 1219, sessions: 4 });
+  assert.deepEqual(m.currentCycle, { label: "16 Oct–31 Oct", from: "2026-10-16", to: "2026-11-01", kwh: 10, revenue: 200, sessions: 1 });
+  assert.deepEqual(m.previousCycle, { label: "1 Oct–15 Oct", from: "2026-10-01", to: "2026-10-16", kwh: 9, revenue: 190, sessions: 3 });
+  assert.deepEqual(m.olderCycle, { label: "16 Sept–30 Sept", from: "2026-09-16", to: "2026-10-01", kwh: 29, revenue: 1219, sessions: 4 });
   assert.equal(m.lastMonthSameDaysRevenue, 70); // 16 Sept up to 10:00
   assert.equal(m.days.length, 30);
   assert.equal(m.days[0].label, "17 Sept");
   assert.equal(m.days[28].kwh, 5);
   // 1st–15th: this cycle is 1st–15th, the previous one 16th–end of last month
   const early = overviewMetrics(rows, new Date("2026-10-05T10:00:00+05:30"));
-  assert.deepEqual(early.currentCycle, { label: "1 Oct–15 Oct", kwh: 4, revenue: 90, sessions: 2 });
-  assert.deepEqual(early.previousCycle, { label: "16 Sept–30 Sept", kwh: 29, revenue: 1219, sessions: 4 });
-  assert.deepEqual(early.olderCycle, { label: "1 Sept–15 Sept", kwh: 1, revenue: 500, sessions: 1 });
+  assert.deepEqual(early.currentCycle, { label: "1 Oct–15 Oct", from: "2026-10-01", to: "2026-10-16", kwh: 4, revenue: 90, sessions: 2 });
+  assert.deepEqual(early.previousCycle, { label: "16 Sept–30 Sept", from: "2026-09-16", to: "2026-10-01", kwh: 29, revenue: 1219, sessions: 4 });
+  assert.deepEqual(early.olderCycle, { label: "1 Sept–15 Sept", from: "2026-09-01", to: "2026-09-16", kwh: 1, revenue: 500, sessions: 1 });
   assert.equal(early.lastMonthSameDaysRevenue, 500); // 1 Sept up to 5 Sept 10:00
   // February's second cycle ends on the 28th
   assert.equal(overviewMetrics([], new Date("2027-02-20T10:00:00+05:30")).currentCycle.label, "16 Feb–28 Feb");
@@ -195,4 +195,32 @@ test("delta sync starts at the newest stored session, or the oldest one still ch
   // a session "charging" for more than 2 days is stuck and doesn't hold the sync back
   assert.equal(syncStartDate(windowStart, newest, "2026-10-10T08:00:00.000Z"), newest);
   assert.equal(syncStartDate(windowStart, "2026-08-01T00:00:00.000Z"), windowStart);
+});
+
+test("financeMetrics: receivables, aging, GST and FY months", async () => {
+  const { financeMetrics, billedInCycle } = await import("../src/app/admin/overview/financeMetrics.ts");
+  const inv = (o) => ({ invoice_status: "issued", grand_total: 118, amount_paid: 0, taxable_amount: 100, cgst_amount: 9, sgst_amount: 9, igst_amount: 0, ...o });
+  const rows = [
+    inv({ invoice_date: "2026-10-10", due_date: "2026-10-20" }),
+    inv({ invoice_date: "2026-08-01", invoice_status: "partially_paid", amount_paid: 18, billing_period_to: "2026-10-15" }),
+    inv({ invoice_date: "2026-10-02", invoice_status: "paid", amount_paid: 118, cgst_amount: 0, sgst_amount: 0, igst_amount: 18 }),
+    inv({ invoice_date: "2026-10-03", invoice_status: "cancelled", grand_total: 999 }),
+    inv({ invoice_date: "2026-03-30", invoice_status: "paid", amount_paid: 118 }),
+  ];
+  const sessions = [{ startedAt: "2026-10-05T04:00:00Z", tariffAmount: 50 }, { startedAt: "2026-09-20T04:00:00Z", tariffAmount: 25 }];
+  const f = financeMetrics(rows, sessions, new Date("2026-10-17T10:00:00+05:30"));
+  assert.equal(f.fyLabel, "FY 2026-27");
+  assert.equal(f.receivable, 218);
+  assert.equal(f.openCount, 2);
+  assert.equal(f.aging.current, 118);
+  assert.equal(f.aging.d90, 100);
+  assert.equal(f.billedFy, 354);
+  assert.equal(f.collectedFy, 136);
+  assert.equal(f.gstMonth.tax, 36);
+  assert.equal(f.gstMonth.igst, 18);
+  assert.equal(f.months.length, 7);
+  assert.equal(f.months.at(-1).billed, 236);
+  assert.equal(f.months.at(-1).charging, 50);
+  assert.equal(f.months[0].charging, null);
+  assert.equal(billedInCycle(rows, "2026-10-01", "2026-10-16"), 118);
 });

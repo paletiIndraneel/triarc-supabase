@@ -16,6 +16,7 @@ import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 import { fromStoredRow } from "@/lib/cms/transactionStore";
 import { supabase } from "@/lib/supabase/billing";
+import { getCpoMobileNumbers } from "./cpoNumbersCache";
 
 // Sessions saved in cms_transactions that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
@@ -182,19 +183,28 @@ function fetchOperatorData(query: string, key: string) {
 }
 
 
-// CPO Settings numbers; only consulted when ChargeMOD leaves a transaction's type empty.
-async function fetchCpoMobileNumbers(): Promise<Set<string>> {
-  try {
-    const response = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
-    if (!response.ok) return new Set();
-    const data = (await response.json()) as { numbers?: Array<{ normalizedMobile?: string }> };
-    return new Set(
-      (data.numbers ?? []).map((row) => row.normalizedMobile).filter((v): v is string => Boolean(v))
-    );
-  } catch {
-    return new Set();
+// Switching modules remounts the dashboard, so these answers are kept for the tab instead of
+// re-requested on every switch. CPO numbers (only consulted when ChargeMOD leaves a
+// transaction's type empty) live in ./cpoNumbersCache, which CPO Settings clears on save.
+// Column preferences are refreshed after CMS_CACHE_MAX_AGE_MS and updated on save.
+let columnPrefsMemo: { at: number; value: Promise<unknown> } | null = null;
+const memoFresh = (memo: { at: number } | null) => Boolean(memo && Date.now() - memo.at < CMS_CACHE_MAX_AGE_MS);
+
+const fetchCpoMobileNumbers = getCpoMobileNumbers;
+
+function fetchColumnPreferences(): Promise<unknown> {
+  if (!memoFresh(columnPrefsMemo)) {
+    const value = fetch("/api/admin/preferences", { cache: "no-store" })
+      .then((response) => (response.ok ? (response.json() as Promise<{ columns?: unknown }>) : null))
+      .then((data) => data?.columns ?? null)
+      .catch(() => null);
+    columnPrefsMemo = { at: Date.now(), value };
+    // Don't keep a failed answer.
+    void value.then((columns) => { if (columns === null) columnPrefsMemo = null; });
   }
+  return columnPrefsMemo!.value;
 }
+
 
 // The CMS dashboard and the admin Overview share this window (previous calendar month
 // through now) and its sessionStorage cache, so opening both costs one ChargeMOD call.
@@ -509,12 +519,10 @@ export default function CmsOperatorDashboard() {
 
     async function loadColumnPreferences() {
       try {
-        const response = await fetch("/api/admin/preferences", { cache: "no-store" });
-        if (!response.ok) return;
-        const data = (await response.json()) as { columns?: unknown };
-        if (cancelled || !Array.isArray(data.columns)) return;
+        const columns = await fetchColumnPreferences();
+        if (cancelled || !Array.isArray(columns)) return;
 
-        const valid = data.columns.filter(
+        const valid = columns.filter(
           (column): column is CmsColumnId =>
             typeof column === "string" &&
             CMS_COLUMN_IDS.includes(column as CmsColumnId)
@@ -545,6 +553,7 @@ export default function CmsOperatorDashboard() {
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Failed to save table preferences.");
+      columnPrefsMemo = { at: Date.now(), value: Promise.resolve(columns) };
       setVisibleColumns(columns);
       setDraftColumns(columns);
       setColumnEditorOpen(false);

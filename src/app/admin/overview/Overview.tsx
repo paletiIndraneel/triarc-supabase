@@ -7,17 +7,18 @@ import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
+import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
 
 type Enquiry = { id: string; name: string; message: string; status: "New" | "Contacted" | "Closed"; created_at: string };
-type Invoice = {
-  id: string; invoice_number: string; billing_name: string | null; grand_total: number | null;
-  invoice_status: string | null; invoice_date: string | null; billing_period_from: string | null; billing_period_to: string | null;
+type Invoice = FinanceInvoice & {
+  id: string; invoice_number: string; billing_name: string | null;
+  billing_period_from: string | null; billing_period_to: string | null;
 };
 type Metric = "kwh" | "revenue" | "sessions";
 type CmsState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; active: number | null; updatedAt: string | null; refreshing?: boolean };
+  | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; sessions: Transaction[]; active: number | null; updatedAt: string | null; refreshing?: boolean };
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 const kwh = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: n >= 100 ? 0 : 1 });
@@ -59,6 +60,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
       setCms((current) => ({
         status: "ok",
         metrics: overviewMetrics([...merged.values()]),
+        sessions: [...merged.values()],
         // The stored copy has no live count; keep the last one rather than flash 0.
         active: active ?? (current.status === "ok" ? current.active : null),
         updatedAt: cache.coverage.at(-1)?.endDate ?? null,
@@ -82,8 +84,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   useEffect(() => {
     if (!isPartner) return;
     supabase.from("billing_invoices")
-      .select("id, invoice_number, billing_name, grand_total, invoice_status, invoice_date, billing_period_from, billing_period_to")
-      .neq("invoice_status", "cancelled")
+      .select("*")
       .order("invoice_date", { ascending: false })
       .then(({ data, error }) => { if (error) setBillingError(true); else setInvoices((data ?? []) as Invoice[]); });
   }, [isPartner]);
@@ -91,9 +92,11 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   // Indian financial year: 1 April (IST) onwards.
   const todayIst = istDate(new Date());
   const fyStart = `${Number(todayIst.slice(0, 4)) - (Number(todayIst.slice(5, 7)) < 4 ? 1 : 0)}-04-01`;
-  const fyInvoices = (invoices ?? []).filter((i) => (i.invoice_date ?? "") >= fyStart);
+  const liveInvoices = (invoices ?? []).filter((i) => i.invoice_status !== "cancelled");
+  const fyInvoices = liveInvoices.filter((i) => (i.invoice_date ?? "") >= fyStart);
+  const finance = invoices ? financeMetrics(invoices, cms.status === "ok" ? cms.sessions : []) : null;
   const billedFy = fyInvoices.reduce((s, i) => s + Number(i.grand_total || 0), 0);
-  const unpaid = (invoices ?? []).filter((i) => ["issued", "sent", "partially_paid"].includes(i.invoice_status ?? ""));
+  const unpaid = liveInvoices.filter((i) => outstanding(i) > 0);
   const newEnquiries = enquiries.filter((e) => e.status === "New").length;
 
   const days = cms.status === "ok" ? cms.metrics.days : [];
@@ -204,6 +207,120 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </>
         )}
 
+        {isPartner && (
+          <section aria-labelledby="fin-h" className={card}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="fin-h" className="text-base font-bold">Finance{finance && <span className="ml-2 text-xs font-semibold text-[#5d6577]">{finance.fyLabel}</span>}</h2>
+              <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open Billing</button>
+            </div>
+            {billingError ? <p role="alert" className="mt-4 text-sm text-[#b42318]">Could not load invoices.</p> : !finance ? (
+              <div className="mt-4 h-40 rounded-xl bg-slate-50 motion-safe:animate-pulse" />
+            ) : (
+              <div className="mt-4 flex flex-col gap-5">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  {[
+                    ["Receivable", inr(finance.receivable), `${finance.openCount} open invoice${finance.openCount === 1 ? "" : "s"}`],
+                    ["Collected this FY", inr(finance.collectedFy), `of ${inr(finance.billedFy)} billed`],
+                    ["GST this month", inr(finance.gstMonth.tax), `on ${inr(finance.gstMonth.taxable)} taxable`],
+                    ["GST this FY", inr(finance.gstFy.tax), `on ${inr(finance.gstFy.taxable)} taxable`],
+                  ].map(([l, v, note]) => (
+                    <div key={l} className="rounded-xl bg-[#f8f9ff] p-3.5">
+                      <p className="text-xs font-semibold text-[#5d6577]">{l}</p>
+                      <p className={`mt-1 text-xl font-bold ${l === "Receivable" && finance.receivable ? "text-[#b35c00]" : ""}`}>{v}</p>
+                      <p className="mt-0.5 text-xs text-[#5d6577]">{note}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <div>
+                    <h3 className="text-sm font-bold">Receivables by age</h3>
+                    <p className="text-xs text-[#5d6577]">Days past the due date (invoice date when no due date is set).</p>
+                    <table className="mt-2 w-full text-sm">
+                      <tbody>
+                        {([["Not yet due", finance.aging.current], ["1–30 days", finance.aging.d30], ["31–60 days", finance.aging.d60], ["Over 60 days", finance.aging.d90]] as const).map(([l, v]) => (
+                          <tr key={l} className="border-t border-[#eef0f4]">
+                            <td className="py-2 text-[#5d6577]">{l}</td>
+                            <td className="w-1/2 py-2"><div className="h-2 rounded bg-[#f3f4f8]"><div className="h-2 rounded bg-[#b35c00]" style={{ width: `${finance.receivable ? (v / finance.receivable) * 100 : 0}%` }} /></div></td>
+                            <td className="py-2 text-right font-semibold tabular-nums">{inr(v)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold">GST summary</h3>
+                    <p className="text-xs text-[#5d6577]">From issued invoices, cancelled ones excluded.</p>
+                    <table className="mt-2 w-full text-sm tabular-nums">
+                      <thead><tr className="text-xs text-[#5d6577]"><th className="py-1.5 text-left font-semibold"></th><th className="text-right font-semibold">Taxable</th><th className="text-right font-semibold">CGST</th><th className="text-right font-semibold">SGST</th><th className="text-right font-semibold">IGST</th></tr></thead>
+                      <tbody>
+                        {([["This month", finance.gstMonth], ["This FY", finance.gstFy]] as const).map(([l, g]) => (
+                          <tr key={l} className="border-t border-[#eef0f4]">
+                            <td className="py-2 text-[#5d6577]">{l}</td>
+                            <td className="text-right">{inr(g.taxable)}</td><td className="text-right">{inr(g.cgst)}</td><td className="text-right">{inr(g.sgst)}</td><td className="text-right">{inr(g.igst)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {cms.status === "ok" && (
+                  <div>
+                    <h3 className="text-sm font-bold">Charging revenue vs invoiced, by billing cycle</h3>
+                    <p className="text-xs text-[#5d6577]">Charging revenue is from the CMS; invoiced counts invoices whose billing period ends in the cycle.</p>
+                    <table className="mt-2 w-full text-sm tabular-nums">
+                      <thead><tr className="text-xs text-[#5d6577]"><th className="py-1.5 text-left font-semibold">Cycle</th><th className="text-right font-semibold">Charging revenue</th><th className="text-right font-semibold">Invoiced</th><th className="text-right font-semibold">Difference</th></tr></thead>
+                      <tbody>
+                        {[cms.metrics.currentCycle, cms.metrics.previousCycle, cms.metrics.olderCycle].map((c) => {
+                          const billed = billedInCycle(invoices ?? [], c.from, c.to);
+                          const diff = c.revenue - billed;
+                          return (
+                            <tr key={c.label} className="border-t border-[#eef0f4]">
+                              <td className="py-2 text-[#5d6577]">{c.label}</td>
+                              <td className="text-right">{inr(c.revenue)}</td>
+                              <td className="text-right">{inr(billed)}</td>
+                              <td className={`text-right font-semibold ${Math.round(diff) > 0 ? "text-[#b35c00]" : ""}`}>{inr(diff)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-bold">Monthly trend, {finance.fyLabel}</h3>
+                  <p className="text-xs text-[#5d6577]">Invoiced per month. Charging revenue shows only for months the CMS data covers.</p>
+                  {(() => {
+                    const top = Math.max(1, ...finance.months.map((r) => Math.max(r.billed, r.charging ?? 0)));
+                    return (
+                      <table className="mt-2 w-full text-sm tabular-nums">
+                        <thead><tr className="text-xs text-[#5d6577]"><th className="py-1.5 text-left font-semibold">Month</th><th className="w-2/5"></th><th className="text-right font-semibold">Invoiced</th><th className="text-right font-semibold">GST</th><th className="text-right font-semibold">Charging</th></tr></thead>
+                        <tbody>
+                          {finance.months.map((r) => (
+                            <tr key={r.key} className="border-t border-[#eef0f4]">
+                              <td className="py-2 text-[#5d6577]">{r.label}</td>
+                              <td className="py-2 pr-3">
+                                <div className="h-1.5 rounded bg-[#6a4fd6]" style={{ width: `${(r.billed / top) * 100}%` }} />
+                                {r.charging !== null && <div className="mt-1 h-1.5 rounded bg-[#c9bff3]" style={{ width: `${(r.charging / top) * 100}%` }} />}
+                              </td>
+                              <td className="text-right">{inr(r.billed)}</td>
+                              <td className="text-right">{inr(r.gst)}</td>
+                              <td className="text-right">{r.charging === null ? "–" : inr(r.charging)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         <div className={`grid gap-3.5 ${isPartner ? "lg:grid-cols-2" : ""}`}>
           {isPartner && (
             <section aria-labelledby="bill-h" className={card}>
@@ -218,10 +335,10 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                   <div className="mt-3.5 grid grid-cols-3 gap-2.5">
                     <div><p className="text-xs text-[#5d6577]">Billed this FY</p><p className="mt-1 text-xl font-bold">{inr(billedFy)}</p></div>
                     <div><p className="text-xs text-[#5d6577]">Invoices this FY</p><p className="mt-1 text-xl font-bold">{fyInvoices.length}</p></div>
-                    <div><p className="text-xs text-[#5d6577]">Not paid in full</p><p className={`mt-1 text-xl font-bold ${unpaid.length ? "text-[#b35c00]" : ""}`}>{inr(unpaid.reduce((s, i) => s + Number(i.grand_total || 0), 0))}</p></div>
+                    <div><p className="text-xs text-[#5d6577]">Not paid in full</p><p className={`mt-1 text-xl font-bold ${unpaid.length ? "text-[#b35c00]" : ""}`}>{inr(unpaid.reduce((s, i) => s + outstanding(i), 0))}</p></div>
                   </div>
                   <ul className="mt-4">
-                    {invoices.slice(0, 3).map((i) => {
+                    {liveInvoices.slice(0, 3).map((i) => {
                       const [bg, fg] = STATUS_COLORS[(i.invoice_status ?? "draft") as keyof typeof STATUS_COLORS] ?? STATUS_COLORS.draft;
                       return (
                         <li key={i.id} className="flex justify-between gap-2.5 border-t border-[#eef0f4] py-2.5">
@@ -230,7 +347,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                         </li>
                       );
                     })}
-                    {!invoices.length && <li className="border-t border-[#eef0f4] py-3 text-sm text-[#5d6577]">No invoices yet.</li>}
+                    {!liveInvoices.length && <li className="border-t border-[#eef0f4] py-3 text-sm text-[#5d6577]">No invoices yet.</li>}
                   </ul>
                 </>
               )}

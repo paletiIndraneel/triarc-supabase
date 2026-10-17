@@ -14,6 +14,12 @@
     padding: 0;
     box-sizing: border-box;
   }
+
+  /* The reset above strips <dialog>'s UA `margin: auto`, which pins every
+     modal opened with showModal() to the top-left corner. Restore centering. */
+  dialog:modal {
+    margin: auto;
+  }
 }
 
 body{

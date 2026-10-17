@@ -43,12 +43,15 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
   }
 
   const range = (start: number, end: number) => `${label.format(new Date(start + 330 * MINUTE))}–${label.format(new Date(end - 1))}`;
+  // IST calendar dates; `to` is exclusive.
+  const ymd = (ms: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(ms));
+  const span = (start: number, end: number) => ({ from: ymd(start), to: ymd(end) });
 
   return {
     today: days[days.length - 1],
-    currentCycle: { label: range(currentStart, currentEnd), ...sum(currentStart, nowMs + 1) },
-    previousCycle: { label: range(previousStart, currentStart), ...sum(previousStart, currentStart) },
-    olderCycle: { label: range(olderStart, previousStart), ...sum(olderStart, previousStart) },
+    currentCycle: { label: range(currentStart, currentEnd), ...span(currentStart, currentEnd), ...sum(currentStart, nowMs + 1) },
+    previousCycle: { label: range(previousStart, currentStart), ...span(previousStart, currentStart), ...sum(previousStart, currentStart) },
+    olderCycle: { label: range(olderStart, previousStart), ...span(olderStart, previousStart), ...sum(olderStart, previousStart) },
     lastMonthSameDaysRevenue: lastMonthSameDays.revenue,
     days,
   };

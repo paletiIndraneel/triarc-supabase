@@ -4,7 +4,7 @@ import { parseAdminModule } from "@/components/admin/adminNavigation";
 import { getAdminClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: { absolute: "TRIARC GROUP | Admin" },
   robots: { index: false, follow: false },
 };
 

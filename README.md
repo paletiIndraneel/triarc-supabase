@@ -1,58 +1,53 @@
-# TriArc Website
+# Triarc Group
 
-TriArc website application with Supabase authentication and enquiry management.
-
-The application provides:
-
-- Public company website
-- Administrator authentication
-- Protected Admin area
-- Website enquiry submission
-- Supabase PostgreSQL storage
-- Supabase Edge Functions
-- Cloudflare deployment
+Triarc Group's website. Triarc runs **TRIARC EV Hub**, an EV charging station in Bhadrachalam, Telangana. The hub charges cars and installs chargers for drivers, businesses and fleets.
 
 ---
 
-## Technology Stack
+## Technology stack
 
 | Component | Technology |
 |---|---|
-| Framework | Next.js |
-| UI | React |
+| Framework | Next.js 16 (App Router), React 19 |
 | Language | TypeScript |
-| Authentication | Supabase Auth |
-| Database | Supabase PostgreSQL |
-| Backend Function | Supabase Edge Functions |
-| Hosting | Cloudflare Workers |
-| Next.js Adapter | OpenNext |
+| Styling | Tailwind CSS 4 |
+| Backend | Supabase |
+| Hosting | Cloudflare Workers via OpenNext |
 
 ---
 
-## Project Structure
+## Getting started
+
+```bash
+npm install
+cp .env.example .env.local   # fill in the values
+npm run dev                  # http://localhost:3000
+```
+
+---
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Production build; also type-checks |
+| `npm test` | Unit tests |
+| `npm run preview` | Run the Cloudflare build locally |
+
+---
+
+## Project structure
 
 ```text
 src/
-├── app/
-│   ├── admin/
-│   ├── signin/
-│   └── ...
-│
-├── components/
-│   ├── Admin/
-│   ├── Visit/
-│   └── ...
-│
-├── lib/
-│   └── supabase/
-│       ├── client.ts
-│       └── server.ts
-│
-└── middleware.ts
+├── app/          # pages (charging-solutions, ev-station, locations, explore-bhadrachalam, about, contact)
+├── components/   # UI components
+├── data/         # page content
+└── lib/          # shared helpers
 
-supabase/
-├── config.toml
-└── functions/
-    └── submit-enquiry/
-        ├── deno.json
-        └── index.ts
+supabase/         # database migrations and the enquiry function
+public/           # images and logos
+```
+
+Edit page text in `src/data/`. The components only handle layout.

@@ -1,6 +1,6 @@
 # Triarc Group
 
-Triarc Group's website. Triarc runs **TRIARC EV Hub**, an EV charging station in Bhadrachalam, Telangana. The hub charges cars and installs chargers for drivers, businesses and fleets.
+Triarc Group's website. Triarc runs **TRIARC EV Hub**, an EV charging station in Bhadrachalam, Telangana.
 
 ---
 

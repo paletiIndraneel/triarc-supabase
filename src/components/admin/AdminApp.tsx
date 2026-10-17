@@ -9,7 +9,8 @@ import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
 import { ToastProvider } from "@/components/BillingToast";
 import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
-import { canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
+import { ADMIN_NAV_ITEMS, canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
+import { adminTabTitle } from "@/components/admin/brand";
 import styles from "@/app/admin/billing/billing.module.css";
 import adminStyles from "@/components/admin/admin.module.css";
 

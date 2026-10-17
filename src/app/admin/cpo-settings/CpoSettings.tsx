@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Check, Pencil, Plus, RefreshCw, Settings2, Trash2, X } from "lucide-react";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
+import { invalidateCpoMobileNumbers } from "@/app/admin/cms/cpoNumbersCache";
 
 type CpoNumber = { id: string; mobileNumber: string; normalizedMobile: string; createdAt: string; updatedAt: string };
 
@@ -38,7 +39,7 @@ export default function CpoSettings() {
       const response = await fetch("/api/admin/cpo-numbers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mobileNumber }) });
       const data = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Could not add number.");
-      setMobileNumber(""); setNotice("Number added. CPO matching will use the updated list on dashboard refresh."); await loadNumbers();
+      setMobileNumber(""); setNotice("Number added. CPO matching will use the updated list on dashboard refresh."); invalidateCpoMobileNumbers(); await loadNumbers();
     } catch (err) { setError(err instanceof Error ? err.message : "Could not add number."); }
     finally { setSaving(false); }
   }
@@ -48,7 +49,7 @@ export default function CpoSettings() {
       const response = await fetch("/api/admin/cpo-numbers", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, mobileNumber: editingValue }) });
       const data = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Could not update number.");
-      setEditingId(null); setEditingValue(""); setNotice("Number updated. Historical MTD CPO energy is recalculated from the current transaction feed on dashboard refresh."); await loadNumbers();
+      setEditingId(null); setEditingValue(""); setNotice("Number updated. Historical MTD CPO energy is recalculated from the current transaction feed on dashboard refresh."); invalidateCpoMobileNumbers(); await loadNumbers();
     } catch (err) { setError(err instanceof Error ? err.message : "Could not update number."); }
     finally { setSaving(false); }
   }
@@ -59,7 +60,7 @@ export default function CpoSettings() {
       const response = await fetch("/api/admin/cpo-numbers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: number.id }) });
       const data = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Could not remove number.");
-      setNotice("Number removed. Historical MTD CPO energy is recalculated from the current transaction feed on dashboard refresh."); await loadNumbers();
+      setNotice("Number removed. Historical MTD CPO energy is recalculated from the current transaction feed on dashboard refresh."); invalidateCpoMobileNumbers(); await loadNumbers();
     } catch (err) { setError(err instanceof Error ? err.message : "Could not remove number."); }
     finally { setSaving(false); }
   }

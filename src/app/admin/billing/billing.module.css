@@ -115,3 +115,6 @@
 
 /* Textareas in form grids: stack under their label like inputs, full width. */
 .billingScope :global(.form-grid textarea){display:block;resize:vertical;min-height:72px;font:inherit}
+/* The site-wide reset (`* { margin: 0 }`) strips <dialog>'s default
+   `margin: auto`, pinning showModal() dialogs to the top-left. Re-center. */
+.billingScope :global(.modal-card){margin:auto}

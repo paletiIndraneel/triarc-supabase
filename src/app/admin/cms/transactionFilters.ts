@@ -17,7 +17,7 @@ type FilterableTransaction = {
   connectorId?: number | null;
 };
 
-export type TransactionStatus = "live" | "completed" | "failed" | "stuck";
+export type TransactionStatus = "live" | "completed" | "failed";
 
 export type TransactionFilters = {
   location: string;
@@ -110,7 +110,6 @@ export function splitActiveSessions<T extends FilterableTransaction>(sessions: T
 
 // A finished session that delivered no energy is treated as failed.
 export function transactionStatus(transaction: FilterableTransaction, isLive: boolean): TransactionStatus {
-  if (isStuckSession(transaction)) return "stuck";
   if (isLive) return "live";
   return (transaction.energyKwh ?? 0) > 0 ? "completed" : "failed";
 }

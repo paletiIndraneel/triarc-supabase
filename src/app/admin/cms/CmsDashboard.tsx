@@ -70,6 +70,7 @@ export type CmsCache = {
 };
 
 const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v7";
+const CMS_BACKFILL_KEY = "triarc-cms-history-backfill-2026-07-v1";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };
@@ -244,6 +245,10 @@ export async function loadCmsWindow(
     startDate: metricFetchRange.startDate,
     endDate: metricFetchRange.endDate,
   });
+  // Request the one-time historical backfill until a successful response completes it.
+  const shouldBackfill = typeof window !== "undefined" &&
+    window.localStorage.getItem(CMS_BACKFILL_KEY) !== "done";
+  if (shouldBackfill) params.set("backfill", "1");
 
   // Start the live (ChargeMOD) request at once. The stored copy is read in parallel,
   // straight from cms_transactions in the browser (RLS: active admins can read), and is
@@ -292,6 +297,10 @@ export async function loadCmsWindow(
 
   if (!response.ok) {
     throw new Error(data.error ?? "CMS request failed.");
+  }
+
+  if (shouldBackfill && typeof window !== "undefined") {
+    window.localStorage.setItem(CMS_BACKFILL_KEY, "done");
   }
 
   const dashboardData = data.dashboard;

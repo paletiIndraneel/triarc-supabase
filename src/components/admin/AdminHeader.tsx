@@ -1,13 +1,13 @@
 "use client";
 
-import { Settings2 } from "lucide-react";
+import { Settings2, Sun, Moon } from "lucide-react";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
 import LogoutButton from "@/components/admin/LogoutButton";
 import { ADMIN_NAV_ITEMS, canOpenModule } from "@/components/admin/adminNavigation";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { BUSINESSES, GROUP_NAME, MODULE_BUSINESS, businessName } from "@/components/admin/brand";
 
-export default function AdminHeader() {
+export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" | "dark"; onToggleTheme: () => void }) {
   const { activeModule, setActiveModule, isPartner } = useAdminModule();
   // The active module's business; on group-wide modules (Overview) show it only while there is one business.
   const business = businessName(MODULE_BUSINESS[activeModule]) ?? (BUSINESSES.length === 1 ? BUSINESSES[0].name : null);
@@ -48,6 +48,8 @@ export default function AdminHeader() {
       <div className="ml-auto flex items-center gap-4 text-[#667085]">
 
         <span className="hidden sm:block"><AdminUserBadge /></span>
+
+        <button type="button" onClick={onToggleTheme} aria-label={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"} title={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"} className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#e2e4ec] px-2.5 py-[7px] text-[13px] font-semibold text-[#172033] transition hover:bg-white">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}<span className="hidden lg:inline">{theme === "dark" ? "Light" : "Dark"}</span></button>
 
         <LogoutButton className="rounded-[10px] border border-[#e2e4ec] px-[12px] py-[7px] text-[13px] font-semibold text-[#172033] transition hover:bg-white hover:text-[#7157d9]" />
 

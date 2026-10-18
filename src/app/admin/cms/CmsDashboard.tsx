@@ -1056,8 +1056,12 @@ export default function CmsOperatorDashboard() {
               </div>
             </div>
           </GlassCard>
-          <Metric label="Locations" value={String(locationCount)} />
-          <StatusCard count={activeCount} sessions={liveSessions} />
+          <LocationsCard
+            count={locationCount}
+            names={locationOptions}
+            live={new Set(liveSessions.map((session) => session.location))}
+          />
+          <StatusCard count={activeCount} sessions={liveSessions} showLocation={locationCount > 1} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
@@ -1254,7 +1258,6 @@ export default function CmsOperatorDashboard() {
               <option value="live" className="bg-white">Live</option>
               <option value="completed" className="bg-white">Completed</option>
               <option value="failed" className="bg-white">Failed (0 kWh)</option>
-              <option value="stuck" className="bg-white">Stuck (no stop after 7 h)</option>
             </select>
             <select
               value={filters.customer}
@@ -1441,7 +1444,7 @@ const ACTIVE_LIST_LIMIT = 4;
 
 // Charging state and the sessions charging now. ChargeMOD's stuck sessions (past 7 hours, or
 // an older duplicate on a gun) are already filtered out by splitActiveSessions.
-function StatusCard({ count, sessions }: { count: number; sessions: Transaction[] }) {
+function StatusCard({ count, sessions, showLocation }: { count: number; sessions: Transaction[]; showLocation: boolean }) {
   const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
   const dateTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   const today = istDateString();
@@ -1480,6 +1483,9 @@ function StatusCard({ count, sessions }: { count: number; sessions: Transaction[
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
                 {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
+                {showLocation && session.location && (
+                  <span className="font-normal text-slate-400"> · {displayLocation(session.location)}</span>
+                )}
               </span>
               <span className="whitespace-nowrap text-slate-500">
                 {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
@@ -1490,6 +1496,33 @@ function StatusCard({ count, sessions }: { count: number; sessions: Transaction[
           {sessions.length > ACTIVE_LIST_LIMIT && (
             <li className="text-slate-500">+{sessions.length - ACTIVE_LIST_LIMIT} more</li>
           )}
+        </ul>
+      )}
+    </GlassCard>
+  );
+}
+
+// Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.
+function LocationsCard({ count, names, live }: { count: number; names: string[]; live: Set<string> }) {
+  return (
+    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Locations</p>
+        <p className="text-sm font-semibold text-slate-500">{count}</p>
+      </div>
+      {names.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-500">—</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5">
+          {names.map((name) => (
+            <li key={name} className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${live.has(name) ? "bg-emerald-500" : "bg-slate-300"}`}
+                aria-label={live.has(name) ? "Charging now" : "Idle"}
+              />
+              <span className="min-w-0 truncate" title={name}>{displayLocation(name)}</span>
+            </li>
+          ))}
         </ul>
       )}
     </GlassCard>

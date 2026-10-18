@@ -103,43 +103,44 @@ export function liveMetrics(readings: MeterReading[]): LiveMetrics {
   return { startSoc, currentSoc, kwNow, peakKw, kwhDelivered, batteryKwh, kwhToFull, minutesLeft, estimating, lastReadingAt: last.timestamp };
 }
 
-// Turns a ChargeMOD meter-values response into readings. The exact shape isn't documented, so
-// it looks for the first array of objects with a measurand and a value anywhere in the payload.
+// ChargeMOD payloads vary: readings may be flat rows or nested OCPP sampledValue arrays.
+// Collect every matching row instead of stopping at the first matching array, so a later
+// timestamp in another group cannot be silently ignored.
 export function parseMeterValues(payload: unknown): MeterReading[] {
-  const rows = findRows(payload);
-  return rows
+  return findRows(payload)
     .map((row) => {
       const measurand = String(row.measurand ?? row.Measurand ?? "");
-      const value = Number(row.value ?? row.Value);
+      const rawValue = row.value ?? row.Value;
+      const value = typeof rawValue === "number" || typeof rawValue === "string" ? Number(rawValue) : Number.NaN;
       const time = row.timestamp ?? row.valueTimestamp ?? row.timeStamp ?? row.createdAt;
-      const timestamp = time ? new Date(String(time)).toISOString() : "";
-      return { measurand, value, unit: row.unit != null ? String(row.unit) : null, timestamp };
+      let timestamp = "";
+      if (time != null && String(time).trim() !== "") {
+        const parsed = new Date(String(time));
+        if (Number.isFinite(parsed.getTime())) timestamp = parsed.toISOString();
+      }
+      const rawUnit = row.unit ?? row.Unit;
+      return { measurand, value, unit: rawUnit == null ? null : String(rawUnit), timestamp };
     })
     .filter((r) => r.measurand && r.timestamp && Number.isFinite(r.value));
 }
 
-function findRows(node: unknown, depth = 0): Array<Record<string, unknown>> {
-  if (depth > 5 || !node || typeof node !== "object") return [];
+function isReadingRow(row: Record<string, unknown>): boolean {
+  return ("measurand" in row || "Measurand" in row) && ("value" in row || "Value" in row);
+}
+
+function findRows(node: unknown, depth = 0, inheritedTimestamp?: unknown): Array<Record<string, unknown>> {
+  if (depth > 10 || !node || typeof node !== "object") return [];
   if (Array.isArray(node)) {
-    const objects = node.filter((x): x is Record<string, unknown> => !!x && typeof x === "object");
-    if (objects.some((x) => ("measurand" in x || "Measurand" in x) && ("value" in x || "Value" in x))) return objects;
-    // OCPP style: [{ timestamp, sampledValue: [{ measurand, value, unit }] }]
-    const nested = objects.flatMap((x) => {
-      const sampled = x.sampledValue ?? x.sampledValues;
-      return Array.isArray(sampled)
-        ? sampled.map((s) => ({ timestamp: x.timestamp, ...(s as Record<string, unknown>) }))
-        : [];
-    });
-    if (nested.length) return nested;
-    for (const item of objects) {
-      const found = findRows(item, depth + 1);
-      if (found.length) return found;
-    }
-    return [];
+    return node.flatMap((item) => findRows(item, depth + 1, inheritedTimestamp));
   }
-  for (const value of Object.values(node as Record<string, unknown>)) {
-    const found = findRows(value, depth + 1);
-    if (found.length) return found;
+
+  const object = node as Record<string, unknown>;
+  const ownTimestamp = object.timestamp ?? object.valueTimestamp ?? object.timeStamp ?? object.createdAt ?? inheritedTimestamp;
+
+  if (isReadingRow(object)) {
+    // OCPP sampledValue entries inherit the timestamp from their enclosing meterValue.
+    return [{ ...object, timestamp: object.timestamp ?? object.valueTimestamp ?? object.timeStamp ?? object.createdAt ?? ownTimestamp }];
   }
-  return [];
+
+  return Object.values(object).flatMap((value) => findRows(value, depth + 1, ownTimestamp));
 }

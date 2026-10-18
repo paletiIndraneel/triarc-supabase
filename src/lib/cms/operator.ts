@@ -7,6 +7,7 @@ type CmsConfig = {
   apiUrl: string;
   username: string;
   password: string;
+  ocpiAuthKey: string;
   // The signed-in admin's Supabase client. When set, the ChargeMOD token is shared
   // with every other server instance through the cms_session table.
   store?: SupabaseClient;
@@ -50,6 +51,7 @@ export async function getCmsConfig(): Promise<CmsConfig> {
     apiUrl: String(env.CMS_API_URL ?? "").replace(/\/$/, ""),
     username: String(env.CMS_API_USERNAME ?? ""),
     password: String(env.CMS_API_PASSWORD ?? ""),
+    ocpiAuthKey: String(env.CMS_OCPI_AUTH_KEY ?? ""),
   };
 }
 
@@ -724,6 +726,13 @@ function mergeSanitizedTransactions(
   return merged;
 }
 
+function ocpiHeaders(config: CmsConfig): HeadersInit {
+  if (!config.ocpiAuthKey) {
+    throw new Error("CMS_OCPI_AUTH_KEY is not set.");
+  }
+  return { "content-type": "application/json", authorization: config.ocpiAuthKey };
+}
+
 async function getOcpiTransactions(
   config: CmsConfig,
   options: {
@@ -743,7 +752,7 @@ async function getOcpiTransactions(
     "/ocpi/ocpi-transactions",
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: ocpiHeaders(config),
       body: JSON.stringify({
         organizationId: context.organizationId,
         projectId: context.projectId,
@@ -770,7 +779,7 @@ async function getOcpiActiveTransactions(config: CmsConfig) {
     "/ocpi/ocpi-active-transactions",
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: ocpiHeaders(config),
       body: JSON.stringify({
         organizationId: context.organizationId,
         projectId: context.projectId,

@@ -46,10 +46,14 @@ function readingSets(readings: MeterReading[]): ReadingSet[] {
     .filter((r) => Number.isFinite(r.value) && Number.isFinite(Date.parse(r.timestamp)))
     .map((r) => {
       const set: ReadingSet = { timestamp: r.timestamp, soc: null, powerKw: null, energyWh: null };
-      if (r.measurand === "SoC") set.soc = r.value;
-      else if (r.measurand === "Power.Active.Import") {
+      // CMS/charger payloads are not consistent about measurand casing or whitespace.
+      // Normalize before matching so "soc", "SOC", and "SoC" all reach the UI.
+      const measurand = r.measurand.trim().toLowerCase();
+      if (measurand === "soc" || measurand === "stateofcharge" || measurand === "state_of_charge") {
+        set.soc = r.value;
+      } else if (measurand === "power.active.import") {
         set.powerKw = /^w$/i.test(r.unit ?? "") ? r.value / 1000 : r.value;
-      } else if (r.measurand === "Energy.Active.Import.Register") {
+      } else if (measurand === "energy.active.import.register") {
         set.energyWh = /kwh/i.test(r.unit ?? "") ? r.value * 1000 : r.value;
       }
       return set;

@@ -867,10 +867,11 @@ export default function CmsOperatorDashboard() {
     console.group("[CMS history backfill]");
     console.info("Starting historical ChargeMOD meter-values backfill.", {
       batchSize: 20,
+      runLimit: 300,
       startedAt: new Date().toISOString(),
     });
     try {
-      for (let batch = 1; batch <= 200; batch += 1) {
+      for (let batch = 1; batch <= 15; batch += 1) {
         console.info(`Batch ${batch}: requesting up to 20 transactions…`, {
           at: new Date().toISOString(),
           succeededSoFar: totalSucceeded,
@@ -943,12 +944,12 @@ export default function CmsOperatorDashboard() {
           return;
         }
       }
-      console.warn("Backfill paused after reaching the 200-batch safety limit.", {
+      console.warn("Backfill paused after reaching the 300-record run limit.", {
         totalSucceeded,
         totalFailed,
         at: new Date().toISOString(),
       });
-      setBackfillStatus(`Backfill paused after 200 batches · ${totalSucceeded} fetched · ${totalFailed} failed. Click again to continue.`);
+      setBackfillStatus(`Backfill paused after 300-record run limit · ${totalSucceeded} fetched · ${totalFailed} failed. Click again to continue.`);
     } catch (error) {
       console.error("Historical backfill stopped due to an error.", error);
       setBackfillStatus(error instanceof Error ? `Backfill stopped: ${error.message}` : "Backfill stopped due to an unknown error.");

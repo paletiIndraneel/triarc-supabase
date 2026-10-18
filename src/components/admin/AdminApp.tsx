@@ -26,6 +26,25 @@ type Enquiry = {
 
 export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean }) {
   const [moduleState, setModuleState] = useState<AdminModule>(initialModule);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const stored = window.localStorage.getItem("triarc-admin-theme") ?? window.localStorage.getItem("triarc-cms-theme");
+    setTheme(stored === "light" || stored === "dark" ? stored : media.matches ? "dark" : "light");
+    const onSystemChange = (event: MediaQueryListEvent) => {
+      if (window.localStorage.getItem("triarc-admin-theme") == null && window.localStorage.getItem("triarc-cms-theme") == null) setTheme(event.matches ? "dark" : "light");
+    };
+    media.addEventListener("change", onSystemChange);
+    return () => media.removeEventListener("change", onSystemChange);
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    window.localStorage.setItem("triarc-admin-theme", next);
+    window.localStorage.removeItem("triarc-cms-theme");
+    setTheme(next);
+  }, [theme]);
   // A module the user may not open (e.g. an investor following a ?module=billing link) shows the Overview.
   const activeModule = canOpenModule(moduleState, isPartner) ? moduleState : "overview";
 
@@ -53,8 +72,8 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
 
   return (
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner }}>
-      <div className={adminStyles.adminShell}>
-      <AdminHeader />
+      <div data-admin-theme={theme} className={adminStyles.adminShell}>
+      <AdminHeader theme={theme} onToggleTheme={toggleTheme} />
       {activeModule === "overview" && <Overview enquiries={enquiries} />}
       {activeModule === "cms" && <CmsDashboard />}
       {activeModule === "billing" && (

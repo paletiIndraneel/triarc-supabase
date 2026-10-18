@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download, Sun, Moon } from "lucide-react";
-import "./CmsDashboard.css";
+import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "./cmsWindowStore";
 import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } from "./dateRanges";
@@ -554,7 +553,6 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
 }
 
 export default function CmsOperatorDashboard() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
   const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
@@ -592,23 +590,6 @@ export default function CmsOperatorDashboard() {
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
 
 
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const stored = window.localStorage.getItem("triarc-cms-theme");
-    setTheme(stored === "light" || stored === "dark" ? stored : media.matches ? "dark" : "light");
-    const onSystemChange = (event: MediaQueryListEvent) => {
-      if (window.localStorage.getItem("triarc-cms-theme") == null) setTheme(event.matches ? "dark" : "light");
-    };
-    media.addEventListener("change", onSystemChange);
-    return () => media.removeEventListener("change", onSystemChange);
-  }, []);
-
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    window.localStorage.setItem("triarc-cms-theme", next);
-    setTheme(next);
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -1114,7 +1095,7 @@ export default function CmsOperatorDashboard() {
 
   return (
     <>
-      <main data-cms-theme={theme} className="cms-dashboard min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
+      <main className="cms-dashboard min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
         <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -1132,16 +1113,6 @@ export default function CmsOperatorDashboard() {
                 {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(dataTill))}
               </p>
             )}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"}
-              title={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-            >
-              {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-              <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
-            </button>
             <button
               type="button"
               onClick={() => void startHistoricalBackfill()}

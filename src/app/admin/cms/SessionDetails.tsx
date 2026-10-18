@@ -45,7 +45,7 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
         }
         if (cancelled) return;
         if (!response.ok) {
-          const message = data?.error ?? rawBody || `HTTP ${response.status}`;
+          const message = (data?.error ?? rawBody) || `HTTP ${response.status}`;
           if (!hasAlertedDetails.current) {
             hasAlertedDetails.current = true;
             window.alert(`Live transaction API failed\nURL: ${endpoint}\nHTTP: ${response.status}\nResponse: ${message}`);

@@ -69,7 +69,7 @@ export type CmsCache = {
   active?: ActiveTransactionResponse;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v6";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v7";
 
 function readCmsCache(): CmsCache {
   if (typeof window === "undefined") return { transactions: [], coverage: [] };
@@ -221,14 +221,8 @@ export async function loadCmsWindow(
   onStored?: (cache: CmsCache) => void
 ): Promise<CmsCache> {
   const nowForMetrics = new Date();
-  const istDateParts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(nowForMetrics);
-  const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
-  // Load the full available history instead of limiting metrics to the previous month.
-  const metricFetchStart = new Date("1970-01-01T00:00:00+05:30");
+  // Load CMS history from 6 July 2026 at 00:00 IST, staying within the API's 370-day limit.
+  const metricFetchStart = new Date("2026-07-06T00:00:00+05:30");
   const metricFetchRange = {
     startDate: metricFetchStart.toISOString(),
     endDate: nowForMetrics.toISOString(),

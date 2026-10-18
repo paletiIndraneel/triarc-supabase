@@ -328,3 +328,30 @@ test("summarizeSessions totals AC and DC for a period and leaves out CPO and emp
   assert.equal(p.start, "2026-09-30T18:30:00.000Z");
   assert.equal(p.end, "2026-10-15T18:30:00.000Z"); // the 15th is included
 });
+
+
+test("parseMeterValues collects later reading groups and safely ignores invalid timestamps", () => {
+  const readings = parseMeterValues({
+    result: {
+      initial: [{ timestamp: "2026-10-18T14:00:00Z", measurand: "Power.Active.Import", value: "0", unit: "kW" }],
+      latest: [{ timestamp: "2026-10-18T14:01:00Z", measurand: "Power.Active.Import", value: "22.4", unit: "kW" }],
+      malformed: [{ timestamp: "not-a-date", measurand: "SoC", value: "42", unit: "Percent" }],
+    },
+  });
+  assert.equal(readings.length, 2);
+  assert.equal(liveMetrics(readings).kwNow, 22.4);
+});
+
+test("parseMeterValues inherits OCPP timestamps and preserves a real zero power reading", () => {
+  const readings = parseMeterValues({
+    meterValue: [
+      { timestamp: "2026-10-18T14:00:00Z", sampledValue: [{ measurand: "Power.Active.Import", value: "18.5", unit: "kW" }] },
+      { timestamp: "2026-10-18T14:01:00Z", sampledValue: [{ measurand: "Power.Active.Import", value: "0", unit: "kW" }] },
+    ],
+  });
+  const metrics = liveMetrics(readings);
+  assert.equal(readings.length, 2);
+  assert.equal(metrics.kwNow, 0);
+  assert.equal(metrics.peakKw, 18.5);
+  assert.equal(metrics.lastReadingAt, "2026-10-18T14:01:00.000Z");
+});

@@ -8,6 +8,9 @@ export const maxDuration = 60;
 
 const DEFAULT_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 20;
+const REQUEST_SPACING_MS = 1500;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function POST(request: Request) {
   const { supabase, user } = await getAdminClient();
@@ -34,9 +37,12 @@ export async function POST(request: Request) {
     if (error) throw new Error(`Could not find transactions to backfill: ${error.message}`);
 
     let succeeded = 0;
+    let rateLimited = false;
     const failures: Array<{ transactionId: string; error: string }> = [];
 
-    for (const row of rows ?? []) {
+    for (const [index, row] of (rows ?? []).entries()) {
+      if (rateLimited) break;
+      if (index > 0) await wait(REQUEST_SPACING_MS);
       const transactionId = row.transaction_id;
       if (!transactionId) continue;
 
@@ -58,10 +64,12 @@ export async function POST(request: Request) {
         if (saveError) throw new Error(saveError.message);
         succeeded += 1;
       } catch (error) {
-        failures.push({
-          transactionId,
-          error: getCmsErrorMessage(error),
-        });
+        const message = getCmsErrorMessage(error);
+        failures.push({ transactionId, error: message });
+        if (/\b429\b|too many requests|rate.?limit/i.test(message)) {
+          rateLimited = true;
+          console.warn("[cms/backfill] ChargeMOD rate limit reached; stopping this batch early.");
+        }
       }
     }
 
@@ -77,6 +85,7 @@ export async function POST(request: Request) {
       succeeded,
       failed: failures.length,
       failures,
+      rateLimited,
       remaining: countError ? null : count,
       complete: !countError && count === 0,
     });

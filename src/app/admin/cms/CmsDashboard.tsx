@@ -972,8 +972,8 @@ export default function CmsOperatorDashboard() {
     { value: "last-month", label: "Last Month" },
     { value: "custom", label: "Custom range" },
   ];
-  // Only last month + month-to-date are loaded, so the picker can't reach further back.
-  const customMinDate = istDateString(new Date(getDateRangeIST("last-month").startDate));
+  // Match the loaded CMS history window; allow custom filters back to 6 July 2026.
+  const customMinDate = "2026-07-06";
   const customMaxDate = istDateString();
   // Month-to-date includes today, so name the range to set it apart from "This month (1–15)".
   const mtdRange = `1–${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date())}`;

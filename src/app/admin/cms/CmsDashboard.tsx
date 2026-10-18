@@ -21,6 +21,7 @@ import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 import { fromStoredRow } from "@/lib/cms/transactionStore";
 import { supabase } from "@/lib/supabase/billing";
 import { getCpoMobileNumbers } from "./cpoNumbersCache";
+import SessionDetails from "./SessionDetails";
 
 // Sessions saved in cms_transactions that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
@@ -583,6 +584,7 @@ export default function CmsOperatorDashboard() {
   const columnEditorRef = useRef<HTMLDivElement>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const [draggedTableColumn, setDraggedTableColumn] = useState<CmsColumnId | null>(null);
+  const [openSessionId, setOpenSessionId] = useState<string | null>(null);
 
 
 
@@ -1061,7 +1063,7 @@ export default function CmsOperatorDashboard() {
             names={locationOptions}
             live={new Set(liveSessions.map((session) => session.location))}
           />
-          <StatusCard count={activeCount} sessions={liveSessions} showLocation={locationCount > 1} />
+          <StatusCard count={activeCount} sessions={liveSessions} showLocation={locationCount > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
@@ -1436,6 +1438,10 @@ export default function CmsOperatorDashboard() {
         </GlassCard>
       </div>
     </main>
+    {(() => {
+      const open = openSessionId ? liveSessions.find((s) => (s.transactionId || s.id) === openSessionId) : null;
+      return open ? <SessionDetails session={open} onClose={() => setOpenSessionId(null)} /> : null;
+    })()}
     </>
   );
 }
@@ -1444,7 +1450,7 @@ const ACTIVE_LIST_LIMIT = 4;
 
 // Charging state and the sessions charging now. ChargeMOD's stuck sessions (past 7 hours, or
 // an older duplicate on a gun) are already filtered out by splitActiveSessions.
-function StatusCard({ count, sessions, showLocation }: { count: number; sessions: Transaction[]; showLocation: boolean }) {
+function StatusCard({ count, sessions, showLocation, onSelect }: { count: number; sessions: Transaction[]; showLocation: boolean; onSelect: (session: Transaction) => void }) {
   const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
   const dateTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   const today = istDateString();
@@ -1479,7 +1485,12 @@ function StatusCard({ count, sessions, showLocation }: { count: number; sessions
       ) : (
         <ul className="mt-2 space-y-1.5 text-xs">
           {shown.map((session) => (
-            <li key={session.transactionId || session.id} className="flex items-center gap-2">
+            <li key={session.transactionId || session.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(session)}
+                className="-mx-1.5 flex w-[calc(100%+0.75rem)] items-center gap-2 rounded-md px-1.5 py-0.5 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-violet-600"
+              >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
                 {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
@@ -1491,6 +1502,7 @@ function StatusCard({ count, sessions, showLocation }: { count: number; sessions
                 {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
                 {session.startedAt ? ` · ${started(session.startedAt)}` : ""}
               </span>
+              </button>
             </li>
           ))}
           {sessions.length > ACTIVE_LIST_LIMIT && (

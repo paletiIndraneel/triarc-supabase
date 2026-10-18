@@ -13,6 +13,8 @@ import {
   isCpoTransaction,
   matchesTransactionFilters,
   shortChargerLabel,
+  splitActiveSessions,
+  isStuckSession,
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
@@ -931,9 +933,11 @@ export default function CmsOperatorDashboard() {
       .map((t) => {
         const known = stored.get(t.transactionId || t.id);
         return known ? mergeTransactionData(known, t) : t;
-      })
-      .sort((a, b) => String(a.startedAt ?? "").localeCompare(String(b.startedAt ?? "")));
+      });
   }, [allTransactions, activeTransactions]);
+  // Stuck sessions (past 7 hours, or an older duplicate on the same gun) are not counted as charging.
+  const { live: liveSessions } = useMemo(() => splitActiveSessions(activeSessions), [activeSessions]);
+  const activeCount = activeSessions.length ? liveSessions.length : active;
   const locationCount = Math.max(collectionLength(baseDashboard?.locations), locationOptions.length);
 
   function selectDatePreset(preset: DatePreset | "custom") {
@@ -1052,13 +1056,8 @@ export default function CmsOperatorDashboard() {
               </div>
             </div>
           </GlassCard>
-          <Metric
-            label="Live state"
-            value={active > 0 ? "Charging" : "Idle"}
-            accent={active > 0}
-          />
           <Metric label="Locations" value={String(locationCount)} />
-          <ActiveNowCard count={active} sessions={activeSessions} />
+          <StatusCard count={activeCount} sessions={liveSessions} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
@@ -1199,7 +1198,7 @@ export default function CmsOperatorDashboard() {
               </div>
               <div className="ml-1 flex items-center gap-2 text-xs text-slate-500">
                 <Activity size={14} />
-                Active: {active}
+                Active: {activeCount}
               </div>
             </div>
           </div>
@@ -1255,6 +1254,7 @@ export default function CmsOperatorDashboard() {
               <option value="live" className="bg-white">Live</option>
               <option value="completed" className="bg-white">Completed</option>
               <option value="failed" className="bg-white">Failed (0 kWh)</option>
+              <option value="stuck" className="bg-white">Stuck (no stop after 7 h)</option>
             </select>
             <select
               value={filters.customer}
@@ -1339,6 +1339,7 @@ export default function CmsOperatorDashboard() {
                 {pagedTransactions.map((transaction) => {
                   const isActive =
                     transaction.stoppedAt == null &&
+                    !isStuckSession(transaction) &&
                     (activeTransactionIds.has(transaction.id) ||
                       activeTransactionIds.has(transaction.transactionId));
 
@@ -1438,28 +1439,51 @@ export default function CmsOperatorDashboard() {
 
 const ACTIVE_LIST_LIMIT = 4;
 
-function ActiveNowCard({ count, sessions }: { count: number; sessions: Transaction[] }) {
+// Charging state and the sessions charging now. ChargeMOD's stuck sessions (past 7 hours, or
+// an older duplicate on a gun) are already filtered out by splitActiveSessions.
+function StatusCard({ count, sessions }: { count: number; sessions: Transaction[] }) {
   const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
+  const dateTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+  const today = istDateString();
+  // Time only for today's sessions; older ones get the date so 23:48 isn't read as later today.
+  const started = (value: string) =>
+    istDateString(new Date(value)) === today ? time.format(new Date(value)) : dateTime.format(new Date(value));
+  const charging = count > 0;
   const shown = sessions.slice(0, ACTIVE_LIST_LIMIT);
   return (
     <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active now</p>
-        <p className={`text-2xl font-bold tracking-tight ${count > 0 ? "text-emerald-600" : "text-slate-900"}`}>{count}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Status</p>
+        <div className="flex items-center gap-3">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              charging ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${charging ? "bg-emerald-500 motion-safe:animate-pulse" : "border border-slate-400"}`}
+              aria-hidden="true"
+            />
+            {charging ? "Charging" : "Idle"}
+          </span>
+          <p className={`text-2xl font-bold tracking-tight ${charging ? "text-emerald-600" : "text-slate-900"}`} aria-label={`${count} charging now`}>
+            {count}
+          </p>
+        </div>
       </div>
       {shown.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-500">{count > 0 ? "Loading sessions…" : "Idle — no sessions charging"}</p>
+        <p className="mt-2 text-xs text-slate-500">{charging ? "Loading sessions…" : "No sessions charging"}</p>
       ) : (
         <ul className="mt-2 space-y-1.5 text-xs">
           {shown.map((session) => (
             <li key={session.transactionId || session.id} className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse" aria-hidden="true" />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
                 {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
               </span>
               <span className="whitespace-nowrap text-slate-500">
                 {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
-                {session.startedAt ? ` · ${time.format(new Date(session.startedAt))}` : ""}
+                {session.startedAt ? ` · ${started(session.startedAt)}` : ""}
               </span>
             </li>
           ))}

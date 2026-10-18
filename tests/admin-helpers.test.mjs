@@ -297,3 +297,34 @@ test("parseMeterValues finds readings in flat and OCPP-shaped payloads", () => {
   const ocpp = parseMeterValues({ meterValue: [{ timestamp: "2026-10-18T09:08:00Z", sampledValue: [{ measurand: "SoC", value: "86" }] }] });
   assert.equal(ocpp[0].value, 86);
 });
+
+test("summarizeSessions totals AC and DC for a period and leaves out CPO and empty sessions", async () => {
+  const { summarizeSessions, suggestedLines, periodBounds, itemFor } = await import("../src/app/admin/billing/sessionSuggestion.mjs");
+  const rows = [
+    { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "WALLET", mobile: "9000000001", energy_kwh: "33.965" },
+    { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "WALLET", mobile: "9000000002", energy_kwh: 19.847 },
+    { station_type: "AC", charger_name: "Triarc | AC 3.3kW Socket | A", type: "WALLET", mobile: "9000000003", energy_kwh: 3.174 },
+    { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "CPO", mobile: "9000000004", energy_kwh: 10 },
+    { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "", mobile: "+91 98765 43210", energy_kwh: 5 }, // CPO by number
+    { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "WALLET", mobile: null, energy_kwh: 0 }, // failed
+  ];
+  const s = summarizeSessions(rows, new Set(["9876543210"]));
+  assert.deepEqual(s.DC, { kwh: 53.812, sessions: 2 });
+  assert.deepEqual(s.AC, { kwh: 3.174, sessions: 1 });
+  assert.deepEqual(s.cpo, { kwh: 15, sessions: 2 });
+
+  const inventory = [
+    { id: "ac", product_name: "AC EV Charging", charger_type: "AC", customer_id: null, selling_price: "18", gst_rate: "18", hsn: "996749", unit: "KWH" },
+    { id: "dc", product_name: "DC EV Charging", charger_type: "DC", customer_id: null, selling_price: "26", gst_rate: "18", hsn: "996749", unit: "KWH" },
+    { id: "dc-cm", product_name: "DC EV Charging · ChargeMOD", charger_type: "DC", customer_id: "bpm", selling_price: "24", gst_rate: "18", hsn: "996749", unit: "KWH" },
+  ];
+  assert.equal(itemFor(inventory, "bpm", "DC").id, "dc-cm"); // the customer's own item wins
+  assert.equal(itemFor(inventory, "other", "DC").id, "dc"); // else the general one
+  const lines = suggestedLines(s, inventory, "bpm", "chargemod", "2026-10-01", "2026-10-15");
+  assert.deepEqual(lines.map((l) => [l.inventory_id, l.quantity, l.unit_price, l.source_sessions]), [["dc-cm", 53.812, 24, 2], ["ac", 3.174, 18, 1]]);
+  assert.match(lines[0].description, /ChargeMOD sessions 01 Oct 2026 – 15 Oct 2026/);
+
+  const p = periodBounds("2026-10-01", "2026-10-15");
+  assert.equal(p.start, "2026-09-30T18:30:00.000Z");
+  assert.equal(p.end, "2026-10-15T18:30:00.000Z"); // the 15th is included
+});

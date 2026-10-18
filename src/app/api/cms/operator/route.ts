@@ -94,8 +94,10 @@ export async function GET(request: Request) {
       searchKey,
     });
 
-    // Persist the latest sessions without making the dashboard wait for database writes.
-    // The response still waits for its historical read below, so its rows/coverage are unchanged.
+    // Start persisting fetched sessions as soon as they are available, then overlap
+    // the upsert with the historical read. Await persistence before responding so
+    // serverless runtimes cannot terminate the write after the response has returned.
+    let persistPromise: Promise<void> = Promise.resolve();
     if (isPartner) {
       const syncedAt = new Date().toISOString();
       const byId = new Map(
@@ -106,9 +108,7 @@ export async function GET(request: Request) {
       );
       const rows = Array.from(byId.values());
       if (rows.length > 0) {
-        // The route returns immediately after constructing its response; run store writes
-        // concurrently with the historical merge. Failures remain non-fatal as before.
-        const persistRows = async () => {
+        persistPromise = (async () => {
           for (let i = 0; i < rows.length; i += 500) {
             const { error } = await supabase
               .from("cms_transactions")
@@ -118,14 +118,18 @@ export async function GET(request: Request) {
               break;
             }
           }
-        };
-        // Starting the write now overlaps it with the historical database read below.
-        void persistRows();
+        })();
       }
     }
 
-    if (syncStart !== startDate) {
-      const stored = await readStoredTransactions(supabase, startDate, syncStart);
+    const historicalPromise = syncStart !== startDate
+      ? readStoredTransactions(supabase, startDate, syncStart)
+      : Promise.resolve(null);
+
+    const stored = await historicalPromise;
+    await persistPromise;
+
+    if (stored) {
       const transactions = [
         ...stored,
         ...data.transactions.transactions,

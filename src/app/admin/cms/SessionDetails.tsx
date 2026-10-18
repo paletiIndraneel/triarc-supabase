@@ -51,7 +51,8 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
   }, [id]);
 
   const startSoc = metrics?.startSoc ?? session.startSoc ?? null;
-  const currentSoc = metrics?.currentSoc ?? null;
+  // Prefer the latest live SoC; fall back to the session's recorded end SoC if live data is missing.
+  const currentSoc = metrics?.currentSoc ?? session.endSoc ?? null;
   const energy = metrics?.kwhDelivered ?? session.energyKwh ?? null;
   const started = session.startedAt ? new Date(session.startedAt) : null;
   const sinceMinutes = started ? (Date.now() - started.getTime()) / 60000 : null;

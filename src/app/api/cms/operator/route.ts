@@ -94,12 +94,10 @@ export async function GET(request: Request) {
       searchKey,
     });
 
-    // Keep a copy of every fetched session in cms_transactions. RLS only lets partners
-    // write; a failed save is logged and never blocks the dashboard.
+    // Persist the latest sessions without making the dashboard wait for database writes.
+    // The response still waits for its historical read below, so its rows/coverage are unchanged.
     if (isPartner) {
       const syncedAt = new Date().toISOString();
-      // Sessions still charging are saved too (no stop time), so the next sync starts from
-      // them; a finished copy from the session list wins over the active one.
       const byId = new Map(
         [...data.active.transactions, ...data.transactions.transactions].map((t) => {
           const row = toStoredRow(t, syncedAt);
@@ -107,14 +105,22 @@ export async function GET(request: Request) {
         })
       );
       const rows = Array.from(byId.values());
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error } = await supabase
-          .from("cms_transactions")
-          .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
-        if (error) {
-          console.error("[cms/operator] saving transactions failed:", error.message);
-          break;
-        }
+      if (rows.length > 0) {
+        // The route returns immediately after constructing its response; run store writes
+        // concurrently with the historical merge. Failures remain non-fatal as before.
+        const persistRows = async () => {
+          for (let i = 0; i < rows.length; i += 500) {
+            const { error } = await supabase
+              .from("cms_transactions")
+              .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
+            if (error) {
+              console.error("[cms/operator] saving transactions failed:", error.message);
+              break;
+            }
+          }
+        };
+        // Starting the write now overlaps it with the historical database read below.
+        void persistRows();
       }
     }
 

@@ -211,8 +211,8 @@ function fetchColumnPreferences(): Promise<unknown> {
 }
 
 
-// The CMS dashboard and the admin Overview share this window (previous calendar month
-// through now) and its sessionStorage cache, so opening both costs one ChargeMOD call.
+// The CMS dashboard and the admin Overview share the full available history window
+// through now and its sessionStorage cache, so opening both costs one ChargeMOD call.
 // onStored gets something to show while the live request runs: this tab's older cached copy,
 // or else what the database already holds (no ChargeMOD call). It is not called on Refresh
 // or when the cache is fresh, and the live result always follows.
@@ -227,10 +227,8 @@ export async function loadCmsWindow(
     month: "2-digit",
   }).formatToParts(nowForMetrics);
   const istDateValues = Object.fromEntries(istDateParts.map(({ type, value }) => [type, value]));
-  const metricFetchStart = new Date(
-    Date.UTC(Number(istDateValues.year), Number(istDateValues.month) - 2, 1) -
-      330 * 60 * 1000
-  );
+  // Load the full available history instead of limiting metrics to the previous month.
+  const metricFetchStart = new Date("1970-01-01T00:00:00+05:30");
   const metricFetchRange = {
     startDate: metricFetchStart.toISOString(),
     endDate: nowForMetrics.toISOString(),

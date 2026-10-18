@@ -94,12 +94,12 @@ export async function GET(request: Request) {
       searchKey,
     });
 
-    // Keep a copy of every fetched session in cms_transactions. RLS only lets partners
-    // write; a failed save is logged and never blocks the dashboard.
+    // Start persisting fetched sessions as soon as they are available, then overlap
+    // the upsert with the historical read. Await persistence before responding so
+    // serverless runtimes cannot terminate the write after the response has returned.
+    let persistPromise: Promise<void> = Promise.resolve();
     if (isPartner) {
       const syncedAt = new Date().toISOString();
-      // Sessions still charging are saved too (no stop time), so the next sync starts from
-      // them; a finished copy from the session list wins over the active one.
       const byId = new Map(
         [...data.active.transactions, ...data.transactions.transactions].map((t) => {
           const row = toStoredRow(t, syncedAt);
@@ -107,19 +107,29 @@ export async function GET(request: Request) {
         })
       );
       const rows = Array.from(byId.values());
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error } = await supabase
-          .from("cms_transactions")
-          .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
-        if (error) {
-          console.error("[cms/operator] saving transactions failed:", error.message);
-          break;
-        }
+      if (rows.length > 0) {
+        persistPromise = (async () => {
+          for (let i = 0; i < rows.length; i += 500) {
+            const { error } = await supabase
+              .from("cms_transactions")
+              .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
+            if (error) {
+              console.error("[cms/operator] saving transactions failed:", error.message);
+              break;
+            }
+          }
+        })();
       }
     }
 
-    if (syncStart !== startDate) {
-      const stored = await readStoredTransactions(supabase, startDate, syncStart);
+    const historicalPromise = syncStart !== startDate
+      ? readStoredTransactions(supabase, startDate, syncStart)
+      : Promise.resolve(null);
+
+    const stored = await historicalPromise;
+    await persistPromise;
+
+    if (stored) {
       const transactions = [
         ...stored,
         ...data.transactions.transactions,

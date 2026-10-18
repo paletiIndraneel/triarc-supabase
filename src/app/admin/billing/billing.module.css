@@ -136,3 +136,90 @@
 .billingScope :global(.session-suggestion ul){margin:6px 0 4px;padding:0;list-style:none;display:grid;gap:2px}
 .billingScope :global(.session-suggestion .muted){color:#667085}
 .billingScope :global(.session-suggestion .warn){color:#b42318}
+
+
+/* Billing owns several hard-coded white surfaces, so explicitly theme them inside
+   the shared admin dark-mode scope instead of relying only on generic admin rules. */
+:global([data-admin-theme="dark"]) .billingScope {
+  color-scheme: dark;
+  color: #e7f0ec;
+  background: #07110f;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-main) {
+  background: #07110f !important;
+  color: #e7f0ec !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-kpi),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-card),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .card),
+:global([data-admin-theme="dark"]) .billingScope :global(.auth-card),
+:global([data-admin-theme="dark"]) .billingScope :global(.modal-card),
+:global([data-admin-theme="dark"]) .billingScope :global(.toast),
+:global([data-admin-theme="dark"]) .billingScope :global(.table-container) {
+  background: #111f1b !important;
+  color: #e7f0ec !important;
+  border-color: #2a4037 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.admin-header),
+:global([data-admin-theme="dark"]) .billingScope :global(.topbar),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .card > .page-header),
+:global([data-admin-theme="dark"]) .billingScope :global(.section-head),
+:global([data-admin-theme="dark"]) .billingScope :global(.form-actions) {
+  background: #111f1b !important;
+  color: #e7f0ec !important;
+  border-color: #2a4037 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-heading h1),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-kpi strong),
+:global([data-admin-theme="dark"]) .billingScope :global(.section-head h2),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .card > .page-header h2),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app td),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app td b),
+:global([data-admin-theme="dark"]) .billingScope :global(.form-grid label),
+:global([data-admin-theme="dark"]) .billingScope :global(.admin-brand),
+:global([data-admin-theme="dark"]) .billingScope :global(.admin-brand b),
+:global([data-admin-theme="dark"]) .billingScope :global(.admin-user b) {
+  color: #e7f0ec !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app th),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-card th),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app td),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app tbody tr:hover td) {
+  background: #111f1b !important;
+  border-color: #2a4037 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app input),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app select),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app textarea),
+:global([data-admin-theme="dark"]) .billingScope :global(.form-input),
+:global([data-admin-theme="dark"]) .billingScope :global(.table-container input),
+:global([data-admin-theme="dark"]) .billingScope :global(.table-container select) {
+  background: #14241e !important;
+  color: #e7f0ec !important;
+  border-color: #2a4037 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs) {
+  background: #14241e;
+  border-color: #2a4037;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs button:not(.active)),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .muted),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-heading p),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-kpi span),
+:global([data-admin-theme="dark"]) .billingScope :global(.section-head p),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app th) {
+  color: #a6b8b0 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .bill-totals),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .customer-master-note),
+:global([data-admin-theme="dark"]) .billingScope :global(.session-suggestion) {
+  background: #1b2c26 !important;
+  color: #e7f0ec !important;
+  border-color: #2a4037 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .btn-secondary) {
+  background: #1b2c26 !important;
+  color: #e7f0ec !important;
+  border-color: #385246 !important;
+}

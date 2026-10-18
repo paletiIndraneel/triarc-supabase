@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { loadCmsWindow, mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/CmsDashboard";
+import { mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/CmsDashboard";
 import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
+import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "@/app/admin/cms/cmsWindowStore";
 import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
 
 type Enquiry = { id: string; name: string; message: string; status: "New" | "Contacted" | "Closed"; created_at: string };
@@ -48,38 +49,44 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const [hover, setHover] = useState<number | null>(null);
 
   // CMS (ChargeMOD) can fail on its own; Billing and Enquiries still show when it does.
-  const loadCms = useCallback(async (force = false) => {
-    setCms((current) => (current.status === "ok" ? { ...current, refreshing: true } : { status: "loading" }));
-    const show = (cache: CmsCache, refreshing: boolean) => {
-      const merged = new Map<string, Transaction>();
-      for (const t of [...cache.transactions, ...(cache.active?.transactions ?? [])]) {
-        const key = t.transactionId || t.id;
-        if (key) merged.set(key, merged.has(key) ? mergeTransactionData(merged.get(key)!, t) : t);
+  // The load is shared with the CMS dashboard (cmsWindowStore), so Refresh on either page
+  // is one request and both pages show it.
+  useEffect(() => {
+    let shownCache: CmsCache | null = null;
+    const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
+      if (cache && cache !== shownCache) {
+        shownCache = cache;
+        const merged = new Map<string, Transaction>();
+        for (const t of [...cache.transactions, ...(cache.active?.transactions ?? [])]) {
+          const key = t.transactionId || t.id;
+          if (key) merged.set(key, merged.has(key) ? mergeTransactionData(merged.get(key)!, t) : t);
+        }
+        const active = cache.active?.count ?? cache.active?.transactions?.length ?? null;
+        setCms((current) => ({
+          status: "ok",
+          metrics: overviewMetrics([...merged.values()]),
+          sessions: [...merged.values()],
+          // The stored copy has no live count; keep the last one rather than flash 0.
+          active: active ?? (current.status === "ok" ? current.active : null),
+          updatedAt: cache.coverage.at(-1)?.endDate ?? null,
+          refreshing,
+        }));
+        return;
       }
-      const active = cache.active?.count ?? cache.active?.transactions?.length ?? null;
-      setCms((current) => ({
-        status: "ok",
-        metrics: overviewMetrics([...merged.values()]),
-        sessions: [...merged.values()],
-        // The stored copy has no live count; keep the last one rather than flash 0.
-        active: active ?? (current.status === "ok" ? current.active : null),
-        updatedAt: cache.coverage.at(-1)?.endDate ?? null,
-        refreshing,
-      }));
-    };
-    try {
-      // Stored sessions first, then the live result once ChargeMOD answers.
-      show(await loadCmsWindow(force, (stored) => show(stored, true)), false);
-    } catch (error) {
       setCms((current) =>
         current.status === "ok"
-          ? { ...current, refreshing: false }
-          : { status: "error", message: error instanceof Error ? error.message : "Could not load charging data." }
+          ? { ...current, refreshing }
+          : error
+            ? { status: "error", message: error }
+            : { status: "loading" }
       );
-    }
+    };
+    sync(getCmsWindowSnapshot());
+    const unsubscribe = subscribeCmsWindow(sync);
+    void requestCmsWindow();
+    return unsubscribe;
   }, []);
-
-  useEffect(() => { void loadCms(); }, [loadCms]);
+  const loadCms = useCallback((force = false) => requestCmsWindow(force), []);
 
   useEffect(() => {
     if (!isPartner) return;

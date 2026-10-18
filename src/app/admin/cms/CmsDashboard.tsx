@@ -889,6 +889,7 @@ export default function CmsOperatorDashboard() {
           failures?: Array<{ transactionId: string; error: string }>;
           remaining?: number | null;
           complete?: boolean;
+          rateLimited?: boolean;
           error?: string;
         };
         if (!response.ok) {
@@ -913,6 +914,12 @@ export default function CmsOperatorDashboard() {
         setBackfillStatus(
           `Backfill running · ${totalSucceeded.toLocaleString()} fetched · ${(result.remaining ?? "unknown").toLocaleString()} remaining · ${totalFailed} failed`
         );
+
+        if (result.rateLimited) {
+          console.warn("Backfill paused because ChargeMOD rate-limited requests. Wait before restarting.", { batch, response: result });
+          setBackfillStatus(`Backfill paused by ChargeMOD rate limit · ${totalSucceeded.toLocaleString()} fetched · ${(result.remaining ?? "unknown").toLocaleString()} remaining. Wait a few minutes before restarting.`);
+          return;
+        }
 
         if (result.complete) {
           const summary = {

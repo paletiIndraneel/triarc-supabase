@@ -5,11 +5,8 @@ import { liveMetrics, parseMeterValues, type LiveMetrics } from "@/lib/cms/liveM
 
 export const dynamic = "force-dynamic";
 
-// Live metrics for one charging session (SoC, kW, kWh, battery estimate, time left).
-// Only the calculated numbers are returned, never the raw readings or customer data.
-// Answers are kept briefly per instance so several viewers cost one ChargeMOD call.
 const CACHE_MS = 15_000;
-const cache = new Map<string, { at: number; metrics: LiveMetrics }>();
+const cache = new Map<string, { at: number; metrics: LiveMetrics; readings: ReturnType<typeof parseMeterValues> }>();
 
 export async function GET(_request: Request, context: { params: Promise<{ transactionId: string }> }) {
   const { supabase, user } = await getAdminClient();
@@ -19,18 +16,20 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
   if (!config.enabled) return new NextResponse("Not Found", { status: 404 });
 
   const { transactionId } = await context.params;
-  // ChargeMOD IDs look like 1792310502118__5154595.
   if (!/^[\w-]{1,80}$/.test(transactionId)) return new NextResponse("Bad Request", { status: 400 });
 
   const hit = cache.get(transactionId);
-  if (hit && Date.now() - hit.at < CACHE_MS) return NextResponse.json(hit.metrics);
+  if (hit && Date.now() - hit.at < CACHE_MS) {
+    return NextResponse.json({ ...hit.metrics, transactionDetails: hit.readings });
+  }
 
   try {
     const payload = await getMeterValues({ ...config, store: supabase }, transactionId);
-    const metrics = liveMetrics(parseMeterValues(payload));
-    cache.set(transactionId, { at: Date.now(), metrics });
+    const readings = parseMeterValues(payload);
+    const metrics = liveMetrics(readings);
+    cache.set(transactionId, { at: Date.now(), metrics, readings });
     if (cache.size > 50) cache.delete(cache.keys().next().value!);
-    return NextResponse.json(metrics);
+    return NextResponse.json({ ...metrics, transactionDetails: readings });
   } catch (error) {
     console.error("[cms/live]", error);
     return NextResponse.json({ error: getCmsErrorMessage(error) }, { status: 502 });

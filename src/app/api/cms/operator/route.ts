@@ -160,7 +160,8 @@ async function readStoredTransactions(
       .gte("started_at", from)
       .lt("started_at", to)
       .order("started_at")
-      .order("transaction_id")\n      .range(offset, offset + 199);
+      .order("transaction_id")
+      .range(offset, offset + 199);
     if (error) throw new Error(`Stored CMS transactions could not be read: ${error.message}`);
     stored.push(...(batch as CmsTransactionRow[]));
     if (batch.length < 200) break;

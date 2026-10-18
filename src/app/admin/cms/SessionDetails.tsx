@@ -58,9 +58,14 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
   const estimating = <span className="font-normal text-slate-400">estimating…</span>;
   const dash = <span className="text-slate-400">—</span>;
 
+  // AC sockets (e.g. 3.3 kW) don't report the vehicle's SoC, so the SoC bar and the battery,
+  // to-full and time-left rows are left out once the readings show there is no SoC.
+  const hasSoc = startSoc != null || currentSoc != null || metrics == null;
   const rows: Array<[string, React.ReactNode]> = [
     ["Energy", energy == null ? dash : `${num(energy, 2)} kWh`],
     ["Power now", metrics?.kwNow == null ? dash : `${num(metrics.kwNow)} kW`],
+  ];
+  if (hasSoc) rows.push(
     ["Battery", metrics == null ? dash : metrics.batteryKwh == null ? estimating : `≈ ${num(metrics.batteryKwh, 0)} kWh`],
     [
       "To full",
@@ -70,7 +75,7 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
           ? estimating
           : `${num(metrics.kwhToFull)} kWh${metrics.minutesLeft != null ? ` · ≈ ${duration(metrics.minutesLeft)}` : ""}`,
     ],
-  ];
+  );
 
   return (
     <dialog
@@ -96,6 +101,7 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
       </div>
 
       <div className="space-y-3 px-5 py-4 text-sm">
+        {hasSoc ? (
         <div>
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-medium text-slate-500">SoC</span>
@@ -108,6 +114,9 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
             <div className="h-full rounded-full bg-emerald-500 transition-[width]" style={{ width: `${currentSoc ?? startSoc ?? 0}%` }} />
           </div>
         </div>
+        ) : (
+          <p className="text-xs text-slate-500">This charger doesn&apos;t report the vehicle&apos;s battery level.</p>
+        )}
         <dl className="space-y-2">
           {rows.map(([label, value]) => (
             <div key={label} className="flex items-baseline justify-between gap-3">
@@ -121,7 +130,9 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
 
       <dl className="space-y-1.5 border-t border-slate-100 px-5 py-4 text-xs">
         <div className="flex justify-between gap-3"><dt className="text-slate-500">Customer</dt><dd className="truncate font-medium">{session.userName || "—"}</dd></div>
-        <div className="flex justify-between gap-3"><dt className="text-slate-500">Vehicle</dt><dd className="truncate font-medium">{session.vehicleNumber || session.vehicleName || "—"}</dd></div>
+        {(session.vehicleNumber || session.vehicleName) && (
+          <div className="flex justify-between gap-3"><dt className="text-slate-500">Vehicle</dt><dd className="truncate font-medium">{session.vehicleNumber || session.vehicleName}</dd></div>
+        )}
         <div className="flex justify-between gap-3"><dt className="text-slate-500">Session ID</dt><dd className="truncate font-mono">{id}</dd></div>
         <p className="pt-1 text-slate-400">
           {metrics?.lastReadingAt ? `Updated ${time.format(new Date(metrics.lastReadingAt))} · ` : ""}refreshes every 30 s

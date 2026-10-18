@@ -482,6 +482,71 @@ function displayCharger(value: string) {
 }
 
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
+type PeriodSplit = {
+  energy: { total: number; ac: number; dc: number; cpo: number };
+  revenue: { total: number; ac: number; dc: number };
+};
+
+// AC/DC energy and revenue exclude CPO sessions; the totals include them.
+function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>): PeriodSplit {
+  const energy = { total: 0, ac: 0, dc: 0, cpo: 0 };
+  const revenue = { total: 0, ac: 0, dc: 0 };
+  for (const transaction of transactions) {
+    const cpo = isCpoTransaction(transaction, cpoMobileNumbers);
+    const current = cpo ? null : chargerCurrent(transaction);
+    const kwh = Number(transaction.energyKwh);
+    if (Number.isFinite(kwh) && kwh > 0) {
+      energy.total += kwh;
+      if (cpo) energy.cpo += kwh;
+      else if (current) energy[current] += kwh;
+    }
+    const amount = Number(transaction.tariffAmount);
+    if (Number.isFinite(amount)) {
+      revenue.total += amount;
+      if (current) revenue[current] += amount;
+    }
+  }
+  return { energy, revenue };
+}
+
+const formatKwh = (value: number) => `${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`;
+
+function SplitCard({ title, split }: { title: string; split: PeriodSplit | null }) {
+  const rows: Array<[string, number | undefined, number | undefined]> = [
+    ["AC Charger", split?.energy.ac, split?.revenue.ac],
+    ["DC Charger", split?.energy.dc, split?.revenue.dc],
+    ["CPO", split?.energy.cpo, undefined],
+  ];
+  return (
+    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm sm:col-span-2">
+      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p>
+      <table className="mt-3 w-full text-sm">
+        <thead>
+          <tr className="text-xs text-slate-500">
+            <th scope="col" className="pb-2 text-left font-medium"><span className="sr-only">Charger</span></th>
+            <th scope="col" className="pb-2 text-right font-medium">Energy</th>
+            <th scope="col" className="pb-2 text-right font-medium">Revenue</th>
+          </tr>
+        </thead>
+        <tbody className="font-semibold whitespace-nowrap text-slate-800">
+          {rows.map(([label, kwh, amount]) => (
+            <tr key={label} className={label === "CPO" ? "text-violet-700" : undefined}>
+              <th scope="row" className={`py-1 text-left text-xs ${label === "CPO" ? "font-semibold text-violet-600" : "font-medium text-slate-500"}`}>{label}</th>
+              <td className="py-1 text-right">{kwh === undefined ? "—" : formatKwh(kwh)}</td>
+              <td className="py-1 text-right">{label === "CPO" ? "" : amount === undefined ? "—" : money(amount)}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-slate-200 text-base font-bold text-slate-900">
+            <th scope="row" className="pt-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
+            <td className="pt-2 text-right">{split ? formatKwh(split.energy.total) : "—"}</td>
+            <td className="pt-2 text-right">{split ? money(split.revenue.total) : "—"}</td>
+          </tr>
+        </tbody>
+      </table>
+    </GlassCard>
+  );
+}
+
 export default function CmsOperatorDashboard() {
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
@@ -491,6 +556,8 @@ export default function CmsOperatorDashboard() {
   const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
   const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
   const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
+  const [todaySplit, setTodaySplit] = useState<PeriodSplit | null>(null);
+  const [cycleSplits, setCycleSplits] = useState<Array<{ title: string; split: PeriodSplit }> | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [activeTransactions, setActiveTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
@@ -700,41 +767,29 @@ export default function CmsOperatorDashboard() {
           currentMonthRange.startDate,
           now.toISOString()
         );
-        // Keep regular AC/DC energy separate from CPO energy, then explicitly
-        // add CPO usage into the overall MTD total.
-        const mtdEnergyTotals = mtdTransactions.reduce((totals, transaction) => {
-          const energy = Number(transaction.energyKwh);
-          if (!Number.isFinite(energy) || energy <= 0) return totals;
-          if (isCpoTransaction(transaction, cpoMobileNumbers)) {
-            totals.cpo += energy;
-          } else {
-            totals.total += energy;
-            const current = chargerCurrent(transaction);
-            if (current) totals[current] += energy;
-          }
-          return totals;
-        }, { total: 0, ac: 0, dc: 0, cpo: 0 });
-        const totalMtdEnergyIncludingCpo = mtdEnergyTotals.total + mtdEnergyTotals.cpo;
-        setMonthToDateEnergy(totalMtdEnergyIncludingCpo);
-        setMonthToDateConsumption({
-          total: totalMtdEnergyIncludingCpo,
-          ac: mtdEnergyTotals.ac,
-          dc: mtdEnergyTotals.dc,
-        });
-        setMonthToDateCpoEnergy(mtdEnergyTotals.cpo);
-
-        // Revenue MTD uses transactions started in the current calendar month.
-        const mtdRevenueTotals = mtdTransactions.reduce((totals, transaction) => {
-          const amount = Number(transaction.tariffAmount);
-          if (!Number.isFinite(amount)) return totals;
-          if (!isCpoTransaction(transaction, cpoMobileNumbers)) {
-            const current = chargerCurrent(transaction);
-            if (current) totals[current] += amount;
-          }
-          totals.total += amount;
-          return totals;
-        }, { total: 0, ac: 0, dc: 0 });
-        setMonthToDateRevenue(mtdRevenueTotals);
+        const mtd = splitPeriod(mtdTransactions, cpoMobileNumbers);
+        setMonthToDateEnergy(mtd.energy.total);
+        setMonthToDateConsumption({ total: mtd.energy.total, ac: mtd.energy.ac, dc: mtd.energy.dc });
+        setMonthToDateCpoEnergy(mtd.energy.cpo);
+        setMonthToDateRevenue(mtd.revenue);
+        setTodaySplit(splitPeriod(todayTransactions, cpoMobileNumbers));
+        // Billing cycles run 1–15 and 16–end of month: show the current cycle and the one before.
+        const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+        const lastDay = (start: Date) => dayFmt.format(new Date(start.getTime() - 24 * 60 * 60 * 1000));
+        const nextMonthStart = new Date(Date.UTC(localYear, localMonth, 1) - 330 * 60 * 1000);
+        const cycles: Array<[Date, Date]> =
+          localDay <= 15
+            ? [[currentMonthStart, currentFirstHalfEnd], [previousMonthMidpoint, currentMonthStart]]
+            : [[currentFirstHalfEnd, nextMonthStart], [currentMonthStart, currentFirstHalfEnd]];
+        setCycleSplits(
+          cycles.map(([start, end], index) => ({
+            title: `${index === 0 ? "Current cycle" : "Previous cycle"} (${dayFmt.format(start)} – ${lastDay(end)})`,
+            split: splitPeriod(
+              filterTransactionsByRange(metricTransactions, start.toISOString(), (index === 0 && end > now ? now : end).toISOString()),
+              cpoMobileNumbers
+            ),
+          }))
+        );
 
         const previousMonthName = previousMonthStart.toLocaleDateString("en-IN", {
           month: "long",
@@ -953,70 +1008,10 @@ export default function CmsOperatorDashboard() {
         )}
 
         <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
-          <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
-              <div className="min-w-0 @[26rem]:flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total energy ({mtdRange})</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {monthToDateConsumption === null
-                    ? "—"
-                    : `${monthToDateConsumption.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                </p>
-              </div>
-              <div className="h-px w-full shrink-0 bg-slate-200 @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
-              <div className="min-w-0 space-y-3 @[26rem]:flex-1">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="text-xs font-medium text-slate-500">AC Charger</p>
-                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
-                    {monthToDateConsumption === null
-                      ? "—"
-                      : `${monthToDateConsumption.ac.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="text-xs font-medium text-slate-500">DC Charger</p>
-                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
-                    {monthToDateConsumption === null
-                      ? "—"
-                      : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-slate-100 pt-2">
-                  <p className="text-xs font-semibold text-violet-600">CPO</p>
-                  <p className="text-sm font-semibold whitespace-nowrap text-violet-700">
-                    {monthToDateCpoEnergy === null
-                      ? "—"
-                      : `${monthToDateCpoEnergy.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-          <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
-              <div className="min-w-0 @[26rem]:flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue ({mtdRange})</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
-                  {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
-                </p>
-              </div>
-              <div className="h-px w-full shrink-0 bg-slate-200 @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
-              <div className="min-w-0 space-y-3 @[26rem]:flex-1">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="text-xs font-medium text-slate-500">AC Charger</p>
-                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
-                    {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="text-xs font-medium text-slate-500">DC Charger</p>
-                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
-                    {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
+          <SplitCard title="Today" split={todaySplit} />
+          {(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => (
+            <SplitCard key={cycle.title} title={cycle.title} split={cycle.split} />
+          ))}
           <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
               <div className="min-w-0 @[26rem]:flex-1">
@@ -1048,23 +1043,6 @@ export default function CmsOperatorDashboard() {
             value={active > 0 ? "Charging" : "Idle"}
             accent={active > 0}
           />
-          <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Today</p>
-            <div className="mt-4 space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <p className="text-xs font-medium text-slate-500">Consumption</p>
-                <p className="text-sm font-semibold whitespace-nowrap text-slate-900">
-                  {totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-slate-100 pt-3">
-                <p className="text-xs font-medium text-slate-500">Revenue</p>
-                <p className="text-sm font-semibold whitespace-nowrap text-slate-900">
-                  {totalRevenueToday === null ? "—" : money(totalRevenueToday)}
-                </p>
-              </div>
-            </div>
-          </GlassCard>
           <Metric label="Locations" value={String(locationCount)} />
           <Metric label="Active now" value={String(active)} accent />
         </div>

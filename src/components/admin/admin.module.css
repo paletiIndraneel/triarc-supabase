@@ -1,4 +1,4 @@
-/* Admin-wide feel: instant press feedback, translucent sticky header, and the reduced-motion/transparency fallbacks. */
+/* Admin-wide feel: instant press feedback, solid sticky header, and the reduced-motion/contrast fallbacks. */
 .adminShell :global(button:not(:disabled)),
 .adminShell :global(a[href]) {
   /* Keeps the colour transitions Tailwind's `transition` class would have given. */
@@ -10,24 +10,16 @@
   transform: scale(0.97);
 }
 
+/* One solid colour for the whole header, the same lavender as the Billing tab bar. It used to be
+   translucent white, which let the site's dark page colour show through as grey. */
 .adminShell :global(.admin-topbar) {
-  background: rgba(255, 255, 255, 0.78);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  background: #f0eff8;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .adminShell :global(button:not(:disabled):active),
   .adminShell :global(a[href]:active) {
     transform: none;
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .adminShell :global(.admin-topbar) {
-    background: #fff;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
 }
 

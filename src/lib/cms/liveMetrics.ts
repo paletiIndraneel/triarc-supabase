@@ -42,16 +42,20 @@ type ReadingSet = {
 // last value seen for each measurand (Voltage and Current.Import repeat per phase, so they
 // are not used: Power.Active.Import already matches DC voltage x DC current).
 function readingSets(readings: MeterReading[]): ReadingSet[] {
-  const byTime = new Map<string, ReadingSet>();
-  for (const r of readings) {
-    if (!Number.isFinite(r.value)) continue;
-    const set = byTime.get(r.timestamp) ?? { timestamp: r.timestamp, soc: null, powerKw: null, energyWh: null };
-    if (r.measurand === "SoC") set.soc = r.value;
-    else if (r.measurand === "Power.Active.Import") set.powerKw = /^w$/i.test(r.unit ?? "") ? r.value / 1000 : r.value;
-    else if (r.measurand === "Energy.Active.Import.Register") set.energyWh = /kwh/i.test(r.unit ?? "") ? r.value * 1000 : r.value;
-    byTime.set(r.timestamp, set);
-  }
-  return [...byTime.values()].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  // Preserve every reading in an array; a Map would discard duplicate timestamp/measurand pairs.
+  return readings
+    .filter((r) => Number.isFinite(r.value) && Number.isFinite(Date.parse(r.timestamp)))
+    .map((r) => {
+      const set: ReadingSet = { timestamp: r.timestamp, soc: null, powerKw: null, energyWh: null };
+      if (r.measurand === "SoC") set.soc = r.value;
+      else if (r.measurand === "Power.Active.Import") {
+        set.powerKw = /^w$/i.test(r.unit ?? "") ? r.value / 1000 : r.value;
+      } else if (r.measurand === "Energy.Active.Import.Register") {
+        set.energyWh = /kwh/i.test(r.unit ?? "") ? r.value * 1000 : r.value;
+      }
+      return set;
+    })
+    .sort((x, y) => Date.parse(x.timestamp) - Date.parse(y.timestamp));
 }
 
 function minutesToFull(soc: number, batteryKwh: number, kw: number) {

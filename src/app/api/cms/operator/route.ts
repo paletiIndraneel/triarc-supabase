@@ -68,10 +68,31 @@ export async function GET(request: Request) {
         if (open) query = query.is("stopped_at", null);
         return query.order("started_at", { ascending: open }).limit(1).maybeSingle();
       };
-      const [newest, oldestOpen] = await Promise.all([latestStart(false), latestStart(true)]);
-      const error = newest.error ?? oldestOpen.error;
-      if (error) console.error("[cms/operator] reading stored transactions failed:", error.message);
-      else syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+      const [newest, oldestOpen, oldestStored] = await Promise.all([
+        latestStart(false),
+        latestStart(true),
+        supabase
+          .from("cms_transactions")
+          .select("started_at")
+          .not("started_at", "is", null)
+          .order("started_at", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      const error = newest.error ?? oldestOpen.error ?? oldestStored.error;
+      if (error) {
+        console.error("[cms/operator] reading stored transactions failed:", error.message);
+      } else {
+        // If the requested window reaches earlier than our stored history, backfill from
+        // the requested start instead of syncing only from the newest stored session.
+        const storedOldest = oldestStored.data?.started_at;
+        const requestedStart = new Date(startDate).getTime();
+        const storedStart = storedOldest ? new Date(storedOldest).getTime() : null;
+        syncStart =
+          storedStart === null || storedStart > requestedStart
+            ? startDate
+            : syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+      }
       if (syncStart > endDate) syncStart = endDate;
     }
 

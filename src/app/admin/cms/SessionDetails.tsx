@@ -64,6 +64,7 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
   const rows: Array<[string, React.ReactNode]> = [
     ["Energy", energy == null ? dash : `${num(energy, 2)} kWh`],
     ["Power now", metrics?.kwNow == null ? dash : `${num(metrics.kwNow)} kW`],
+    ["Peak power", metrics?.peakKw == null ? dash : `${num(metrics.peakKw)} kW`],
   ];
   if (hasSoc) rows.push(
     ["Battery", metrics == null ? dash : metrics.batteryKwh == null ? estimating : `≈ ${num(metrics.batteryKwh, 0)} kWh`],

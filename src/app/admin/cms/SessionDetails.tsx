@@ -21,7 +21,6 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
   const ref = useRef<HTMLDialogElement>(null);
   const [metrics, setMetrics] = useState<LiveMetrics | null>(null);
   const [error, setError] = useState("");
-  const hasAlertedDetails = useRef(false);
   const id = session.transactionId || session.id;
 
   useEffect(() => {
@@ -41,28 +40,16 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
         try {
           data = JSON.parse(rawBody) as LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown };
         } catch {
-          // Preserve non-JSON response text in the diagnostic alert below.
+          // Non-JSON response is surfaced as an inline error below.
         }
         if (cancelled) return;
         if (!response.ok) {
           const message = (data?.error ?? rawBody) || `HTTP ${response.status}`;
-          if (!hasAlertedDetails.current) {
-            hasAlertedDetails.current = true;
-            window.alert(`Live transaction API failed\nURL: ${endpoint}\nHTTP: ${response.status}\nResponse: ${message}`);
-          }
           throw new Error(message);
         }
         if (!data) throw new Error(`Live transaction API returned non-JSON data (HTTP ${response.status}): ${rawBody.slice(0, 500)}`);
         setMetrics(data);
         setError("");
-        if (!hasAlertedDetails.current) {
-          hasAlertedDetails.current = true;
-          // Let React paint the updated session values before the blocking browser alert opens.
-          const diagnostic = `Transaction details API succeeded (HTTP ${response.status})\nURL: ${endpoint}\n${JSON.stringify({ transactionDetails: data.transactionDetails, parsedReadings: data.parsedReadings, currentSoc: data.currentSoc, lastReadingAt: data.lastReadingAt }, null, 2)}`;
-          window.setTimeout(() => {
-            if (!cancelled) window.alert(diagnostic);
-          }, 300);
-        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Live readings are unavailable.");
       }

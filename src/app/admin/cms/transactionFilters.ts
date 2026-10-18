@@ -40,6 +40,24 @@ export function chargerLabel(transaction: FilterableTransaction) {
   return transaction.chargerName || transaction.chargerId;
 }
 
+// Short charger name for the Active now card, built from ChargeMOD's charger name and gun:
+// "Triarc | DC 60kW CCS-2" gun 2 -> "DC 60kW-2", "Triarc | AC 3.3kW Socket | A" -> "AC 3.3kW-A",
+// "Triarc | AC 22kW Type-2" -> "22kW". DC chargers always show the gun number (any number of
+// guns); AC chargers show it only when they have more than one gun.
+export function shortChargerLabel(chargerName: string, stationType: string | null, connectorId: number | null) {
+  const parts = chargerName.split("|").map((part) => part.trim()).filter(Boolean);
+  if (parts.length > 1 && /^triarc/i.test(parts[0])) parts.shift();
+  const main = parts[0] ?? "";
+  const letter = parts.length > 1 && /^[A-Z0-9]{1,2}$/i.test(parts.at(-1)!) ? parts.at(-1)!.toUpperCase() : null;
+  const type = (stationType ?? main.match(/\b(AC|DC)\b/i)?.[1] ?? "").toUpperCase();
+  const power = main.match(/(\d+(?:\.\d+)?)\s*kW/i);
+  const gun = connectorId != null && connectorId > 0 ? connectorId : null;
+  const suffix = letter ? `-${letter}` : gun && (type === "DC" || gun > 1) ? `-${gun}` : "";
+  if (!power) return `${main || "Charger"}${letter ? `-${letter}` : gun ? `-${gun}` : ""}`;
+  const kw = `${power[1]}kW`;
+  return type === "AC" && !suffix ? kw : `${type ? `${type} ` : ""}${kw}${suffix}`;
+}
+
 // Same AC/DC rule the month-to-date consumption split uses.
 export function chargerCurrent(transaction: FilterableTransaction): "ac" | "dc" | null {
   const type =

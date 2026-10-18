@@ -917,6 +917,14 @@ export async function getActiveTransactions(config: CmsConfig) {
   );
 }
 
+// One session's OCPP meter values (SoC, power, energy register...), as the ChargeMOD console's
+// meter-values page loads them. Undocumented endpoint on the same service and login as the
+// other CMS calls; the body was not visible in the browser capture, so the transaction ID is
+// sent under both names the console uses elsewhere.
+export async function getMeterValues(config: CmsConfig, transactionId: string) {
+  return cmsPost<unknown>(config, "/charger/meter-values", { transactionId, id: transactionId });
+}
+
 export function sanitizeTransaction(raw: ChargeModTransaction): CmsTransaction {
   const startValue = toNumber(raw.startValue);
   const stopValue = toNumber(raw.stopValue);

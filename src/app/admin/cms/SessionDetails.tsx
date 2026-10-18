@@ -21,6 +21,7 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
   const ref = useRef<HTMLDialogElement>(null);
   const [metrics, setMetrics] = useState<LiveMetrics | null>(null);
   const [error, setError] = useState("");
+  const hasAlertedDetails = useRef(false);
   const id = session.transactionId || session.id;
 
   useEffect(() => {
@@ -33,11 +34,15 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
       if (document.visibilityState !== "visible") return;
       try {
         const response = await fetch(`/api/cms/live/${encodeURIComponent(id)}`, { cache: "no-store" });
-        const data = (await response.json()) as LiveMetrics & { error?: string };
+        const data = (await response.json()) as LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown };
         if (cancelled) return;
         if (!response.ok) throw new Error(data.error ?? "Live readings are unavailable.");
         setMetrics(data);
         setError("");
+        if (!hasAlertedDetails.current) {
+          hasAlertedDetails.current = true;
+          window.alert(`Transaction details response:\n${JSON.stringify({ transactionDetails: data.transactionDetails, parsedReadings: data.parsedReadings, currentSoc: data.currentSoc, lastReadingAt: data.lastReadingAt }, null, 2)}`);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Live readings are unavailable.");
       }

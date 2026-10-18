@@ -473,46 +473,59 @@ async function discoverContextInternal(config: CmsConfig): Promise<CmsContext> {
     ? organizations.foundOrganisation
     : [];
 
-  for (const organization of candidates) {
-    const organizationId =
-      typeof organization._id === "string" ? organization._id : "";
-
-    if (
-      !organizationId ||
-      organization.isActive === false ||
-      organization.isSuspended === true
-    ) {
-      continue;
-    }
-
-    const projects = await cmsFetch<ProjectsResponse>(
-      config,
-      "https://ogs.console.chargemod.com",
-      "/web/org/organisation/get-project",
-      {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ organizationId }),
-      }
+  const activeOrganizations = candidates
+    .map((organization) => ({
+      organization,
+      organizationId:
+        typeof organization._id === "string" ? organization._id : "",
+    }))
+    .filter(
+      ({ organization, organizationId }) =>
+        Boolean(organizationId) &&
+        organization.isActive !== false &&
+        organization.isSuspended !== true
     );
 
-    const powerLineProject = projects.projects?.find(
-      (project) =>
-        typeof project._id === "string" &&
-        typeof project.projectName === "string" &&
-        project.projectName.trim().toLowerCase() === "powerline"
-    );
+  // Discover projects concurrently instead of waiting for each organization in turn.
+  // Keep the original organization order when choosing the matching PowerLine project.
+  const projectResults = await Promise.all(
+    activeOrganizations.map(async ({ organizationId }) => {
+      const projects = await cmsFetch<ProjectsResponse>(
+        config,
+        "https://ogs.console.chargemod.com",
+        "/web/org/organisation/get-project",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ organizationId }),
+        }
+      );
 
-    if (powerLineProject && typeof powerLineProject._id === "string") {
-      cachedContext = {
-        organizationId,
-        projectId: powerLineProject._id,
-      };
-      return cachedContext;
-    }
+      const powerLineProject = projects.projects?.find(
+        (project) =>
+          typeof project._id === "string" &&
+          typeof project.projectName === "string" &&
+          project.projectName.trim().toLowerCase() === "powerline"
+      );
+
+      return { organizationId, powerLineProject };
+    })
+  );
+
+  const match = projectResults.find(
+    ({ powerLineProject }) =>
+      powerLineProject && typeof powerLineProject._id === "string"
+  );
+
+  if (match?.powerLineProject && typeof match.powerLineProject._id === "string") {
+    cachedContext = {
+      organizationId: match.organizationId,
+      projectId: match.powerLineProject._id,
+    };
+    return cachedContext;
   }
 
   throw new Error("CMS PowerLine organization/project could not be discovered.");

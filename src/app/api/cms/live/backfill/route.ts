@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const DEFAULT_BATCH_SIZE = 10;
-const MAX_BATCH_SIZE = 20;
+const MAX_BATCH_SIZE = 10;
 const REQUEST_SPACING_MS = 1500;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

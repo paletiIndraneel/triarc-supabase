@@ -100,10 +100,7 @@ async function login(
       }
 
       try {
-        await removeNodeSessionsFromDeviceLimit(
-          payload,
-          previousToken ?? cachedToken?.value ?? null
-        );
+        await removeNodeSessionsFromDeviceLimit(config, payload);
         return login(config, previousToken, deviceLimitRetries + 1);
       } catch (error) {
         console.error("[cms] ChargeMOD device limit cleanup failed", error);
@@ -137,16 +134,13 @@ async function login(
   return token;
 }
 
+// ChargeMOD's console clears a slot with force-logout-device, authenticated by the
+// account credentials rather than a bearer token, so this works even when the server
+// has no valid token left (the usual state when the device limit is hit).
 async function removeNodeSessionsFromDeviceLimit(
-  payload: { sessions?: unknown },
-  token: string | null
+  config: CmsConfig,
+  payload: { sessions?: unknown }
 ) {
-  if (!token) {
-    throw new Error(
-      "CMS device limit reached, but no active server token is available to remove the existing node sessions."
-    );
-  }
-
   const sessions = Array.isArray(payload.sessions) ? payload.sessions : [];
   const nodeSessions = sessions.filter((session): session is Record<string, unknown> => {
     if (!session || typeof session !== "object") return false;
@@ -160,22 +154,43 @@ async function removeNodeSessionsFromDeviceLimit(
     );
   });
 
-  for (const session of nodeSessions) {
+  // Prefer our own server ("node") sessions; if every slot is a browser, free the
+  // oldest one so the dashboard can always sign in when the limit is hit.
+  const oldest = sessions
+    .filter((session): session is Record<string, unknown> =>
+      Boolean(session) && typeof session === "object"
+    )
+    .sort(
+      (a, b) =>
+        (Date.parse(String(a.createdAt ?? "")) || 0) -
+        (Date.parse(String(b.createdAt ?? "")) || 0)
+    )
+    .slice(0, 1);
+  const toRemove = nodeSessions.length > 0 ? nodeSessions : oldest;
+
+  if (toRemove.length === 0) {
+    throw new Error("CMS device limit reached but ChargeMOD returned no sessions to remove.");
+  }
+
+  for (const session of toRemove) {
     const sessionId =
       typeof session.sessionId === "string" ? session.sessionId : "";
 
     if (!sessionId) continue;
 
     const response = await fetch(
-      "https://ogs.console.chargemod.com/web/register/logout-device",
+      "https://ogs.console.chargemod.com/web/register/force-logout-device",
       {
         method: "POST",
         headers: {
           accept: "application/json",
           "content-type": "application/json",
-          authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({
+          email: config.username,
+          password: config.password,
+          kickSessionId: sessionId,
+        }),
         cache: "no-store",
       }
     );

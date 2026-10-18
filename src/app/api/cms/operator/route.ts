@@ -160,21 +160,23 @@ async function readStoredTransactions(
   to: string
 ) {
   const stored: CmsTransactionRow[] = [];
-  for (let offset = 0; ; offset += 200) {
+  // Larger bounded pages reduce sequential Supabase round trips for historical windows.
+  // Meter-values JSON is excluded above, keeping each row relatively small.
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
     const { data: batch, error } = await supabase
       .from("cms_transactions")
       // Avoid loading the potentially large historical meter-values JSON payloads on every
-      // dashboard read. The dashboard only needs the base transaction fields. Smaller pages
-      // also keep each statement comfortably below Supabase statement timeouts.
+      // dashboard read. The dashboard only needs the base transaction fields.
       .select("transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at")
       .gte("started_at", from)
       .lt("started_at", to)
       .order("started_at")
       .order("transaction_id")
-      .range(offset, offset + 199);
+      .range(offset, offset + pageSize - 1);
     if (error) throw new Error(`Stored CMS transactions could not be read: ${error.message}`);
     stored.push(...(batch as CmsTransactionRow[]));
-    if (batch.length < 200) break;
+    if (batch.length < pageSize) break;
   }
   return stored.map(fromStoredRow);
 }

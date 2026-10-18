@@ -576,6 +576,8 @@ export default function CmsOperatorDashboard() {
   const [cpoMobileNumbers, setCpoMobileNumbers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [backfillRunning, setBackfillRunning] = useState(false);
+  const [backfillStatus, setBackfillStatus] = useState("");
   const [dataTill, setDataTill] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
   const [draftColumns, setDraftColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
@@ -851,6 +853,60 @@ export default function CmsOperatorDashboard() {
 
   const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 
+  const startHistoricalBackfill = useCallback(async () => {
+    if (backfillRunning) return;
+    const confirmed = window.confirm(
+      "Start historical ChargeMOD meter-values backfill? This will fetch readings for old transactions in batches and may take several minutes."
+    );
+    if (!confirmed) return;
+
+    setBackfillRunning(true);
+    setBackfillStatus("Starting historical backfill…");
+    let totalSucceeded = 0;
+    let totalFailed = 0;
+    try {
+      for (let batch = 1; batch <= 200; batch += 1) {
+        const response = await fetch("/api/cms/live/backfill", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({ limit: 20 }),
+        });
+        const result = await response.json().catch(() => ({})) as {
+          requested?: number;
+          succeeded?: number;
+          failed?: number;
+          remaining?: number | null;
+          complete?: boolean;
+          error?: string;
+        };
+        if (!response.ok) throw new Error(result.error || `Backfill request failed (HTTP ${response.status}).`);
+
+        totalSucceeded += result.succeeded ?? 0;
+        totalFailed += result.failed ?? 0;
+        setBackfillStatus(
+          `Backfill running · ${totalSucceeded.toLocaleString()} fetched · ${(result.remaining ?? "unknown").toLocaleString()} remaining · ${totalFailed} failed`
+        );
+
+        if (result.complete) {
+          setBackfillStatus(`Backfill complete · ${totalSucceeded.toLocaleString()} fetched · ${totalFailed} failed`);
+          return;
+        }
+        if (!result.requested || !(result.succeeded ?? 0)) {
+          setBackfillStatus(
+            `Backfill paused · ${totalSucceeded} fetched · ${totalFailed} failed. Check the error details or retry after fixing the issue.`
+          );
+          return;
+        }
+      }
+      setBackfillStatus(`Backfill paused after 200 batches · ${totalSucceeded} fetched · ${totalFailed} failed. Click again to continue.`);
+    } catch (error) {
+      setBackfillStatus(error instanceof Error ? `Backfill stopped: ${error.message}` : "Backfill stopped due to an unknown error.");
+    } finally {
+      setBackfillRunning(false);
+    }
+  }, [backfillRunning]);
+
   const transactions = useMemo(() => {
     const dateRange =
       datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
@@ -1002,7 +1058,16 @@ export default function CmsOperatorDashboard() {
             )}
             <button
               type="button"
-              onClick={() => void load(true)}
+              onClick={() => void startHistoricalBackfill()}
+              disabled={backfillRunning}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Activity size={16} className={backfillRunning ? "motion-safe:animate-pulse" : ""} />
+              {backfillRunning ? "Backfill running…" : "Start history backfill"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void load(true)
               disabled={loading}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -1012,6 +1077,11 @@ export default function CmsOperatorDashboard() {
           </div>
         </div></section>
 
+        {backfillStatus && (
+          <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {backfillStatus}
+          </div>
+        )}
 
         {message && (
           <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-5 py-4">

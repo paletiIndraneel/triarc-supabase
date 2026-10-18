@@ -8,6 +8,7 @@ import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "@/app/admin/cms/cmsWindowStore";
+import { shortChargerLabel, splitActiveSessions } from "@/app/admin/cms/transactionFilters";
 import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
 
 type Enquiry = { id: string; name: string; message: string; status: "New" | "Contacted" | "Closed"; created_at: string };
@@ -19,7 +20,7 @@ type Metric = "kwh" | "revenue" | "sessions";
 type CmsState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; sessions: Transaction[]; active: number | null; updatedAt: string | null; refreshing?: boolean };
+  | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; sessions: Transaction[]; active: number | null; live: Transaction[] | null; updatedAt: string | null; refreshing?: boolean };
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
 const kwh = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: n >= 100 ? 0 : 1 });
@@ -39,6 +40,14 @@ function when(iso: string) {
 }
 
 const card = "rounded-2xl border border-[#e8e9f0] bg-white p-5";
+
+// "16 Oct–31 Oct" -> "16 – 31 Oct"; "16 Sept–30 Sept" -> "16 – 30 Sep".
+function prettyRange(label: string) {
+  const [from, to] = label.replace(/Sept/g, "Sep").split("–").map((part) => part.trim());
+  if (!to) return label.replace(/Sept/g, "Sep");
+  const [fromDay, fromMonth] = from.split(" ");
+  return fromMonth && to.endsWith(fromMonth) ? `${fromDay} – ${to}` : `${from} – ${to}`;
+}
 
 export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const { isPartner, setActiveModule } = useAdminModule();
@@ -61,13 +70,19 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           const key = t.transactionId || t.id;
           if (key) merged.set(key, merged.has(key) ? mergeTransactionData(merged.get(key)!, t) : t);
         }
-        const active = cache.active?.count ?? cache.active?.transactions?.length ?? null;
+        // Same rule as the CMS Status card: ChargeMOD's stuck sessions are not counted.
+        const activeList = cache.active?.transactions;
+        const live = activeList
+          ? splitActiveSessions(activeList.map((t) => merged.get(t.transactionId || t.id) ?? t)).live
+          : null;
+        const active = live ? live.length : cache.active?.count ?? null;
         setCms((current) => ({
           status: "ok",
           metrics: overviewMetrics([...merged.values()]),
           sessions: [...merged.values()],
           // The stored copy has no live count; keep the last one rather than flash 0.
           active: active ?? (current.status === "ok" ? current.active : null),
+          live: live ?? (current.status === "ok" ? current.live : null),
           updatedAt: cache.coverage.at(-1)?.endDate ?? null,
           refreshing,
         }));
@@ -86,15 +101,23 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
     void requestCmsWindow();
     return unsubscribe;
   }, []);
-  const loadCms = useCallback((force = false) => requestCmsWindow(force), []);
-
-  useEffect(() => {
+  const loadInvoices = useCallback(() => {
     if (!isPartner) return;
-    supabase.from("billing_invoices")
+    void supabase.from("billing_invoices")
       .select("*")
       .order("invoice_date", { ascending: false })
-      .then(({ data, error }) => { if (error) setBillingError(true); else setInvoices((data ?? []) as Invoice[]); });
+      .then(({ data, error }) => {
+        setBillingError(Boolean(error));
+        if (!error) setInvoices((data ?? []) as Invoice[]);
+      });
   }, [isPartner]);
+  useEffect(loadInvoices, [loadInvoices]);
+
+  // Refresh reloads the charging data (shared with the CMS dashboard) and the invoices.
+  const loadCms = useCallback((force = false) => {
+    if (force) loadInvoices();
+    return requestCmsWindow(force);
+  }, [loadInvoices]);
 
   // Indian financial year: 1 April (IST) onwards.
   const todayIst = istDate(new Date());
@@ -151,33 +174,65 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </div>
         ) : (
           <>
-            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
-              {[
-                { label: "Energy today", value: cms.status === "ok" ? `${kwh(cms.metrics.today.kwh)} kWh` : null, note: cms.status === "ok" ? `${cms.metrics.today.sessions} sessions` : null },
-                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.currentCycle.label : "this billing cycle"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.currentCycle.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.currentCycle.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.currentCycle.sessions} sessions · ${inr(cms.metrics.lastMonthSameDaysRevenue)} same days last month` : null },
-                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.previousCycle.label : "last billing cycle"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.previousCycle.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.previousCycle.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.previousCycle.sessions} sessions` : null },
-                { label: `Energy & revenue, ${cms.status === "ok" ? cms.metrics.olderCycle.label : "billing cycle before"}`, value: cms.status === "ok" ? `${kwh(cms.metrics.olderCycle.kwh)} kWh` : null, value2: cms.status === "ok" ? inr(cms.metrics.olderCycle.revenue) : null, note: cms.status === "ok" ? `${cms.metrics.olderCycle.sessions} sessions` : null },
-              ].map((k) => (
-                <div key={k.label} className={card}>
-                  <p className="text-xs font-semibold text-[#5d6577]">{k.label}</p>
-                  {k.value === null ? <div className="mt-3 h-8 w-32 rounded-md bg-slate-100 motion-safe:animate-pulse" /> : <p className="mt-2 text-[28px] font-bold tracking-tight">{k.value}</p>}
-                  {"value2" in k && k.value2 && <p className="text-xl font-bold tracking-tight text-[#3d4559]">{k.value2}</p>}
-                  {k.note && <p className="mt-1.5 text-xs text-[#5d6577]">{k.note}</p>}
-                </div>
-              ))}
+            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+              {(() => {
+                const m = cms.status === "ok" ? cms.metrics : null;
+                const sameDays = m ? m.currentCycle.revenue - m.lastMonthSameDaysRevenue : 0;
+                const cards = [
+                  { label: "Today", dates: istDay.format(new Date()).replace("Sept", "Sep"), kwh: m?.today.kwh, revenue: m?.today.revenue, sessions: m?.today.sessions },
+                  { label: "Current cycle", dates: m ? prettyRange(m.currentCycle.label) : "", kwh: m?.currentCycle.kwh, revenue: m?.currentCycle.revenue, sessions: m?.currentCycle.sessions, compare: m ? sameDays : null },
+                  { label: "Previous cycle", dates: m ? prettyRange(m.previousCycle.label) : "", kwh: m?.previousCycle.kwh, revenue: m?.previousCycle.revenue, sessions: m?.previousCycle.sessions },
+                  { label: "Cycle before", dates: m ? prettyRange(m.olderCycle.label) : "", kwh: m?.olderCycle.kwh, revenue: m?.olderCycle.revenue, sessions: m?.olderCycle.sessions },
+                ];
+                return cards.map((c) => (
+                  <div key={c.label} className={`${card} flex flex-col`}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5d6577]">{c.label}</p>
+                    <p className="text-xs text-[#5d6577]">{c.dates || "\u00a0"}</p>
+                    {c.kwh === undefined ? (
+                      <div className="mt-4 h-8 w-32 rounded-md bg-slate-100 motion-safe:animate-pulse" />
+                    ) : (
+                      <>
+                        <p className="mt-3 text-[26px] font-bold leading-tight tracking-tight">{kwh(c.kwh)} kWh</p>
+                        <p className="text-lg font-semibold text-[#3d4559]">{inr(c.revenue ?? 0)}</p>
+                      </>
+                    )}
+                    <div className="mt-auto pt-3 text-xs text-[#5d6577]">
+                      {c.sessions !== undefined && <p>{c.sessions} sessions</p>}
+                      {"compare" in c && c.compare != null && (
+                        <p className={`mt-1.5 inline-flex rounded-md px-1.5 py-0.5 font-semibold ${c.compare >= 0 ? "bg-[#e6f7ec] text-[#1e7b3c]" : "bg-[#fdecec] text-[#c92a2a]"}`}>
+                          {c.compare >= 0 ? "▲" : "▼"} {inr(Math.abs(c.compare))} vs same days last month
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ));
+              })()}
             </section>
 
-            <section aria-label="Charging now" className={`${card} flex flex-wrap items-center justify-between gap-3`}>
-              <div className="flex items-center gap-3">
-                <p className="text-xs font-semibold text-[#5d6577]">Charging now</p>
-                {cms.status === "ok" && cms.active !== null ? (
-                  <p className="flex items-center gap-2.5 text-[28px] font-bold">
-                    <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${cms.active ? "bg-[#1e8a4c] shadow-[0_0_0_4px_#dcf3e5]" : "bg-slate-300"}`} />
-                    {cms.active}
+            <section aria-label="Charging now" className={`${card} flex flex-wrap items-center gap-x-6 gap-y-2`}>
+              {cms.status === "ok" && cms.active !== null ? (
+                <>
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${cms.active ? "bg-[#1e8a4c] shadow-[0_0_0_4px_#dcf3e5] motion-safe:animate-pulse" : "border border-slate-400"}`} />
+                    {cms.active ? "Charging" : "Idle"}
+                    <span className="text-[22px] font-bold">{cms.active}</span>
                   </p>
-                ) : <div className="h-8 w-16 rounded-md bg-slate-100 motion-safe:animate-pulse" />}
-              </div>
-              <button type="button" onClick={() => setActiveModule("cms")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open CMS Dashboard</button>
+                  {cms.active ? (
+                    <ul className="flex min-w-0 flex-1 flex-wrap gap-x-5 gap-y-1 text-xs text-[#5d6577]">
+                      {(cms.live ?? []).map((t) => (
+                        <li key={t.transactionId || t.id}>
+                          <span className="font-semibold text-[#172033]">{shortChargerLabel(t.chargerName, t.stationType, t.connectorId)}</span>
+                          {t.energyKwh != null && ` · ${kwh(t.energyKwh)} kWh`}
+                          {t.startedAt && ` · ${istTime.format(new Date(t.startedAt))}`}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="flex-1 text-xs text-[#5d6577]">No sessions charging</p>
+                  )}
+                </>
+              ) : <div className="h-8 w-40 flex-1 rounded-md bg-slate-100 motion-safe:animate-pulse" />}
+              <button type="button" onClick={() => setActiveModule("cms")} className="ml-auto text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open CMS Dashboard →</button>
             </section>
 
             <section aria-labelledby="trend-h" className={card}>

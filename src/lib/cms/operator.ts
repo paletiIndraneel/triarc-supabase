@@ -27,6 +27,7 @@ let cachedToken: CachedToken | null = null;
 let cachedContext: CmsContext | null = null;
 let tokenRefreshPromise: Promise<string> | null = null;
 let contextDiscoveryPromise: Promise<CmsContext> | null = null;
+let allowedLocationDiscoveryPromise: Promise<number[]> | null = null;
 let cachedAllowedLocationIds: number[] | null = null;
 
 const MAX_COLLECTED_PAGES = 450;
@@ -522,6 +523,18 @@ async function getAllowedLocationIds(
   context: CmsContext
 ): Promise<number[]> {
   if (cachedAllowedLocationIds?.length) return cachedAllowedLocationIds;
+  if (allowedLocationDiscoveryPromise) return allowedLocationDiscoveryPromise;
+
+  allowedLocationDiscoveryPromise = discoverAllowedLocationIds(config, context).finally(() => {
+    allowedLocationDiscoveryPromise = null;
+  });
+  return allowedLocationDiscoveryPromise;
+}
+
+async function discoverAllowedLocationIds(
+  config: CmsConfig,
+  context: CmsContext
+): Promise<number[]> {
 
   try {
     const response = await cmsPost<Record<string, unknown>>(

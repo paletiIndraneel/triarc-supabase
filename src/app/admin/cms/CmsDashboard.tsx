@@ -518,9 +518,9 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
     ["CPO", split?.energy.cpo, undefined],
   ];
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm sm:col-span-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p>
-      <table className="mt-3 w-full text-sm">
+    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500" title={title}>{title}</p>
+      <table className="mt-2 w-full text-xs">
         <thead>
           <tr className="text-xs text-slate-500">
             <th scope="col" className="pb-2 text-left font-medium"><span className="sr-only">Charger</span></th>
@@ -536,7 +536,7 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
               <td className="py-1 text-right">{label === "CPO" ? "" : amount === undefined ? "—" : money(amount)}</td>
             </tr>
           ))}
-          <tr className="border-t border-slate-200 text-base font-bold text-slate-900">
+          <tr className="border-t border-slate-200 text-sm font-bold text-slate-900">
             <th scope="row" className="pt-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
             <td className="pt-2 text-right">{split ? formatKwh(split.energy.total) : "—"}</td>
             <td className="pt-2 text-right">{split ? money(split.revenue.total) : "—"}</td>
@@ -1007,11 +1007,14 @@ export default function CmsOperatorDashboard() {
           </div>
         )}
 
-        <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
+        <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
           <SplitCard title="Today" split={todaySplit} />
           {(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => (
             <SplitCard key={cycle.title} title={cycle.title} split={cycle.split} />
           ))}
+        </div>
+
+        <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
           <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
               <div className="min-w-0 @[26rem]:flex-1">

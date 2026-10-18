@@ -12,6 +12,7 @@ import {
   chargerLabel,
   isCpoTransaction,
   matchesTransactionFilters,
+  shortChargerLabel,
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
@@ -923,6 +924,16 @@ export default function CmsOperatorDashboard() {
       ? (summary.transactionDetails as Record<string, unknown>)
       : {};
   // From the location list, not the filtered rows, so a quiet day doesn't show 0.
+  // Live sessions for the Active now card; a stored copy can carry better energy figures.
+  const activeSessions = useMemo(() => {
+    const stored = new Map(allTransactions.map((t) => [t.transactionId || t.id, t]));
+    return activeTransactions
+      .map((t) => {
+        const known = stored.get(t.transactionId || t.id);
+        return known ? mergeTransactionData(known, t) : t;
+      })
+      .sort((a, b) => String(a.startedAt ?? "").localeCompare(String(b.startedAt ?? "")));
+  }, [allTransactions, activeTransactions]);
   const locationCount = Math.max(collectionLength(baseDashboard?.locations), locationOptions.length);
 
   function selectDatePreset(preset: DatePreset | "custom") {
@@ -1047,7 +1058,7 @@ export default function CmsOperatorDashboard() {
             accent={active > 0}
           />
           <Metric label="Locations" value={String(locationCount)} />
-          <Metric label="Active now" value={String(active)} accent />
+          <ActiveNowCard count={active} sessions={activeSessions} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
@@ -1422,6 +1433,42 @@ export default function CmsOperatorDashboard() {
       </div>
     </main>
     </>
+  );
+}
+
+const ACTIVE_LIST_LIMIT = 4;
+
+function ActiveNowCard({ count, sessions }: { count: number; sessions: Transaction[] }) {
+  const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
+  const shown = sessions.slice(0, ACTIVE_LIST_LIMIT);
+  return (
+    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active now</p>
+        <p className={`text-2xl font-bold tracking-tight ${count > 0 ? "text-emerald-600" : "text-slate-900"}`}>{count}</p>
+      </div>
+      {shown.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-500">{count > 0 ? "Loading sessions…" : "Idle — no sessions charging"}</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5 text-xs">
+          {shown.map((session) => (
+            <li key={session.transactionId || session.id} className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
+                {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
+              </span>
+              <span className="whitespace-nowrap text-slate-500">
+                {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
+                {session.startedAt ? ` · ${time.format(new Date(session.startedAt))}` : ""}
+              </span>
+            </li>
+          ))}
+          {sessions.length > ACTIVE_LIST_LIMIT && (
+            <li className="text-slate-500">+{sessions.length - ACTIVE_LIST_LIMIT} more</li>
+          )}
+        </ul>
+      )}
+    </GlassCard>
   );
 }
 

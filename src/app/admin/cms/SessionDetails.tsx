@@ -33,15 +33,31 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
     const load = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const response = await fetch(`/api/cms/live/${encodeURIComponent(id)}`, { cache: "no-store" });
-        const data = (await response.json()) as LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown };
+        const endpoint = `/api/cms/live/${encodeURIComponent(id)}`;
+        console.info("[SessionDetails] Requesting live transaction details", { endpoint });
+        const response = await fetch(endpoint, { cache: "no-store" });
+        const rawBody = await response.text();
+        let data: (LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown }) | null = null;
+        try {
+          data = JSON.parse(rawBody) as LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown };
+        } catch {
+          // Preserve non-JSON response text in the diagnostic alert below.
+        }
         if (cancelled) return;
-        if (!response.ok) throw new Error(data.error ?? "Live readings are unavailable.");
+        if (!response.ok) {
+          const message = data?.error ?? rawBody || `HTTP ${response.status}`;
+          if (!hasAlertedDetails.current) {
+            hasAlertedDetails.current = true;
+            window.alert(`Live transaction API failed\nURL: ${endpoint}\nHTTP: ${response.status}\nResponse: ${message}`);
+          }
+          throw new Error(message);
+        }
+        if (!data) throw new Error(`Live transaction API returned non-JSON data (HTTP ${response.status}): ${rawBody.slice(0, 500)}`);
         setMetrics(data);
         setError("");
         if (!hasAlertedDetails.current) {
           hasAlertedDetails.current = true;
-          window.alert(`Transaction details response:\n${JSON.stringify({ transactionDetails: data.transactionDetails, parsedReadings: data.parsedReadings, currentSoc: data.currentSoc, lastReadingAt: data.lastReadingAt }, null, 2)}`);
+          window.alert(`Transaction details API succeeded (HTTP ${response.status})\nURL: ${endpoint}\n${JSON.stringify({ transactionDetails: data.transactionDetails, parsedReadings: data.parsedReadings, currentSoc: data.currentSoc, lastReadingAt: data.lastReadingAt }, null, 2)}`);
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Live readings are unavailable.");

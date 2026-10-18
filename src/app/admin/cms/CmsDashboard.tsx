@@ -866,13 +866,13 @@ export default function CmsOperatorDashboard() {
     let totalFailed = 0;
     console.group("[CMS history backfill]");
     console.info("Starting historical ChargeMOD meter-values backfill.", {
-      batchSize: 20,
+      batchSize: 10,
       runLimit: 300,
       startedAt: new Date().toISOString(),
     });
     try {
-      for (let batch = 1; batch <= 15; batch += 1) {
-        console.info(`Batch ${batch}: requesting up to 20 transactions…`, {
+      for (let batch = 1; batch <= 30; batch += 1) {
+        console.info(`Batch ${batch}: requesting up to 10 transactions…`, {
           at: new Date().toISOString(),
           succeededSoFar: totalSucceeded,
           failedSoFar: totalFailed,
@@ -881,7 +881,7 @@ export default function CmsOperatorDashboard() {
           method: "POST",
           headers: { "content-type": "application/json" },
           cache: "no-store",
-          body: JSON.stringify({ limit: 20 }),
+          body: JSON.stringify({ limit: 10 }),
         });
         const result = await response.json().catch(() => ({})) as {
           requested?: number;

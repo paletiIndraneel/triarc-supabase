@@ -57,41 +57,25 @@ export async function GET(request: Request) {
       });
     }
 
-    // Delta sync: ChargeMOD is only asked for sessions from the newest stored one onward, or
-    // from the oldest stored session still charging (see syncStartDate); older sessions in
-    // the window come from cms_transactions. Searches and a missing/unreadable table fall
-    // back to fetching the whole window.
+    // Historical backfill is explicitly requested once by the dashboard. All later
+    // requests use the normal delta sync from the newest stored session (or oldest open one).
+    const backfill = url.searchParams.get("backfill") === "1" && !searchKey;
     let syncStart = startDate;
-    if (!searchKey) {
+    if (!backfill && !searchKey) {
       const latestStart = (open: boolean) => {
         let query = supabase.from("cms_transactions").select("started_at").not("started_at", "is", null);
         if (open) query = query.is("stopped_at", null);
         return query.order("started_at", { ascending: open }).limit(1).maybeSingle();
       };
-      const [newest, oldestOpen, oldestStored] = await Promise.all([
+      const [newest, oldestOpen] = await Promise.all([
         latestStart(false),
         latestStart(true),
-        supabase
-          .from("cms_transactions")
-          .select("started_at")
-          .not("started_at", "is", null)
-          .order("started_at", { ascending: true })
-          .limit(1)
-          .maybeSingle(),
       ]);
-      const error = newest.error ?? oldestOpen.error ?? oldestStored.error;
+      const error = newest.error ?? oldestOpen.error;
       if (error) {
         console.error("[cms/operator] reading stored transactions failed:", error.message);
       } else {
-        // If the requested window reaches earlier than our stored history, backfill from
-        // the requested start instead of syncing only from the newest stored session.
-        const storedOldest = oldestStored.data?.started_at;
-        const requestedStart = new Date(startDate).getTime();
-        const storedStart = storedOldest ? new Date(storedOldest).getTime() : null;
-        syncStart =
-          storedStart === null || storedStart > requestedStart
-            ? startDate
-            : syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+        syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
       }
       if (syncStart > endDate) syncStart = endDate;
     }

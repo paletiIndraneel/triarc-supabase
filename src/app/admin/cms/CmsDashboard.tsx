@@ -864,8 +864,18 @@ export default function CmsOperatorDashboard() {
     setBackfillStatus("Starting historical backfill…");
     let totalSucceeded = 0;
     let totalFailed = 0;
+    console.group("[CMS history backfill]");
+    console.info("Starting historical ChargeMOD meter-values backfill.", {
+      batchSize: 20,
+      startedAt: new Date().toISOString(),
+    });
     try {
       for (let batch = 1; batch <= 200; batch += 1) {
+        console.info(`Batch ${batch}: requesting up to 20 transactions…`, {
+          at: new Date().toISOString(),
+          succeededSoFar: totalSucceeded,
+          failedSoFar: totalFailed,
+        });
         const response = await fetch("/api/cms/live/backfill", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -876,33 +886,72 @@ export default function CmsOperatorDashboard() {
           requested?: number;
           succeeded?: number;
           failed?: number;
+          failures?: Array<{ transactionId: string; error: string }>;
           remaining?: number | null;
           complete?: boolean;
           error?: string;
         };
-        if (!response.ok) throw new Error(result.error || `Backfill request failed (HTTP ${response.status}).`);
+        if (!response.ok) {
+          console.error(`Batch ${batch} failed with HTTP ${response.status}.`, result);
+          throw new Error(result.error || `Backfill request failed (HTTP ${response.status}).`);
+        }
 
         totalSucceeded += result.succeeded ?? 0;
         totalFailed += result.failed ?? 0;
+        console.info(`Batch ${batch} finished.`, {
+          requested: result.requested ?? 0,
+          succeeded: result.succeeded ?? 0,
+          failed: result.failed ?? 0,
+          remaining: result.remaining ?? null,
+          totalSucceeded,
+          totalFailed,
+        });
+        if (result.failures?.length) {
+          console.warn(`Batch ${batch} transaction failures:`);
+          console.table(result.failures);
+        }
         setBackfillStatus(
           `Backfill running · ${totalSucceeded.toLocaleString()} fetched · ${(result.remaining ?? "unknown").toLocaleString()} remaining · ${totalFailed} failed`
         );
 
         if (result.complete) {
+          const summary = {
+            status: "complete",
+            totalSucceeded,
+            totalFailed,
+            finishedAt: new Date().toISOString(),
+          };
+          console.info("Historical backfill complete.", summary);
           setBackfillStatus(`Backfill complete · ${totalSucceeded.toLocaleString()} fetched · ${totalFailed} failed`);
           return;
         }
         if (!result.requested || !(result.succeeded ?? 0)) {
+          console.warn("Backfill paused because this batch made no successful progress.", {
+            batch,
+            response: result,
+          });
           setBackfillStatus(
             `Backfill paused · ${totalSucceeded} fetched · ${totalFailed} failed. Check the error details or retry after fixing the issue.`
           );
           return;
         }
       }
+      console.warn("Backfill paused after reaching the 200-batch safety limit.", {
+        totalSucceeded,
+        totalFailed,
+        at: new Date().toISOString(),
+      });
       setBackfillStatus(`Backfill paused after 200 batches · ${totalSucceeded} fetched · ${totalFailed} failed. Click again to continue.`);
     } catch (error) {
+      console.error("Historical backfill stopped due to an error.", error);
       setBackfillStatus(error instanceof Error ? `Backfill stopped: ${error.message}` : "Backfill stopped due to an unknown error.");
     } finally {
+      console.info("Historical backfill execution ended.", {
+        totalSucceeded,
+        totalFailed,
+        endedAt: new Date().toISOString(),
+      });
+      console.groupEnd();
       setBackfillRunning(false);
     }
   }, [backfillRunning]);

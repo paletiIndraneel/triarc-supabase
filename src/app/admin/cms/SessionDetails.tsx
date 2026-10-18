@@ -57,7 +57,11 @@ export default function SessionDetails({ session, onClose }: { session: CmsTrans
         setError("");
         if (!hasAlertedDetails.current) {
           hasAlertedDetails.current = true;
-          window.alert(`Transaction details API succeeded (HTTP ${response.status})\nURL: ${endpoint}\n${JSON.stringify({ transactionDetails: data.transactionDetails, parsedReadings: data.parsedReadings, currentSoc: data.currentSoc, lastReadingAt: data.lastReadingAt }, null, 2)}`);
+          // Let React paint the updated session values before the blocking browser alert opens.
+          const diagnostic = `Transaction details API succeeded (HTTP ${response.status})\nURL: ${endpoint}\n${JSON.stringify({ transactionDetails: data.transactionDetails, parsedReadings: data.parsedReadings, currentSoc: data.currentSoc, lastReadingAt: data.lastReadingAt }, null, 2)}`;
+          window.setTimeout(() => {
+            if (!cancelled) window.alert(diagnostic);
+          }, 300);
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Live readings are unavailable.");

@@ -38,9 +38,8 @@ type ReadingSet = {
   energyWh: number | null;
 };
 
-// ChargeMOD sends a full set every ~15 s and repeats sets; group by timestamp and keep the
-// last value seen for each measurand (Voltage and Current.Import repeat per phase, so they
-// are not used: Power.Active.Import already matches DC voltage x DC current).
+// ChargeMOD sends repeated readings and can repeat timestamp/measurand pairs. Preserve every
+// row in the list; Voltage and Current.Import repeat per phase, so use Power.Active.Import.
 function readingSets(readings: MeterReading[]): ReadingSet[] {
   // Preserve every reading in an array; a Map would discard duplicate timestamp/measurand pairs.
   return readings

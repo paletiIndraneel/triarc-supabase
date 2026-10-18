@@ -72,6 +72,7 @@ export async function GET(request: Request) {
       const error = newest.error ?? oldestOpen.error;
       if (error) console.error("[cms/operator] reading stored transactions failed:", error.message);
       else syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+      if (syncStart > endDate) syncStart = endDate;
     }
 
     const data = await getOperatorData(config, supabase, {

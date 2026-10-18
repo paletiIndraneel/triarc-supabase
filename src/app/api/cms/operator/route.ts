@@ -153,7 +153,11 @@ async function readStoredTransactions(
   for (let offset = 0; ; offset += 200) {
     const { data: batch, error } = await supabase
       .from("cms_transactions")
-      // Avoid loading the potentially large historical meter-values JSON payloads on every\n      // dashboard read. The dashboard only needs the base transaction fields. Smaller pages\n      // also keep each statement comfortably below Supabase statement timeouts.\n      .select("transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at")\n      .gte("started_at", from)\n      .lt("started_at", to)\n      .order("started_at")\n      .order("transaction_id")\n      .range(offset, offset + 199);
+      // Avoid loading the potentially large historical meter-values JSON payloads on every
+      // dashboard read. The dashboard only needs the base transaction fields. Smaller pages
+      // also keep each statement comfortably below Supabase statement timeouts.
+      .select("transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at")
+      .gte("started_at", from)\n      .lt("started_at", to)\n      .order("started_at")\n      .order("transaction_id")\n      .range(offset, offset + 199);
     if (error) throw new Error(`Stored CMS transactions could not be read: ${error.message}`);
     stored.push(...(batch as CmsTransactionRow[]));
     if (batch.length < 200) break;

@@ -72,8 +72,8 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
 
   return (
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner }}>
-      <div className={adminStyles.adminShell}>
-      <AdminHeader />
+      <div data-admin-theme={theme} className={adminStyles.adminShell}>
+      <AdminHeader theme={theme} onToggleTheme={toggleTheme} />
       {activeModule === "overview" && <Overview enquiries={enquiries} />}
       {activeModule === "cms" && <CmsDashboard />}
       {activeModule === "billing" && (

@@ -922,7 +922,15 @@ export async function getActiveTransactions(config: CmsConfig) {
 // other CMS calls; the body was not visible in the browser capture, so the transaction ID is
 // sent under both names the console uses elsewhere.
 export async function getMeterValues(config: CmsConfig, transactionId: string) {
-  return cmsPost<unknown>(config, "/charger/meter-values", { transactionId, id: transactionId });
+  // The ChargeMOD console request includes organizationId and projectId alongside the
+  // transaction ID. Resolve the same PowerLine context used by the other CMS requests.
+  const context = await discoverContext(config);
+  return cmsPost<unknown>(config, "/charger/meter-values", {
+    transactionId,
+    id: transactionId,
+    organizationId: context.organizationId,
+    projectId: context.projectId,
+  });
 }
 
 export function sanitizeTransaction(raw: ChargeModTransaction): CmsTransaction {

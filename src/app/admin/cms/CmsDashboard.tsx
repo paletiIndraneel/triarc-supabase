@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
+import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "./cmsWindowStore";
 import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } from "./dateRanges";
 import {
   EMPTY_TRANSACTION_FILTERS,
@@ -503,6 +504,7 @@ export default function CmsOperatorDashboard() {
   const [cpoMobileNumbers, setCpoMobileNumbers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [dataTill, setDataTill] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
   const [draftColumns, setDraftColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
   const [columnEditorOpen, setColumnEditorOpen] = useState(false);
@@ -619,10 +621,9 @@ export default function CmsOperatorDashboard() {
     };
   }, [columnEditorOpen, visibleColumns]);
 
-  const load = useCallback(async (forceRefresh = false) => {
-    setLoading(true);
-    setMessage("");
-
+  // The CMS window is loaded through cmsWindowStore, shared with Overview: a Refresh
+  // started on either page is one request, and both pages follow it.
+  const applyCache = useCallback(async (cache: CmsCache) => {
     try {
       // Fetch one consistent transaction window for all dashboard metrics and the
       // table; the table's date filter is applied client-side and never refetches. It covers the previous
@@ -764,18 +765,30 @@ export default function CmsOperatorDashboard() {
       }
       };
 
-      // Show stored sessions straight away, then the live result when ChargeMOD answers.
-      await apply(await loadCmsWindow(forceRefresh, (stored) => void apply(stored)));
+      await apply(cache);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CMS request failed.");
-    } finally {
-      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let shownCache: CmsCache | null = null;
+    const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
+      setLoading(refreshing);
+      setMessage(error ?? "");
+      if (cache && cache !== shownCache) {
+        shownCache = cache;
+        setDataTill(cache.coverage.at(-1)?.endDate ?? null);
+        void applyCache(cache);
+      }
+    };
+    sync(getCmsWindowSnapshot());
+    const unsubscribe = subscribeCmsWindow(sync);
+    void requestCmsWindow();
+    return unsubscribe;
+  }, [applyCache]);
+
+  const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 
   const transactions = useMemo(() => {
     const dateRange =
@@ -907,10 +920,17 @@ export default function CmsOperatorDashboard() {
               Operational overview of charging sessions, chargers, locations, energy and revenue from the connected CMS.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            {dataTill && (
+              <p className="text-xs text-slate-500">
+                Data till{" "}
+                {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(dataTill))}
+              </p>
+            )}
             <button
+              type="button"
               onClick={() => void load(true)}
-              disabled={loading && !message}
+              disabled={loading}
               className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw size={16} className={loading ? "motion-safe:animate-spin" : ""} />
@@ -932,38 +952,38 @@ export default function CmsOperatorDashboard() {
           </div>
         )}
 
-        <div className="relative z-0 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="min-w-0 flex-1">
+        <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
+          <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
+              <div className="min-w-0 @[26rem]:flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total energy ({mtdRange})</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {monthToDateConsumption === null
                     ? "—"
                     : `${monthToDateConsumption.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                 </p>
               </div>
-              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-              <div className="min-w-0 flex-1 space-y-3">
-                <div className="flex items-center justify-between gap-2">
+              <div className="h-px w-full shrink-0 bg-slate-200 @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
+              <div className="min-w-0 space-y-3 @[26rem]:flex-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <p className="text-xs font-medium text-slate-500">AC Charger</p>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
                     {monthToDateConsumption === null
                       ? "—"
                       : `${monthToDateConsumption.ac.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                   </p>
                 </div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <p className="text-xs font-medium text-slate-500">DC Charger</p>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
                     {monthToDateConsumption === null
                       ? "—"
                       : `${monthToDateConsumption.dc.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                   </p>
                 </div>
-                <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-slate-100 pt-2">
                   <p className="text-xs font-semibold text-violet-600">CPO</p>
-                  <p className="text-sm font-semibold text-violet-700">
+                  <p className="text-sm font-semibold whitespace-nowrap text-violet-700">
                     {monthToDateCpoEnergy === null
                       ? "—"
                       : `${monthToDateCpoEnergy.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
@@ -972,36 +992,36 @@ export default function CmsOperatorDashboard() {
               </div>
             </div>
           </GlassCard>
-          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="min-w-0 flex-1">
+          <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
+              <div className="min-w-0 @[26rem]:flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Revenue ({mtdRange})</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.total)}
                 </p>
               </div>
-              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-              <div className="min-w-0 flex-1 space-y-3">
-                <div className="flex items-center justify-between gap-2">
+              <div className="h-px w-full shrink-0 bg-slate-200 @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
+              <div className="min-w-0 space-y-3 @[26rem]:flex-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <p className="text-xs font-medium text-slate-500">AC Charger</p>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
                     {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.ac)}
                   </p>
                 </div>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   <p className="text-xs font-medium text-slate-500">DC Charger</p>
-                  <p className="text-sm font-semibold text-slate-800">
+                  <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
                     {monthToDateRevenue === null ? "—" : money(monthToDateRevenue.dc)}
                   </p>
                 </div>
               </div>
             </div>
           </GlassCard>
-          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="min-w-0 flex-1">
+          <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
+              <div className="min-w-0 @[26rem]:flex-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {historicalConsumption?.items[0]
                     ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`
                     : "—"}
@@ -1010,12 +1030,12 @@ export default function CmsOperatorDashboard() {
                   {historicalConsumption?.items[0]?.label ?? "Loading consumption"}
                 </p>
               </div>
-              <div className="h-16 w-px shrink-0 bg-slate-200" aria-hidden="true" />
-              <div className="min-w-0 flex-1 space-y-3">
+              <div className="h-px w-full shrink-0 bg-slate-200 @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
+              <div className="min-w-0 space-y-3 @[26rem]:flex-1">
                 {(historicalConsumption?.items ?? []).slice(1).map((item) => (
-                  <div key={item.label} className="flex items-center justify-between gap-3">
+                  <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                     <p className="min-w-0 text-xs font-medium text-slate-500">{item.label}</p>
-                    <p className="shrink-0 text-sm font-semibold text-slate-800">
+                    <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
                       {item.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
                     </p>
                   </div>
@@ -1028,18 +1048,18 @@ export default function CmsOperatorDashboard() {
             value={active > 0 ? "Charging" : "Idle"}
             accent={active > 0}
           />
-          <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Today</p>
             <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                 <p className="text-xs font-medium text-slate-500">Consumption</p>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold whitespace-nowrap text-slate-900">
                   {totalEnergyToday === null ? "—" : `${totalEnergyToday.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`}
                 </p>
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-slate-100 pt-3">
                 <p className="text-xs font-medium text-slate-500">Revenue</p>
-                <p className="text-sm font-semibold text-slate-900">
+                <p className="text-sm font-semibold whitespace-nowrap text-slate-900">
                   {totalRevenueToday === null ? "—" : money(totalRevenueToday)}
                 </p>
               </div>
@@ -1426,9 +1446,9 @@ export default function CmsOperatorDashboard() {
 
 function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <GlassCard className="rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-bold tracking-tight ${accent ? "text-emerald-600" : "text-slate-900"}`}>{value}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-tight [overflow-wrap:anywhere] ${accent ? "text-emerald-600" : "text-slate-900"}`}>{value}</p>
     </GlassCard>
   );
 }

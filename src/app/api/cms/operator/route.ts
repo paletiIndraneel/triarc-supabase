@@ -57,11 +57,12 @@ export async function GET(request: Request) {
       });
     }
 
-    // Historical backfill is explicitly requested once by the dashboard. All later
-    // requests use the normal delta sync from the newest stored session (or oldest open one).
-    const backfill = url.searchParams.get("backfill") === "1" && !searchKey;
+    // Only run a requested historical backfill when the store is empty. Once at least
+    // one session exists in cms_transactions, all requests use normal delta sync instead
+    // of repeatedly fetching history from the requested start date (including new browsers).
+    const backfillRequested = url.searchParams.get("backfill") === "1" && !searchKey;
     let syncStart = startDate;
-    if (!backfill && !searchKey) {
+    if (!searchKey) {
       const latestStart = (open: boolean) => {
         let query = supabase.from("cms_transactions").select("started_at").not("started_at", "is", null);
         if (open) query = query.is("stopped_at", null);
@@ -75,7 +76,11 @@ export async function GET(request: Request) {
       if (error) {
         console.error("[cms/operator] reading stored transactions failed:", error.message);
       } else {
-        syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+        const hasStoredHistory = Boolean(newest.data?.started_at);
+        const shouldBackfill = backfillRequested && !hasStoredHistory;
+        if (!shouldBackfill) {
+          syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+        }
       }
       if (syncStart > endDate) syncStart = endDate;
     }

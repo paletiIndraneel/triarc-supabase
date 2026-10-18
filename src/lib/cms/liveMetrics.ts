@@ -12,6 +12,7 @@ export type LiveMetrics = {
   startSoc: number | null;
   currentSoc: number | null;
   kwNow: number | null;
+  peakKw: number | null;
   kwhDelivered: number | null;
   // Battery, kWh to full and time left stay null ("estimating…") until SoC has risen enough.
   batteryKwh: number | null;
@@ -69,20 +70,22 @@ function minutesToFull(soc: number, batteryKwh: number, kw: number) {
 export function liveMetrics(readings: MeterReading[]): LiveMetrics {
   const sets = readingSets(readings);
   const empty: LiveMetrics = {
-    startSoc: null, currentSoc: null, kwNow: null, kwhDelivered: null,
+    startSoc: null, currentSoc: null, kwNow: null, peakKw: null, kwhDelivered: null,
     batteryKwh: null, kwhToFull: null, minutesLeft: null, estimating: true, lastReadingAt: null,
   };
   if (!sets.length) return empty;
 
-  // Start values come from the very first set (start-up readings at 0 kW still carry the
-  // starting SoC and register); live power ignores 0 kW sets.
+  // Start values come from the earliest available readings. Current power uses the newest
+  // valid power sample, including 0 kW; peak power is the highest non-negative sample returned.
   const first = sets.find((s) => s.soc != null || s.energyWh != null) ?? sets[0];
   const last = sets[sets.length - 1];
   const startSoc = sets.find((s) => s.soc != null)?.soc ?? null;
   const currentSoc = [...sets].reverse().find((s) => s.soc != null)?.soc ?? null;
   const startWh = sets.find((s) => s.energyWh != null)?.energyWh ?? first.energyWh;
   const lastWh = [...sets].reverse().find((s) => s.energyWh != null)?.energyWh ?? null;
-  const kwNow = [...sets].reverse().find((s) => (s.powerKw ?? 0) > 0)?.powerKw ?? (last.powerKw ?? null);
+  const kwNow = [...sets].reverse().find((s) => s.powerKw != null)?.powerKw ?? null;
+  const powerSamples = sets.map((s) => s.powerKw).filter((kw): kw is number => kw != null && kw >= 0);
+  const peakKw = powerSamples.length ? Math.max(...powerSamples) : null;
 
   const kwhDelivered = startWh != null && lastWh != null ? Math.max(0, (lastWh - startWh) / 1000) : null;
   const rise = startSoc != null && currentSoc != null ? currentSoc - startSoc : 0;
@@ -97,7 +100,7 @@ export function liveMetrics(readings: MeterReading[]): LiveMetrics {
     minutesLeft = kwNow && kwNow > 0 ? minutesToFull(currentSoc, batteryKwh, kwNow) : null;
   }
 
-  return { startSoc, currentSoc, kwNow, kwhDelivered, batteryKwh, kwhToFull, minutesLeft, estimating, lastReadingAt: last.timestamp };
+  return { startSoc, currentSoc, kwNow, peakKw, kwhDelivered, batteryKwh, kwhToFull, minutesLeft, estimating, lastReadingAt: last.timestamp };
 }
 
 // Turns a ChargeMOD meter-values response into readings. The exact shape isn't documented, so

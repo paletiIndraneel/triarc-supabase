@@ -27,6 +27,23 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
     const payload = await getMeterValues({ ...config, store: supabase }, transactionId);
     const readings = parseMeterValues(payload);
     const metrics = liveMetrics(readings);
+
+    // Keep the latest raw API payload and normalized readings for debugging and later inspection.
+    const { error: saveError } = await supabase
+      .from("cms_live_meter_values")
+      .upsert({
+        transaction_id: transactionId,
+        response: payload as never,
+        parsed_readings: readings as never,
+        current_soc: metrics.currentSoc,
+        last_reading_at: metrics.lastReadingAt,
+        fetched_at: new Date().toISOString(),
+      }, { onConflict: "transaction_id" });
+    if (saveError) {
+      // Live metrics should remain available even if persistence is temporarily unavailable.
+      console.error("[cms/live] saving latest meter-values response failed:", saveError.message);
+    }
+
     cache.set(transactionId, { at: Date.now(), metrics, payload, readings });
     if (cache.size > 50) cache.delete(cache.keys().next().value!);
     return NextResponse.json({ ...metrics, transactionDetails: payload, parsedReadings: readings });

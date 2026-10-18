@@ -1483,13 +1483,14 @@ function StatusCard({ count, sessions, showLocation, onSelect }: { count: number
       {shown.length === 0 ? (
         <p className="mt-2 text-xs text-slate-500">{charging ? "Loading sessions…" : "No sessions charging"}</p>
       ) : (
-        <ul className="mt-2 space-y-1.5 text-xs">
+        <ul className="mt-2 space-y-1 text-xs">
           {shown.map((session) => (
             <li key={session.transactionId || session.id}>
               <button
                 type="button"
                 onClick={() => onSelect(session)}
-                className="-mx-1.5 flex w-[calc(100%+0.75rem)] items-center gap-2 rounded-md px-1.5 py-0.5 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-violet-600"
+                title="Show live details"
+                className="group -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-slate-200 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-violet-600"
               >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
@@ -1502,12 +1503,14 @@ function StatusCard({ count, sessions, showLocation, onSelect }: { count: number
                 {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
                 {session.startedAt ? ` · ${started(session.startedAt)}` : ""}
               </span>
+              <span className="text-sm leading-none text-slate-400 group-hover:text-violet-600" aria-hidden="true">›</span>
               </button>
             </li>
           ))}
           {sessions.length > ACTIVE_LIST_LIMIT && (
             <li className="text-slate-500">+{sessions.length - ACTIVE_LIST_LIMIT} more</li>
           )}
+          <li className="pt-1 text-[11px] text-slate-400">Tap a session for live SoC and time left</li>
         </ul>
       )}
     </GlassCard>

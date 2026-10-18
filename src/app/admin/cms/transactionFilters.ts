@@ -12,9 +12,12 @@ type FilterableTransaction = {
   mobile: string | null;
   vehicleNumber: string | null;
   energyKwh: number | null;
+  startedAt?: string | null;
+  stoppedAt?: string | null;
+  connectorId?: number | null;
 };
 
-export type TransactionStatus = "live" | "completed" | "failed";
+export type TransactionStatus = "live" | "completed" | "failed" | "stuck";
 
 export type TransactionFilters = {
   location: string;
@@ -81,8 +84,33 @@ export function isCpoTransaction(transaction: FilterableTransaction, cpoMobileNu
   return mobile !== null && cpoMobileNumbers.has(mobile);
 }
 
+// No vehicle charges for longer than this, so a session with no stop time after it is stuck
+// (a ChargeMOD ghost, or a stop our sync never received).
+export const MAX_SESSION_MS = 7 * 60 * 60 * 1000;
+
+export function isStuckSession(transaction: FilterableTransaction, now = Date.now()) {
+  if (transaction.stoppedAt || !transaction.startedAt) return false;
+  const started = new Date(transaction.startedAt).getTime();
+  return Number.isFinite(started) && now - started > MAX_SESSION_MS;
+}
+
+// Splits ChargeMOD's active list into sessions really charging and stuck ones: anything past
+// MAX_SESSION_MS, and the older sessions when one gun reports more than one (a gun charges
+// one vehicle at a time, so the newest wins). Both lists are oldest first.
+export function splitActiveSessions<T extends FilterableTransaction>(sessions: T[], now = Date.now()) {
+  const byStart = [...sessions].sort((a, b) => String(a.startedAt ?? "").localeCompare(String(b.startedAt ?? "")));
+  const newestPerGun = new Map<string, T>();
+  for (const session of byStart) {
+    if (isStuckSession(session, now)) continue;
+    newestPerGun.set(`${session.chargerId || session.chargerName}|${session.connectorId ?? ""}`, session);
+  }
+  const live = new Set(newestPerGun.values());
+  return { live: byStart.filter((s) => live.has(s)), stuck: byStart.filter((s) => !live.has(s)) };
+}
+
 // A finished session that delivered no energy is treated as failed.
 export function transactionStatus(transaction: FilterableTransaction, isLive: boolean): TransactionStatus {
+  if (isStuckSession(transaction)) return "stuck";
   if (isLive) return "live";
   return (transaction.energyKwh ?? 0) > 0 ? "completed" : "failed";
 }

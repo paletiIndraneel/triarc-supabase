@@ -1,11 +1,12 @@
 // Unit tests for the admin's pure helpers. Run with `npm test` (Node's built-in runner).
+import { liveMetrics, parseMeterValues } from "../src/lib/cms/liveMetrics.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
 import { fromStoredRow, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
-import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters } from "../src/app/admin/cms/transactionFilters.ts";
+import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
 
@@ -223,4 +224,76 @@ test("financeMetrics: receivables, aging, GST and FY months", async () => {
   assert.equal(f.months.at(-1).charging, 50);
   assert.equal(f.months[0].charging, null);
   assert.equal(billedInCycle(rows, "2026-10-01", "2026-10-16"), 118);
+});
+
+test("shortChargerLabel names chargers and guns for the Active now card", () => {
+  assert.equal(shortChargerLabel("Triarc | DC 60kW CCS-2", "DC", 1), "DC 60kW-1");
+  assert.equal(shortChargerLabel("Triarc | DC 60kW CCS-2", "DC", 2), "DC 60kW-2");
+  assert.equal(shortChargerLabel("Triarc | DC 120kW CCS-2", "DC", 3), "DC 120kW-3");
+  assert.equal(shortChargerLabel("Triarc | AC 3.3kW Socket | A", "AC", 1), "AC 3.3kW-A");
+  assert.equal(shortChargerLabel("Triarc | AC 3.3kW Socket | B", "AC", 1), "AC 3.3kW-B");
+  assert.equal(shortChargerLabel("Triarc | AC 22kW Type-2", "AC", 1), "22kW");
+  assert.equal(shortChargerLabel("Triarc | AC 7.4kW Type-2", "AC", 2), "AC 7.4kW-2");
+  assert.equal(shortChargerLabel("Triarc | Bharat DC001", null, 1), "Bharat DC001-1");
+});
+
+test("splitActiveSessions drops sessions past 7 hours and older duplicates on a gun", () => {
+  const now = new Date("2026-10-18T13:40:00+05:30").getTime();
+  const s = (id, gun, startedAt) => ({ id, transactionId: id, chargerId: "dc60", chargerName: "Triarc | DC 60kW CCS-2", connectorId: gun, startedAt, stoppedAt: null });
+  const ghost = s("ghost", 2, "2026-10-17T23:48:12+05:30");
+  const gun1 = s("g1", 1, "2026-10-18T13:12:14+05:30");
+  const gun2 = s("g2", 2, "2026-10-18T13:31:42+05:30");
+  const { live, stuck } = splitActiveSessions([ghost, gun1, gun2], now);
+  assert.deepEqual(live.map((x) => x.id), ["g1", "g2"]);
+  assert.deepEqual(stuck.map((x) => x.id), ["ghost"]);
+  const dupe = s("early", 1, "2026-10-18T12:00:00+05:30");
+  assert.deepEqual(splitActiveSessions([dupe, gun1], now).stuck.map((x) => x.id), ["early"]);
+  assert.equal(isStuckSession(gun1, now), false);
+  assert.equal(isStuckSession({ ...ghost, stoppedAt: "2026-10-18T00:30:00+05:30" }, now), false);
+});
+
+// Live session metrics, from sessions captured in the ChargeMOD console on 18 Oct 2026.
+const set = (t, soc, kw, wh) => [
+  { timestamp: t, measurand: "SoC", value: soc, unit: "Percent" },
+  { timestamp: t, measurand: "Power.Active.Import", value: kw, unit: "kW" },
+  { timestamp: t, measurand: "Energy.Active.Import.Register", value: wh, unit: "Wh" },
+];
+
+test("liveMetrics works out battery, kWh to full and time left from meter values", () => {
+  // Session …12947473 (DC 60kW): start-up reading at 0 kW, then 21.2 kW from 80% to 86%.
+  const readings = [
+    ...set("2026-10-18T08:57:00Z", 80, 0, 8911790),
+    ...set("2026-10-18T08:57:15Z", 81, 21.22, 8911847),
+    ...set("2026-10-18T09:08:00Z", 86, 21.23, 8915650),
+    ...set("2026-10-18T09:08:00Z", 86, 21.23, 8915698), // repeated timestamp: the last value wins
+  ];
+  const m = liveMetrics(readings);
+  assert.equal(m.startSoc, 80);
+  assert.equal(m.currentSoc, 86);
+  assert.equal(m.kwNow, 21.23);
+  assert.equal(Math.round(m.kwhDelivered * 1000), 3908);
+  assert.equal(m.estimating, false);
+  assert.equal(Math.round(m.batteryKwh), 65);
+  assert.equal(Math.round(m.kwhToFull * 10), 91);
+  // 86→90% at full power, 90→96% at 60%, 96→100% at 30%.
+  assert.equal(Math.round(m.minutesLeft), 50);
+});
+
+test("liveMetrics matches the handoff sessions and waits for a 5% SoC rise", () => {
+  const s2 = liveMetrics([...set("2026-10-18T08:02:00Z", 22, 28.8, 8405325), ...set("2026-10-18T08:52:00Z", 73, 28.8, 8429479)]);
+  assert.equal(Math.round(s2.batteryKwh), 47);
+  const s1 = liveMetrics([...set("2026-10-18T05:04:00Z", 79, 28.8, 8355018), ...set("2026-10-18T05:27:00Z", 98, 8.6, 8362569)]);
+  assert.equal(Math.round(s1.batteryKwh), 40);
+  const early = liveMetrics([...set("2026-10-18T09:00:00Z", 40, 28.8, 1000), ...set("2026-10-18T09:03:00Z", 43, 28.8, 2500)]);
+  assert.equal(early.estimating, true);
+  assert.equal(early.batteryKwh, null);
+  assert.equal(early.kwhDelivered, 1.5);
+  assert.deepEqual(liveMetrics([]).estimating, true);
+});
+
+test("parseMeterValues finds readings in flat and OCPP-shaped payloads", () => {
+  const flat = parseMeterValues({ result: { data: [{ valueTimestamp: "2026-10-18T09:08:00Z", value: "86.00", measurand: "SoC", unit: "Percent" }] } });
+  assert.deepEqual(flat, [{ measurand: "SoC", value: 86, unit: "Percent", timestamp: "2026-10-18T09:08:00.000Z" }]);
+  const ocpp = parseMeterValues({ meterValue: [{ timestamp: "2026-10-18T09:08:00Z", sampledValue: [{ measurand: "SoC", value: "86" }] }] });
+  assert.equal(ocpp[0].value, 86);
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import AdminHeader from "@/components/admin/AdminHeader";
 import CmsDashboard from "@/app/admin/cms/CmsDashboard";
 import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
@@ -50,7 +50,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
 
   const setActiveModule = useCallback((module: AdminModule) => {
     if (!canOpenModule(module, isPartner)) return;
-    setModuleState(module);
+    startTransition(() => setModuleState(module));
     const url = new URL(window.location.href);
     if (url.searchParams.get("module") === module) return;
     url.searchParams.set("module", module);

@@ -89,3 +89,17 @@
 .adminShell[data-admin-theme="dark"] :global([class~="text-[#5b45c4]"]) {
   color: #d4c7ff !important;
 }
+
+
+/* Overview chart metric selector: keep the segmented control and selected tab legible in dark mode. */
+.adminShell[data-admin-theme="dark"] :global([class~="bg-[#f3f4f8]"]) {
+  background-color: #172720 !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class~="bg-white"][class~="text-[#172033]"]) {
+  background-color: #315744 !important;
+  color: #f0fff6 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#5d6577]"]) {
+  color: #b7c9c0 !important;
+}

@@ -834,7 +834,8 @@ export default function CmsOperatorDashboard() {
   useEffect(() => {
     let shownCache: CmsCache | null = null;
     const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
-      setLoading(refreshing);
+      // Stored rows are enough to render immediately; live CMS sync continues in the background.
+      setLoading(refreshing && !cache);
       setMessage(error ?? "");
       if (cache && cache !== shownCache) {
         shownCache = cache;

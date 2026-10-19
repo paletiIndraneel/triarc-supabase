@@ -232,7 +232,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                   )}
                 </>
               ) : <div className="h-8 w-40 flex-1 rounded-md bg-slate-100 motion-safe:animate-pulse" />}
-              <button type="button" onClick={() => setActiveModule("cms")} className="ml-auto text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open CMS Dashboard →</button>
+              <button type="button" onClick={() => setActiveModule("cms")} className="ml-auto text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a] dark:text-[#f4c76b] dark:hover:text-[#ffdf91]">Open CMS Dashboard →</button>
             </section>
 
             <section aria-labelledby="trend-h" className={card}>
@@ -253,7 +253,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                   <div className="mt-2 flex h-[200px] items-end gap-[2px] border-b border-[#e8e9f0]" onMouseLeave={() => setHover(null)} aria-hidden="true">
                     {values.map((v, i) => (
                       <div key={days[i].label} onMouseEnter={() => setHover(i)} className="flex h-full flex-1 items-end">
-                        <div className={`w-full rounded-t ${i === shown ? "bg-[#6a4fd6]" : "bg-[#c9bff3]"}`} style={{ height: `${Math.max(v > 0 ? 2 : 0, (v / max) * 100)}%` }} />
+                        <div className={`w-full rounded-t ${i === shown ? "bg-[#6a4fd6] dark:bg-[#d4a94f]" : "bg-[#c9bff3] dark:bg-[#66552f]"}`} style={{ height: `${Math.max(v > 0 ? 2 : 0, (v / max) * 100)}%` }} />
                       </div>
                     ))}
                   </div>
@@ -273,7 +273,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           <section aria-labelledby="fin-h" className={card}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="fin-h" className="text-base font-bold">Finance{finance && <span className="ml-2 text-xs font-semibold text-[#5d6577]">{finance.fyLabel}</span>}</h2>
-              <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open Billing</button>
+              <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a] dark:text-[#f4c76b] dark:hover:text-[#ffdf91]">Open Billing</button>
             </div>
             {billingError ? <p role="alert" className="mt-4 text-sm text-[#b42318]">Could not load invoices.</p> : !finance ? (
               <div className="mt-4 h-40 rounded-xl bg-slate-50 motion-safe:animate-pulse" />
@@ -365,7 +365,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                             <tr key={r.key} className="border-t border-[#eef0f4]">
                               <td className="py-2 text-[#5d6577]">{r.label}</td>
                               <td className="py-2 pr-3">
-                                <div className="h-1.5 rounded bg-[#6a4fd6]" style={{ width: `${(r.billed / top) * 100}%` }} />
+                                <div className="h-1.5 rounded bg-[#6a4fd6] dark:bg-[#d4a94f]" style={{ width: `${(r.billed / top) * 100}%` }} />
                                 {r.charging !== null && <div className="mt-1 h-1.5 rounded bg-[#c9bff3]" style={{ width: `${(r.charging / top) * 100}%` }} />}
                               </td>
                               <td className="text-right">{inr(r.billed)}</td>
@@ -388,7 +388,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             <section aria-labelledby="bill-h" className={card}>
               <div className="flex items-center justify-between">
                 <h2 id="bill-h" className="text-base font-bold">Billing</h2>
-                <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open Billing</button>
+                <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a] dark:text-[#f4c76b] dark:hover:text-[#ffdf91]">Open Billing</button>
               </div>
               {billingError ? <p role="alert" className="mt-4 text-sm text-[#b42318]">Could not load invoices.</p> : invoices === null ? (
                 <div className="mt-4 h-24 rounded-xl bg-slate-50 motion-safe:animate-pulse" />
@@ -418,8 +418,8 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
 
           <section aria-labelledby="enq-h" className={card}>
             <div className="flex items-center justify-between">
-              <h2 id="enq-h" className="text-base font-bold">Enquiries {newEnquiries > 0 && <span className="ml-1.5 rounded-full bg-[#eeeaff] px-2 py-0.5 text-xs font-semibold text-[#5b45c4]">{newEnquiries} new</span>}</h2>
-              <button type="button" onClick={() => setActiveModule("enquiries")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Open Enquiries</button>
+              <h2 id="enq-h" className="text-base font-bold">Enquiries {newEnquiries > 0 && <span className="ml-1.5 rounded-full bg-[#eeeaff] px-2 py-0.5 text-xs font-semibold text-[#5b45c4] dark:bg-[#3a2e17] dark:text-[#f4c76b]">{newEnquiries} new</span>}</h2>
+              <button type="button" onClick={() => setActiveModule("enquiries")} className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a] dark:text-[#f4c76b] dark:hover:text-[#ffdf91]">Open Enquiries</button>
             </div>
             <ul className="mt-3.5">
               {enquiries.slice(0, 3).map((e) => (

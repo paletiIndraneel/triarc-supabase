@@ -241,3 +241,43 @@
 :global([data-admin-theme="dark"]) .billingScope :global(.link-button:focus-visible) {
   color: var(--admin-accent, #fbbf24) !important;
 }
+
+
+/* Keep billing on the shared graphite + amber dark-mode system; remove green/teal accents. */
+:global([data-admin-theme="dark"]) .billingScope {
+  --admin-bg: #0b0d0f; --admin-surface: #171a1d; --admin-raised: #202428;
+  --admin-input: #20252a; --admin-border: #3a4147; --admin-text: #f1f5f9;
+  --admin-muted: #c1c9d1; --admin-accent: #fbbf24; --admin-accent-hover: #f59e0b;
+  --admin-accent-ink: #171a1d; background: var(--admin-bg) !important;
+  color: var(--admin-text) !important; color-scheme: dark;
+}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-green-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-emerald-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-teal-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-lime-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-purple-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-violet-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-indigo-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-[#164e63]"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-[#7157d9]"]) {
+  background: var(--admin-accent) !important; color: var(--admin-accent-ink) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-green-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-emerald-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-teal-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-lime-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-purple-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-violet-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-indigo-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-[#164e63]"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-[#7157d9]"]) {
+  color: var(--admin-accent) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-green-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-emerald-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-teal-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-purple-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-violet-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-indigo-"]) {
+  border-color: var(--admin-accent-hover) !important;
+}

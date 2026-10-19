@@ -35,6 +35,9 @@
 .adminShell[data-admin-theme="dark"] :global(.admin-topbar) { background: #171a1d; border-color: #3a4140; }
 .adminShell[data-admin-theme="dark"] :global(.admin-topbar button:not([aria-current="page"])) { color: #dce9e2 !important; }
 .adminShell[data-admin-theme="dark"] :global(.admin-topbar .text-\\[\\#172033\\]) { color: #e7f0ec !important; }
+.adminShell[data-admin-theme="dark"] :global(.admin-topbar button[aria-current="page"]) { background-color: #fbbf24 !important; color: #171a1d !important; }
+.adminShell[data-admin-theme="dark"] :global(.admin-topbar .text-\\[\\#7157d9\\]) { color: #fbbf24 !important; }
+.adminShell[data-admin-theme="dark"] :global(.admin-topbar .hover\\:text-\\[\\#7157d9\\]:hover) { color: #fbbf24 !important; }
 .adminShell[data-admin-theme="dark"] :global(main),
 .adminShell[data-admin-theme="dark"] :global(.cms-dashboard) { background-color: #07110f !important; color: #e7f0ec !important; }
 .adminShell[data-admin-theme="dark"] :global(.bg-white),

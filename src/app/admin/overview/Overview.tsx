@@ -104,7 +104,8 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const loadInvoices = useCallback(() => {
     if (!isPartner) return;
     void supabase.from("billing_invoices")
-      .select("*")
+      // Overview finance cards only need these fields; avoid transferring full invoice rows.
+      .select("id,invoice_number,billing_name,billing_period_from,billing_period_to,invoice_date,due_date,invoice_status,grand_total,amount_paid,taxable_amount,cgst_amount,sgst_amount,igst_amount")
       .order("invoice_date", { ascending: false })
       .then(({ data, error }) => {
         setBillingError(Boolean(error));

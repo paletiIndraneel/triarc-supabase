@@ -28,8 +28,8 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
             type="button"
             onClick={() => setActiveModule(item.key)}
             aria-current={activeModule === item.key ? "page" : undefined}
-            className={activeModule === item.key ? "shrink-0 rounded-[10px] bg-[#7157d9] px-[14px] py-[7px] text-[13px] font-semibold transition" : "shrink-0 rounded-[10px] px-[14px] py-[7px] text-[13px] font-semibold transition hover:bg-white"}
-            style={{ color: activeModule === item.key ? "#ffffff" : "#172033" }}
+            className={activeModule === item.key ? "admin-nav-item shrink-0 rounded-[10px] bg-[#7157d9] px-[14px] py-[7px] text-[13px] font-semibold transition" : "admin-nav-item shrink-0 rounded-[10px] px-[14px] py-[7px] text-[13px] font-semibold transition"}
+            style={{ color: activeModule === item.key ? "#ffffff" : theme === "dark" ? "#ffffff" : "#172033" }}
           >
             {item.label}
           </button>

@@ -859,6 +859,11 @@ export default function CmsOperatorDashboard() {
       "Start historical ChargeMOD meter-values backfill? This will fetch readings for old transactions in batches and may take several minutes."
     );
     if (!confirmed) return;
+
+    setBackfillRunning(true);
+    setBackfillStatus("Starting historical backfill…");
+    let totalSucceeded = 0;
+    let totalFailed = 0;
     try {
       for (let batch = 1; batch <= 30; batch += 1) {
         const response = await fetch("/api/cms/live/backfill", {
@@ -884,14 +889,6 @@ export default function CmsOperatorDashboard() {
 
         totalSucceeded += result.succeeded ?? 0;
         totalFailed += result.failed ?? 0;
-        console.info(`Batch ${batch} finished.`, {
-          requested: result.requested ?? 0,
-          succeeded: result.succeeded ?? 0,
-          failed: result.failed ?? 0,
-          remaining: result.remaining ?? null,
-          totalSucceeded,
-          totalFailed,
-        });
         if (result.failures?.length) {
           console.warn(`Batch ${batch} transaction failures:`);
           console.table(result.failures);
@@ -913,7 +910,6 @@ export default function CmsOperatorDashboard() {
             totalFailed,
             finishedAt: new Date().toISOString(),
           };
-          console.info("Historical backfill complete.", summary);
           setBackfillStatus(`Backfill complete · ${totalSucceeded.toLocaleString()} fetched · ${totalFailed} failed`);
           return;
         }
@@ -938,12 +934,6 @@ export default function CmsOperatorDashboard() {
       console.error("Historical backfill stopped due to an error.", error);
       setBackfillStatus(error instanceof Error ? `Backfill stopped: ${error.message}` : "Backfill stopped due to an unknown error.");
     } finally {
-      console.info("Historical backfill execution ended.", {
-        totalSucceeded,
-        totalFailed,
-        endedAt: new Date().toISOString(),
-      });
-      console.groupEnd();
       setBackfillRunning(false);
     }
   }, [backfillRunning]);

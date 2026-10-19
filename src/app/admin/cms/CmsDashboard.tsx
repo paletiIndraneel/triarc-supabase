@@ -29,7 +29,9 @@ async function readStoredFromBrowser(from: string, to: string) {
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supabase
       .from("cms_transactions")
-      .select("*")
+      // Match the lightweight columns used by the server-side history reader.
+      // The full row includes potentially large meter-values JSON that Overview never uses.
+      .select("transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at")
       .gte("started_at", from)
       .lt("started_at", to)
       .order("started_at")

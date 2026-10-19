@@ -969,31 +969,30 @@ export default function CmsOperatorDashboard() {
       datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
     const filtered = filterTransactionsByRange(allTransactions, dateRange.startDate, dateRange.endDate);
 
-    // Keep open sessions visible even if the live-active endpoint temporarily omits them.
-    // Stored rows with no stop time are a second source of truth for active sessions.
+    // Treat the live-active endpoint as authoritative when a stored row has the same ID.
+    // Also use stored open rows as a fallback if the active endpoint temporarily omits one.
     const openStoredTransactions = allTransactions.filter(
       (transaction) => transaction.stoppedAt == null && !isStuckSession(transaction)
     );
     const uniqueLive = new Map<string, Transaction>();
-    for (const transaction of [...activeTransactions, ...openStoredTransactions]) {
+    for (const transaction of [...openStoredTransactions, ...activeTransactions]) {
       const key = transaction.transactionId || transaction.id;
       if (!key) continue;
       const existing = uniqueLive.get(key);
       uniqueLive.set(key, existing ? mergeTransactionData(existing, transaction) : transaction);
     }
-    const live = Array.from(uniqueLive.values()).filter(
-      (activeTransaction) =>
-        !filtered.some(
-          (transaction) =>
-            (transaction.transactionId && transaction.transactionId === activeTransaction.transactionId) ||
-            (transaction.id && transaction.id === activeTransaction.id)
-        )
+
+    const live = Array.from(uniqueLive.values());
+    const liveKeys = new Set(live.map((transaction) => transaction.transactionId || transaction.id));
+    // Do not let a stale stored/completed copy hide the live version of the same session.
+    const completedOrHistorical = filtered.filter(
+      (transaction) => !liveKeys.has(transaction.transactionId || transaction.id)
     );
     const isLive = (transaction: Transaction) =>
       (transaction.stoppedAt == null && !isStuckSession(transaction)) ||
       activeTransactionIds.has(transaction.id) ||
       activeTransactionIds.has(transaction.transactionId);
-    return [...live, ...filtered].filter((transaction) =>
+    return [...live, ...completedOrHistorical].filter((transaction) =>
       matchesTransactionFilters(transaction, filters, isLive(transaction), cpoMobileNumbers)
     );
   }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers]);

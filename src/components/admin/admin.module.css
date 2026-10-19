@@ -32,7 +32,7 @@
 
 /* One shared theme scope for every admin module. */
 .adminShell[data-admin-theme="dark"] { color-scheme: dark; background: #07110f; color: #e7f0ec; }
-.adminShell[data-admin-theme="dark"] :global(.admin-topbar) { background: #111f1b; border-color: #2a4037; }
+.adminShell[data-admin-theme="dark"] :global(.admin-topbar) { background: #111f1b; border-color: #3A4140; }
 .adminShell[data-admin-theme="dark"] :global(.admin-topbar button:not([aria-current="page"])) { color: #dce9e2 !important; }
 .adminShell[data-admin-theme="dark"] :global(.admin-topbar .text-\\[\\#172033\\]) { color: #e7f0ec !important; }
 .adminShell[data-admin-theme="dark"] :global(main),
@@ -51,19 +51,19 @@
 .adminShell[data-admin-theme="dark"] :global([class~="text-[#0b1c30]"]) { color: #e7f0ec !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-slate-500),
 .adminShell[data-admin-theme="dark"] :global([class~="text-[#5d6577]"]),
-.adminShell[data-admin-theme="dark"] :global([class~="text-[#667085]"]) { color: #a6b8b0 !important; }
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#667085]"]) { color: #F1F5F9 !important; }
 .adminShell[data-admin-theme="dark"] :global(.border-slate-200),
 .adminShell[data-admin-theme="dark"] :global([class~="border-slate-200/80"]),
 .adminShell[data-admin-theme="dark"] :global(.border-slate-100),
 .adminShell[data-admin-theme="dark"] :global([class~="border-[#F0F0F0]"]),
 .adminShell[data-admin-theme="dark"] :global([class~="border-[#e7e4f2]"]),
-.adminShell[data-admin-theme="dark"] :global([class~="border-[#e2e4ec]"]) { border-color: #2a4037 !important; }
+.adminShell[data-admin-theme="dark"] :global([class~="border-[#e2e4ec]"]) { border-color: #3A4140 !important; }
 .adminShell[data-admin-theme="dark"] :global(input),
 .adminShell[data-admin-theme="dark"] :global(select),
-.adminShell[data-admin-theme="dark"] :global(textarea) { color: #e7f0ec !important; background-color: #14241e !important; border-color: #2a4037 !important; color-scheme: dark; }
+.adminShell[data-admin-theme="dark"] :global(textarea) { color: #e7f0ec !important; background-color: #14241e !important; border-color: #3A4140 !important; color-scheme: dark; }
 .adminShell[data-admin-theme="dark"] :global(option) { color: #e7f0ec; background: #14241e; }
-.adminShell[data-admin-theme="dark"] :global(table tbody tr) { border-color: #2a4037; }
-.adminShell[data-admin-theme="dark"] :global(dialog) { color: #e7f0ec; background: #111f1b; border-color: #2a4037; }
+.adminShell[data-admin-theme="dark"] :global(table tbody tr) { border-color: #3A4140; }
+.adminShell[data-admin-theme="dark"] :global(dialog) { color: #e7f0ec; background: #111f1b; border-color: #3A4140; }
 .adminShell[data-admin-theme="dark"] :global(.bg-amber-50) { background-color: #3a2c12 !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-amber-800) { color: #f4d38b !important; }
 .adminShell[data-admin-theme="dark"] :global(.bg-red-50) { background-color: #3b1919 !important; }

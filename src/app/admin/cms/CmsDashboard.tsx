@@ -968,7 +968,20 @@ export default function CmsOperatorDashboard() {
     const dateRange =
       datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
     const filtered = filterTransactionsByRange(allTransactions, dateRange.startDate, dateRange.endDate);
-    const live = activeTransactions.filter(
+
+    // Keep open sessions visible even if the live-active endpoint temporarily omits them.
+    // Stored rows with no stop time are a second source of truth for active sessions.
+    const openStoredTransactions = allTransactions.filter(
+      (transaction) => transaction.stoppedAt == null && !isStuckSession(transaction)
+    );
+    const uniqueLive = new Map<string, Transaction>();
+    for (const transaction of [...activeTransactions, ...openStoredTransactions]) {
+      const key = transaction.transactionId || transaction.id;
+      if (!key) continue;
+      const existing = uniqueLive.get(key);
+      uniqueLive.set(key, existing ? mergeTransactionData(existing, transaction) : transaction);
+    }
+    const live = Array.from(uniqueLive.values()).filter(
       (activeTransaction) =>
         !filtered.some(
           (transaction) =>
@@ -977,7 +990,9 @@ export default function CmsOperatorDashboard() {
         )
     );
     const isLive = (transaction: Transaction) =>
-      activeTransactionIds.has(transaction.id) || activeTransactionIds.has(transaction.transactionId);
+      (transaction.stoppedAt == null && !isStuckSession(transaction)) ||
+      activeTransactionIds.has(transaction.id) ||
+      activeTransactionIds.has(transaction.transactionId);
     return [...live, ...filtered].filter((transaction) =>
       matchesTransactionFilters(transaction, filters, isLive(transaction), cpoMobileNumbers)
     );

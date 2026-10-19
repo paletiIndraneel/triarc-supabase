@@ -4,6 +4,7 @@ import {
   getCmsConfig,
   getCmsErrorMessage,
   getOperatorData,
+  getActiveOperatorTransactions,
 } from "@/lib/cms/operator";
 import { fromStoredRow, syncStartDate, toStoredRow } from "@/lib/cms/transactionStore";
 import type { CmsTransactionRow } from "@/lib/cms/types";
@@ -35,6 +36,28 @@ export async function GET(request: Request) {
 
     const searchField = url.searchParams.get("searchField") ?? "";
     const searchKey = url.searchParams.get("searchKey") ?? "";
+
+    // activeOnly=1 refreshes the live-session list without reloading historical metrics.
+    if (url.searchParams.get("activeOnly") === "1") {
+      const transactions = await getActiveOperatorTransactions(config, supabase);
+      if (isPartner && transactions.length > 0) {
+        const syncedAt = new Date().toISOString();
+        const rows = transactions.map((transaction) => toStoredRow(transaction, syncedAt));
+        for (let i = 0; i < rows.length; i += 500) {
+          const { error } = await supabase
+            .from("cms_transactions")
+            .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
+          if (error) {
+            console.error("[cms/operator] saving active transactions failed:", error.message);
+            break;
+          }
+        }
+      }
+      return NextResponse.json({
+        active: { transactions, count: transactions.length },
+        activeOnly: true,
+      });
+    }
 
     // stored=1: only what cms_transactions already holds for the window, no ChargeMOD call,
     // so the dashboard can render at once and then swap in the live response.

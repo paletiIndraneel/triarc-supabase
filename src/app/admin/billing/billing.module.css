@@ -234,3 +234,10 @@
 :global([data-admin-theme="dark"]) .billingScope :global([class*="text-purple-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="text-violet-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="text-indigo-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="text-[#7157d9]"]){color:var(--admin-accent)!important}
 :global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs button:not(.active)),:global([data-admin-theme="dark"]) .billingScope :global(.muted),:global([data-admin-theme="dark"]) .billingScope :global(th){color:var(--admin-muted)!important}
 :global([data-admin-theme="dark"]) .billingScope :global(.billing-app td),:global([data-admin-theme="dark"]) .billingScope :global(.billing-app th){background:var(--admin-surface)!important;border-color:var(--admin-border)!important}
+
+/* Fix the remaining purple View all invoices/link-button accent in dark mode. */
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button),
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button:hover),
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button:focus-visible) {
+  color: var(--admin-accent, #fbbf24) !important;
+}

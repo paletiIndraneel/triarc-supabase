@@ -535,8 +535,8 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
         </thead>
         <tbody className="font-semibold whitespace-nowrap text-slate-800">
           {rows.map(([label, kwh, amount]) => (
-            <tr key={label} className={label === "CPO" ? "text-violet-700" : undefined}>
-              <th scope="row" className={`py-1 text-left text-xs ${label === "CPO" ? "font-semibold text-violet-600" : "font-medium text-slate-500"}`}>{label}</th>
+            <tr key={label} className={label === "CPO" ? "text-violet-700 dark:text-[#f4c76b]" : undefined}>
+              <th scope="row" className={`py-1 text-left text-xs ${label === "CPO" ? "font-semibold text-violet-600 dark:text-[#f4c76b]" : "font-medium text-slate-500"}`}>{label}</th>
               <td className="py-1 text-right">{kwh === undefined ? "—" : formatKwh(kwh)}</td>
               <td className="py-1 text-right">{label === "CPO" ? "" : amount === undefined ? "—" : money(amount)}</td>
             </tr>

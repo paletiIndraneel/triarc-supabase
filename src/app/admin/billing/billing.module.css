@@ -223,3 +223,61 @@
   color: #e7f0ec !important;
   border-color: #385246 !important;
 }
+
+/* Preview palette alignment: graphite surfaces and amber primary actions in dark mode. */
+:global([data-admin-theme="dark"]) .billingScope{--admin-bg:#0b0d0f;--admin-surface:#171a1d;--admin-raised:#202428;--admin-input:#20252a;--admin-border:#3a4147;--admin-text:#f1f5f9;--admin-muted:#c1c9d1;--admin-accent:#fbbf24;--admin-accent-ink:#171a1d;background:var(--admin-bg)!important;color:var(--admin-text)!important;color-scheme:dark}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app),:global([data-admin-theme="dark"]) .billingScope :global(.billing-main){background:var(--admin-bg)!important;color:var(--admin-text)!important}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-card),:global([data-admin-theme="dark"]) .billingScope :global(.billing-kpi),:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .card),:global([data-admin-theme="dark"]) .billingScope :global(.modal-card),:global([data-admin-theme="dark"]) .billingScope :global(.table-container),:global([data-admin-theme="dark"]) .billingScope :global(.topbar),:global([data-admin-theme="dark"]) .billingScope :global(.auth-card){background:var(--admin-surface)!important;color:var(--admin-text)!important;border-color:var(--admin-border)!important}
+:global([data-admin-theme="dark"]) .billingScope :global(input),:global([data-admin-theme="dark"]) .billingScope :global(select),:global([data-admin-theme="dark"]) .billingScope :global(textarea),:global([data-admin-theme="dark"]) .billingScope :global(.form-input){background:var(--admin-input)!important;color:var(--admin-text)!important;border-color:var(--admin-border)!important}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs){background:var(--admin-input)!important;border-color:var(--admin-border)!important}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs .active),:global([data-admin-theme="dark"]) .billingScope :global(.btn-primary),:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-purple-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-violet-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-indigo-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-[#7157d9]"]){background:var(--admin-accent)!important;color:var(--admin-accent-ink)!important;border-color:var(--admin-accent)!important}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-purple-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="text-violet-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="text-indigo-"]),:global([data-admin-theme="dark"]) .billingScope :global([class*="text-[#7157d9]"]){color:var(--admin-accent)!important}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs button:not(.active)),:global([data-admin-theme="dark"]) .billingScope :global(.muted),:global([data-admin-theme="dark"]) .billingScope :global(th){color:var(--admin-muted)!important}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app td),:global([data-admin-theme="dark"]) .billingScope :global(.billing-app th){background:var(--admin-surface)!important;border-color:var(--admin-border)!important}
+
+/* Fix the remaining purple View all invoices/link-button accent in dark mode. */
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button),
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button:hover),
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button:focus-visible) {
+  color: var(--admin-accent, #fbbf24) !important;
+}
+
+
+/* Keep billing on the shared graphite + amber dark-mode system; remove green/teal accents. */
+:global([data-admin-theme="dark"]) .billingScope {
+  --admin-bg: #0b0d0f; --admin-surface: #171a1d; --admin-raised: #202428;
+  --admin-input: #20252a; --admin-border: #3a4147; --admin-text: #f1f5f9;
+  --admin-muted: #c1c9d1; --admin-accent: #fbbf24; --admin-accent-hover: #f59e0b;
+  --admin-accent-ink: #171a1d; background: var(--admin-bg) !important;
+  color: var(--admin-text) !important; color-scheme: dark;
+}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-green-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-emerald-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-teal-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-lime-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-purple-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-violet-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-indigo-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-[#164e63]"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="bg-[#7157d9]"]) {
+  background: var(--admin-accent) !important; color: var(--admin-accent-ink) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-green-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-emerald-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-teal-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-lime-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-purple-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-violet-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-indigo-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-[#164e63]"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="text-[#7157d9]"]) {
+  color: var(--admin-accent) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-green-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-emerald-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-teal-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-purple-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-violet-"]),
+:global([data-admin-theme="dark"]) .billingScope :global([class*="border-indigo-"]) {
+  border-color: var(--admin-accent-hover) !important;
+}

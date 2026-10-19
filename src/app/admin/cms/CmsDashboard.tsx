@@ -29,7 +29,8 @@ async function readStoredFromBrowser(from: string, to: string) {
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supabase
       .from("cms_transactions")
-      .select("*")
+      // Avoid transferring the large historical meter-values JSON for every dashboard load.
+      .select("transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at")
       .gte("started_at", from)
       .lt("started_at", to)
       .order("started_at")
@@ -230,14 +231,9 @@ export async function loadCmsWindow(
   };
   let cache = readCmsCache();
 
-  if (forceRefresh) {
-    cache = { transactions: [], coverage: [] };
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem(CMS_CACHE_KEY);
-    }
-  }
-
-  if (rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) return cache;
+  // Keep the last known-good data visible during Refresh; force only bypasses the
+  // freshness check and starts a new live sync.
+  if (!forceRefresh && rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) return cache;
 
   const params = new URLSearchParams({
     page: "1",
@@ -250,41 +246,42 @@ export async function loadCmsWindow(
     window.localStorage.getItem(CMS_BACKFILL_KEY) !== "done";
   if (shouldBackfill) params.set("backfill", "1");
 
-  // Start the live (ChargeMOD) request at once. The stored copy is read in parallel,
-  // straight from cms_transactions in the browser (RLS: active admins can read), and is
-  // only shown if it arrives before the live result. Going through the API for it cost a
-  // serverless cold start and an auth round trip, and the live call waited behind it.
-  let liveDone = false;
-  const live = fetchOperatorData(params.toString(), metricFetchRange.startDate).then((r) => {
-    liveDone = true;
-    return r;
-  });
-
-  if (onStored && !forceRefresh) {
+  // Show the existing database/cache copy before contacting ChargeMOD. The external
+  // dashboard endpoints can be slow, but stored transactions are enough to render the
+  // Overview and transaction table while the live sync refreshes in the background.
+  if (onStored) {
     if (cache.transactions.length) {
       onStored(cache);
     } else {
-      void readStoredFromBrowser(metricFetchRange.startDate, metricFetchRange.endDate)
-        .then((transactions) => {
-          if (liveDone || !transactions.length) return;
+      try {
+        const transactions = await readStoredFromBrowser(
+          metricFetchRange.startDate,
+          metricFetchRange.endDate
+        );
+        if (transactions.length) {
           const newest = transactions.reduce<string | null>(
             (latest, t) => (t.startedAt && (!latest || t.startedAt > latest) ? t.startedAt : latest),
             null
           );
-          onStored({
+          cache = {
             transactions,
-            coverage: [{ startDate: metricFetchRange.startDate, endDate: newest ?? metricFetchRange.startDate }],
+            coverage: [{
+              startDate: metricFetchRange.startDate,
+              endDate: newest ?? metricFetchRange.startDate,
+            }],
             dashboard: { summary: {}, chart: {}, chargers: {}, locations: {} },
             active: {},
-          } as unknown as CmsCache);
-        })
-        .catch(() => {
-          // The live request still runs; the stored copy is only a head start.
-        });
+          };
+          onStored(cache);
+        }
+      } catch {
+        // The live request still runs if stored history is unavailable.
+      }
     }
   }
 
-  const response = await live;
+  // Only after the stored copy has had a chance to render do we start the slower live sync.
+  const response = await fetchOperatorData(params.toString(), metricFetchRange.startDate);
 
   const data = response.data as {
     error?: string;
@@ -837,7 +834,8 @@ export default function CmsOperatorDashboard() {
   useEffect(() => {
     let shownCache: CmsCache | null = null;
     const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
-      setLoading(refreshing);
+      // Stored rows are enough to render immediately; live CMS sync continues in the background.
+      setLoading(refreshing && !cache);
       setMessage(error ?? "");
       if (cache && cache !== shownCache) {
         shownCache = cache;

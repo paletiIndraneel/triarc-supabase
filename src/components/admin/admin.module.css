@@ -84,3 +84,132 @@
 .adminShell[data-admin-theme="dark"] :global([class*="bg-[#c9bff3]"]){background:#59481c!important}
 .adminShell[data-admin-theme="dark"] :global([class*="border-[#e8e9f0]"]),.adminShell[data-admin-theme="dark"] :global([class*="border-[#eef0f4]"]),.adminShell[data-admin-theme="dark"] :global([class*="border-[#e3e5ec]"]){border-color:var(--admin-border)!important}
 .adminShell[data-admin-theme="dark"] :global([class*="text-[#3d4559]"]),.adminShell[data-admin-theme="dark"] :global([class*="text-[#172033]"]){color:var(--admin-text)!important}
+
+
+/* Unified dark-mode design system across every admin module.
+   Amber is the only decorative/interactive accent; no green, teal, purple or violet accents. */
+.adminShell[data-admin-theme="dark"] {
+  --admin-bg: #0b0d0f;
+  --admin-surface: #171a1d;
+  --admin-raised: #202428;
+  --admin-input: #20252a;
+  --admin-border: #3a4147;
+  --admin-text: #f1f5f9;
+  --admin-muted: #c1c9d1;
+  --admin-accent: #fbbf24;
+  --admin-accent-hover: #f59e0b;
+  --admin-accent-ink: #171a1d;
+  background: var(--admin-bg) !important;
+  color: var(--admin-text) !important;
+  color-scheme: dark;
+}
+.adminShell[data-admin-theme="dark"] :global(main),
+.adminShell[data-admin-theme="dark"] :global(section),
+.adminShell[data-admin-theme="dark"] :global(.cms-dashboard) {
+  background-color: var(--admin-bg) !important;
+  color: var(--admin-text) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="bg-green-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-emerald-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-teal-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-lime-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-purple-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-violet-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-indigo-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#164e63]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#0f766e]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#059669]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#10b981]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#7157d9]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#6a4fd6]"]) {
+  background-color: var(--admin-accent) !important;
+  color: var(--admin-accent-ink) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="text-green-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-emerald-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-teal-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-lime-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-purple-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-violet-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-indigo-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#164e63]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#0f766e]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#059669]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#10b981]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#7157d9]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#6a4fd6]"]) {
+  color: var(--admin-accent) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="border-green-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-emerald-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-teal-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-lime-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-purple-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-violet-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-indigo-"]) {
+  border-color: var(--admin-accent-hover) !important;
+}
+.adminShell[data-admin-theme="dark"] :global(a:hover),
+.adminShell[data-admin-theme="dark"] :global(button:hover:not(:disabled)) {
+  --tw-ring-color: var(--admin-accent);
+}
+.adminShell[data-admin-theme="dark"] :global([class*="focus:border-green-"]:focus),
+.adminShell[data-admin-theme="dark"] :global([class*="focus:border-emerald-"]:focus),
+.adminShell[data-admin-theme="dark"] :global([class*="focus:border-teal-"]:focus),
+.adminShell[data-admin-theme="dark"] :global([class*="focus:ring-green-"]:focus),
+.adminShell[data-admin-theme="dark"] :global([class*="focus:ring-emerald-"]:focus),
+.adminShell[data-admin-theme="dark"] :global([class*="focus:ring-teal-"]:focus) {
+  --tw-ring-color: var(--admin-accent) !important;
+  border-color: var(--admin-accent) !important;
+}
+.adminShell[data-admin-theme="dark"] :global(input),
+.adminShell[data-admin-theme="dark"] :global(select),
+.adminShell[data-admin-theme="dark"] :global(textarea) {
+  background-color: var(--admin-input) !important;
+  color: var(--admin-text) !important;
+  border-color: var(--admin-border) !important;
+  color-scheme: dark;
+}
+.adminShell[data-admin-theme="dark"] :global(.bg-white),
+.adminShell[data-admin-theme="dark"] :global(.bg-slate-50),
+.adminShell[data-admin-theme="dark"] :global(.bg-slate-100),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#f8f9ff]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#f3f4f8]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#F0F0F0]"]) {
+  background-color: var(--admin-surface) !important;
+  color: var(--admin-text) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="text-slate-900"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-slate-800"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-slate-700"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#172033]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#0b1c30]"]) {
+  color: var(--admin-text) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="text-slate-600"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-slate-500"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-slate-400"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#5d6577]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-[#667085]"]) {
+  color: var(--admin-muted) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="border-slate-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-[#e8e9f0]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-[#eef0f4]"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-[#e3e5ec]"]) {
+  border-color: var(--admin-border) !important;
+}
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#164e63"]),
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#0f766e"]),
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#059669"]),
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#10b981"]),
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#7157d9"]),
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#6a4fd6"]) {
+  fill: var(--admin-accent) !important;
+}
+.adminShell[data-admin-theme="dark"] :global(svg [stroke="#164e63"]),
+.adminShell[data-admin-theme="dark"] :global(svg [stroke="#0f766e"]),
+.adminShell[data-admin-theme="dark"] :global(svg [stroke="#059669"]),
+.adminShell[data-admin-theme="dark"] :global(svg [stroke="#10b981"]) {
+  stroke: var(--admin-accent) !important;
+}

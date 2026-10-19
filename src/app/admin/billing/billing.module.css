@@ -244,3 +244,13 @@
   background: #d4a94f !important;
   color: #111a14 !important;
 }
+
+
+/* The Overview "View all invoices" link should use the same amber accent in dark mode. */
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button) {
+  color: #f4c76b !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button:hover) {
+  color: #ffdf91 !important;
+  text-decoration: underline;
+}

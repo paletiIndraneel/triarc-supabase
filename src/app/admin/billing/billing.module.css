@@ -232,3 +232,15 @@
   border: 1px solid #8c6d2f !important;
   box-shadow: inset 0 0 0 1px rgba(244, 199, 107, 0.08);
 }
+
+
+/* Replace the primary purple action buttons (including New Bill) in dark mode. */
+:global([data-admin-theme="dark"]) .billingScope :global(.btn-primary) {
+  background: #b8892f !important;
+  border-color: #d4a94f !important;
+  color: #111a14 !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.btn-primary:hover:not(:disabled)) {
+  background: #d4a94f !important;
+  color: #111a14 !important;
+}

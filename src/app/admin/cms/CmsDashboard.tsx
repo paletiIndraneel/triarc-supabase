@@ -233,32 +233,7 @@ export async function loadCmsWindow(
 
   // Keep the last known-good data visible during Refresh; force only bypasses the
   // freshness check and starts a new live sync.
-  if (!forceRefresh && rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) {
-    // Keep historical data cached, but always refresh active sessions when the dashboard opens.
-    // This avoids showing a stale active list for the full five-minute history-cache window.
-    try {
-      const response = await fetch("/api/cms/operator?activeOnly=1", { cache: "no-store" });
-      if (response.ok) {
-        const data = await response.json() as {
-          active?: ActiveTransactionResponse;
-          transactions?: TransactionResponse;
-        };
-        if (data.active?.transactions) {
-          cache = {
-            ...cache,
-            // Recent transactions include sessions that completed while the dashboard was closed.
-            // Merge them so a fresh active list doesn't leave an old open row stuck in the table.
-            transactions: mergeCmsTransactions(cache.transactions, data.transactions?.transactions ?? []),
-            active: data.active,
-          };
-          writeCmsCache(cache);
-        }
-      }
-    } catch {
-      // If the live active-session endpoint is unavailable, keep showing the last known-good cache.
-    }
-    return cache;
-  }
+  if (!forceRefresh && rangeIsCovered(cache.coverage, metricFetchRange.startDate, metricFetchRange.endDate)) return cache;
 
   const params = new URLSearchParams({
     page: "1",

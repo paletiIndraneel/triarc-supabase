@@ -89,7 +89,7 @@ export default function EnquiriesTable({ enquiries: initialEnquiries, error = fa
             >
               {filters.map((item) => <option key={item} value={item}>{item}</option>)}
             </select>
-            <span className="whitespace-nowrap rounded-full bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700">
+            <span className="whitespace-nowrap rounded-full bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 dark:bg-[#25382f] dark:text-[#e7f0ec]">
               {rows.length} {rows.length === 1 ? "enquiry" : "enquiries"}
             </span>
           </div>

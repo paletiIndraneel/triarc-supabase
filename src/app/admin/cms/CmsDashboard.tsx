@@ -968,31 +968,17 @@ export default function CmsOperatorDashboard() {
     const dateRange =
       datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
     const filtered = filterTransactionsByRange(allTransactions, dateRange.startDate, dateRange.endDate);
-
-    // Treat the live-active endpoint as authoritative when a stored row has the same ID.
-    // Also use stored open rows as a fallback if the active endpoint temporarily omits one.
-    const openStoredTransactions = allTransactions.filter(
-      (transaction) => transaction.stoppedAt == null && !isStuckSession(transaction)
-    );
-    const uniqueLive = new Map<string, Transaction>();
-    for (const transaction of [...openStoredTransactions, ...activeTransactions]) {
-      const key = transaction.transactionId || transaction.id;
-      if (!key) continue;
-      const existing = uniqueLive.get(key);
-      uniqueLive.set(key, existing ? mergeTransactionData(existing, transaction) : transaction);
-    }
-
-    const live = Array.from(uniqueLive.values());
-    const liveKeys = new Set(live.map((transaction) => transaction.transactionId || transaction.id));
-    // Do not let a stale stored/completed copy hide the live version of the same session.
-    const completedOrHistorical = filtered.filter(
-      (transaction) => !liveKeys.has(transaction.transactionId || transaction.id)
+    const live = activeTransactions.filter(
+      (activeTransaction) =>
+        !filtered.some(
+          (transaction) =>
+            (transaction.transactionId && transaction.transactionId === activeTransaction.transactionId) ||
+            (transaction.id && transaction.id === activeTransaction.id)
+        )
     );
     const isLive = (transaction: Transaction) =>
-      (transaction.stoppedAt == null && !isStuckSession(transaction)) ||
-      activeTransactionIds.has(transaction.id) ||
-      activeTransactionIds.has(transaction.transactionId);
-    return [...live, ...completedOrHistorical].filter((transaction) =>
+      activeTransactionIds.has(transaction.id) || activeTransactionIds.has(transaction.transactionId);
+    return [...live, ...filtered].filter((transaction) =>
       matchesTransactionFilters(transaction, filters, isLive(transaction), cpoMobileNumbers)
     );
   }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers]);

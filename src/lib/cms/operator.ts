@@ -796,7 +796,7 @@ async function getOcpiTransactions(
   );
 }
 
-async function getOcpiActiveTransactions(config: CmsConfig) {
+export async function getOcpiActiveTransactions(config: CmsConfig) {
   const context = await discoverContext(config);
   const allowedLocations = await getAllowedLocationIds(config, context);
   return cmsFetch<Record<string, unknown>>(
@@ -941,6 +941,33 @@ export async function getActiveTransactions(config: CmsConfig) {
       allowedCustomers: [],
     }
   );
+}
+
+// Lightweight refresh for active sessions, used when historical dashboard data is still fresh.
+export async function getActiveOperatorTransactions(
+  baseConfig: CmsConfig,
+  store: SupabaseClient
+) {
+  const config: CmsConfig = { ...baseConfig, store };
+  const cmsPromise = getActiveTransactions(config);
+  const ocpiPromise = getOcpiActiveTransactions(config).catch((error) => {
+    console.error("[cms] OCPI active transactions request failed:", error);
+    return { result: [] as unknown[] } as Record<string, unknown>;
+  });
+  const [cms, ocpi] = await Promise.all([cmsPromise, ocpiPromise]);
+  const rows = [
+    ...(Array.isArray(cms.result) ? cms.result : []),
+    ...(Array.isArray(ocpi.result) ? ocpi.result : []),
+  ].filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object");
+  const unique = new Map<string, CmsTransaction>();
+  for (const row of rows) {
+    const transaction = sanitizeTransaction(row as unknown as ChargeModTransaction);
+    const key = transaction.transactionId || transaction.id;
+    if (!key) continue;
+    const previous = unique.get(key);
+    unique.set(key, previous ? mergeSanitizedTransactions(previous, transaction) : transaction);
+  }
+  return Array.from(unique.values());
 }
 
 // One session's OCPP meter values (SoC, power, energy register...), as the ChargeMOD console's

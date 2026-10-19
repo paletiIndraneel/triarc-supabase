@@ -146,3 +146,10 @@
   outline: 2px solid #a7f3c9;
   outline-offset: 2px;
 }
+
+
+/* Overview hard-coded neutral text should stay readable in dark mode. */
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#172033]"]),
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#3d4559]"]) {
+  color: #ffffff !important;
+}

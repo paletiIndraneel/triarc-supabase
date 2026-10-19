@@ -24,7 +24,7 @@ function DialogView({ options, withInput, onDone }: { options: PromptOptions; wi
   const Icon = options.danger ? AlertTriangle : HelpCircle;
   const accent = options.danger
     ? "bg-red-600 hover:bg-red-700 focus-visible:outline-red-600"
-    : "bg-[#7157d9] hover:bg-[#5f46c7] focus-visible:outline-[#7157d9]";
+    : "bg-[#b8892f] hover:bg-[#d4a94f] focus-visible:outline-[#d4a94f] text-[#111a14]";
 
   return (
     <dialog
@@ -36,7 +36,7 @@ function DialogView({ options, withInput, onDone }: { options: PromptOptions; wi
       <form method="dialog" onSubmit={(event) => { event.preventDefault(); onDone(withInput ? value : ""); }} className="p-6">
         <div className="flex gap-4">
           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${options.danger ? "bg-red-50" : "bg-violet-50"}`}>
-            <Icon size={20} aria-hidden="true" color={options.danger ? "#dc2626" : "#7157d9"} />
+            <Icon size={20} aria-hidden="true" color={options.danger ? "#dc2626" : "#b8892f"} />
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">{options.title ?? (withInput ? "Enter a value" : "Are you sure?")}</h2>
@@ -47,7 +47,7 @@ function DialogView({ options, withInput, onDone }: { options: PromptOptions; wi
                 value={value}
                 inputMode={options.inputMode}
                 onChange={(event) => setValue(event.target.value)}
-                className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#8b78df] focus:ring-3 focus:ring-[#7157d9]/15"
+                className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#d4a94f] focus:ring-3 focus:ring-[#d4a94f]/20"
               />
             )}
           </div>

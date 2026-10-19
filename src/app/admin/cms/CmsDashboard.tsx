@@ -835,7 +835,9 @@ export default function CmsOperatorDashboard() {
     let shownCache: CmsCache | null = null;
     const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
       // Stored rows are enough to render immediately; live CMS sync continues in the background.
-      setLoading(refreshing && !cache);
+      // Reflect the shared refresh state even when cached rows remain visible.
+      // This keeps the Refresh button disabled/spinning consistently with Overview.
+      setLoading(refreshing);
       setMessage(error ?? "");
       if (cache && cache !== shownCache) {
         shownCache = cache;

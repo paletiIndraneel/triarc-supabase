@@ -120,3 +120,16 @@
 .adminShell[data-admin-theme="dark"] :global([class~="text-[#3d4559]"]) {
   color: #ffffff !important;
 }
+
+
+/* Force Overview enquiry actions and count badges to white in dark mode with explicit attribute matching. */
+.adminShell[data-admin-theme="dark"] :global(button[class*="text-[#5b45c4]"]),
+.adminShell[data-admin-theme="dark"] :global(button[class*="text-[#3f2f9a]"]),
+.adminShell[data-admin-theme="dark"] :global(span[class*="text-[#5b45c4]"]),
+.adminShell[data-admin-theme="dark"] :global(a[class*="text-[#5b45c4]"]) {
+  color: #ffffff !important;
+}
+.adminShell[data-admin-theme="dark"] :global(span[class*="bg-[#eeeaff]"]) {
+  background-color: #302750 !important;
+  color: #ffffff !important;
+}

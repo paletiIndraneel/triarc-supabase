@@ -133,3 +133,16 @@
   background-color: #302750 !important;
   color: #ffffff !important;
 }
+
+
+/* Admin module tabs: never use a white hover surface in dark mode. */
+.adminShell[data-admin-theme="dark"] :global(.admin-nav-item:not([aria-current="page"]):hover) {
+  background-color: #26372f !important;
+  color: #ffffff !important;
+}
+.adminShell[data-admin-theme="dark"] :global(.admin-nav-item:not([aria-current="page"]):focus-visible) {
+  background-color: #26372f !important;
+  color: #ffffff !important;
+  outline: 2px solid #a7f3c9;
+  outline-offset: 2px;
+}

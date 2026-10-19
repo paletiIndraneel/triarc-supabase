@@ -68,3 +68,9 @@
 .adminShell[data-admin-theme="dark"] :global(.text-amber-800) { color: #f4d38b !important; }
 .adminShell[data-admin-theme="dark"] :global(.bg-red-50) { background-color: #3b1919 !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-red-700) { color: #ffb4b4 !important; }
+
+/* Amber is a dark-theme accent only. Preserve the existing light-theme purple palette. */
+.adminShell[data-admin-theme="light"] :global([class~="text-[#B77900]"]) { color: #5b45c4 !important; }
+.adminShell[data-admin-theme="light"] :global([class~="hover:text-[#D99A00]"]:hover) { color: #3f2f9a !important; }
+.adminShell[data-admin-theme="light"] :global([class~="bg-[#FBBF24]"]) { background-color: #6a4fd6 !important; }
+.adminShell[data-admin-theme="light"] :global([class~="bg-[#8D6B22]"]) { background-color: #c9bff3 !important; }

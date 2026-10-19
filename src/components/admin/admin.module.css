@@ -213,3 +213,17 @@
 .adminShell[data-admin-theme="dark"] :global(svg [stroke="#10b981"]) {
   stroke: var(--admin-accent) !important;
 }
+
+/* Overview dark-mode cleanup: keep the light theme's lavender palette intact. */
+.adminShell[data-admin-theme="dark"] :global([class*="bg-[#eeeaff]"]) {
+  background-color: #3a2e17 !important;
+  color: var(--admin-accent) !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="hover:text-[#3f2f9a]"]:hover) {
+  color: #ffdf91 !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="focus-visible:ring-purple-"]:focus-visible),
+.adminShell[data-admin-theme="dark"] :global([class*="focus-visible:ring-violet-"]:focus-visible),
+.adminShell[data-admin-theme="dark"] :global([class*="focus-visible:ring-indigo-"]:focus-visible) {
+  --tw-ring-color: var(--admin-accent) !important;
+}

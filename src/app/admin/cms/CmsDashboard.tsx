@@ -1477,7 +1477,7 @@ export default function CmsOperatorDashboard() {
                       activeTransactionIds.has(transaction.transactionId));
 
                   return (
-                    <tr key={transaction.id} className={isActive ? "bg-emerald-50 hover:bg-emerald-100/70" : "hover:bg-slate-50"}>
+                    <tr key={transaction.id} className="hover:bg-slate-50">
                       {visibleColumns.map((columnId) => (
                         <td key={columnId} className="whitespace-nowrap px-4 py-3 text-slate-600">
                           {columnId === "id" && transaction.id}

@@ -241,10 +241,14 @@ export async function loadCmsWindow(
       if (response.ok) {
         const data = await response.json() as {
           active?: ActiveTransactionResponse;
+          transactions?: TransactionResponse;
         };
         if (data.active?.transactions) {
           cache = {
             ...cache,
+            // Recent transactions include sessions that completed while the dashboard was closed.
+            // Merge them so a fresh active list doesn't leave an old open row stuck in the table.
+            transactions: mergeCmsTransactions(cache.transactions, data.transactions?.transactions ?? []),
             active: data.active,
           };
           writeCmsCache(cache);

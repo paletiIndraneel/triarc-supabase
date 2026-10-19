@@ -1591,8 +1591,8 @@ function StatusCard({ count, sessions, showLocation, onSelect }: { count: number
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Status</p>
         <div className="flex items-center gap-3">
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-              charging ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+            className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-semibold ${
+              charging ? "text-slate-700" : "text-slate-500"
             }`}
           >
             <span

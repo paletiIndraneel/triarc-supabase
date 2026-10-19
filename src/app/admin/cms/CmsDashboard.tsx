@@ -864,19 +864,12 @@ export default function CmsOperatorDashboard() {
     setBackfillStatus("Starting historical backfill…");
     let totalSucceeded = 0;
     let totalFailed = 0;
-    console.group("[CMS history backfill]");
-    console.info("Starting historical ChargeMOD meter-values backfill.", {
       batchSize: 10,
       runLimit: 300,
       startedAt: new Date().toISOString(),
     });
     try {
       for (let batch = 1; batch <= 30; batch += 1) {
-        console.info(`Batch ${batch}: requesting up to 10 transactions…`, {
-          at: new Date().toISOString(),
-          succeededSoFar: totalSucceeded,
-          failedSoFar: totalFailed,
-        });
         const response = await fetch("/api/cms/live/backfill", {
           method: "POST",
           headers: { "content-type": "application/json" },

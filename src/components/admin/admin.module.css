@@ -103,3 +103,20 @@
 .adminShell[data-admin-theme="dark"] :global([class~="text-[#5d6577]"]) {
   color: #b7c9c0 !important;
 }
+
+
+/* Dark mode uses neutral white text, not green text; retain green only for status indicators/surfaces. */
+.adminShell[data-admin-theme="dark"] :global(.text-emerald-700),
+.adminShell[data-admin-theme="dark"] :global(.text-emerald-600),
+.adminShell[data-admin-theme="dark"] :global(.text-emerald-500),
+.adminShell[data-admin-theme="dark"] :global(.text-green-700),
+.adminShell[data-admin-theme="dark"] :global(.text-green-600),
+.adminShell[data-admin-theme="dark"] :global(.text-green-500) {
+  color: #ffffff !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#5b45c4]"]) {
+  color: #ffffff !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#3d4559]"]) {
+  color: #ffffff !important;
+}

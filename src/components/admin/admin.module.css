@@ -74,3 +74,9 @@
 .adminShell[data-admin-theme="dark"] :global(.bg-emerald-50) { background-color: #163b2c !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-emerald-700),
 .adminShell[data-admin-theme="dark"] :global(.text-emerald-600) { color: #a7f3c9 !important; }
+
+
+/* Active transaction rows and the idle status pill need their own dark-mode contrast too. */
+.adminShell[data-admin-theme="dark"] :global(.bg-slate-100) { background-color: #24352e !important; }
+.adminShell[data-admin-theme="dark"] :global(.text-slate-400) { color: #a6b8b0 !important; }
+.adminShell[data-admin-theme="dark"] :global(.text-slate-300) { color: #c6d5ce !important; }

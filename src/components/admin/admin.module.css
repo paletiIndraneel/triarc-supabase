@@ -80,3 +80,12 @@
 .adminShell[data-admin-theme="dark"] :global(.bg-slate-100) { background-color: #24352e !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-slate-400) { color: #a6b8b0 !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-slate-300) { color: #c6d5ce !important; }
+
+
+/* Overview's new-enquiries count badge. */
+.adminShell[data-admin-theme="dark"] :global([class~="bg-[#eeeaff]"]) {
+  background-color: #302750 !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class~="text-[#5b45c4]"]) {
+  color: #d4c7ff !important;
+}

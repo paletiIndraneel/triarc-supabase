@@ -223,3 +223,12 @@
   color: #e7f0ec !important;
   border-color: #385246 !important;
 }
+
+
+/* Dark-mode selection uses graphite with amber accents, not purple. */
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs button.active) {
+  background: #2a3328 !important;
+  color: #f4c76b !important;
+  border: 1px solid #8c6d2f !important;
+  box-shadow: inset 0 0 0 1px rgba(244, 199, 107, 0.08);
+}

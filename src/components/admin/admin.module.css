@@ -68,3 +68,11 @@
 .adminShell[data-admin-theme="dark"] :global(.text-amber-800) { color: #f4d38b !important; }
 .adminShell[data-admin-theme="dark"] :global(.bg-red-50) { background-color: #3b1919 !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-red-700) { color: #ffb4b4 !important; }
+
+/* Dark mode preview palette: graphite surfaces and amber accents. */
+.adminShell[data-admin-theme="dark"]{--admin-bg:#0b0d0f;--admin-surface:#171a1d;--admin-raised:#202428;--admin-border:#3a4147;--admin-text:#f1f5f9;--admin-muted:#c1c9d1;--admin-accent:#fbbf24;background:var(--admin-bg)!important;color:var(--admin-text)!important}
+.adminShell[data-admin-theme="dark"] :global(main),.adminShell[data-admin-theme="dark"] :global(.cms-dashboard){background:var(--admin-bg)!important;color:var(--admin-text)!important}
+.adminShell[data-admin-theme="dark"] :global(.admin-topbar),.adminShell[data-admin-theme="dark"] :global(.bg-white),.adminShell[data-admin-theme="dark"] :global([class~="bg-[#f8f9ff]"]){background:var(--admin-surface)!important;color:var(--admin-text)!important;border-color:var(--admin-border)!important}
+.adminShell[data-admin-theme="dark"] :global([class*="bg-purple-"]),.adminShell[data-admin-theme="dark"] :global([class*="bg-violet-"]),.adminShell[data-admin-theme="dark"] :global([class*="bg-indigo-"]),.adminShell[data-admin-theme="dark"] :global([class*="bg-[#7157d9]"]){background:var(--admin-accent)!important;color:#171a1d!important}
+.adminShell[data-admin-theme="dark"] :global([class*="text-purple-"]),.adminShell[data-admin-theme="dark"] :global([class*="text-violet-"]),.adminShell[data-admin-theme="dark"] :global([class*="text-indigo-"]),.adminShell[data-admin-theme="dark"] :global([class*="text-[#7157d9]"]){color:var(--admin-accent)!important}
+.adminShell[data-admin-theme="dark"] :global(input),.adminShell[data-admin-theme="dark"] :global(select),.adminShell[data-admin-theme="dark"] :global(textarea){background:var(--admin-raised)!important;color:var(--admin-text)!important;border-color:var(--admin-border)!important}

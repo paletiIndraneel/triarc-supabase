@@ -859,15 +859,6 @@ export default function CmsOperatorDashboard() {
       "Start historical ChargeMOD meter-values backfill? This will fetch readings for old transactions in batches and may take several minutes."
     );
     if (!confirmed) return;
-
-    setBackfillRunning(true);
-    setBackfillStatus("Starting historical backfill…");
-    let totalSucceeded = 0;
-    let totalFailed = 0;
-      batchSize: 10,
-      runLimit: 300,
-      startedAt: new Date().toISOString(),
-    });
     try {
       for (let batch = 1; batch <= 30; batch += 1) {
         const response = await fetch("/api/cms/live/backfill", {

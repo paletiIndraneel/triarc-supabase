@@ -23,7 +23,7 @@ type Props = {
 const statuses = ["New", "Contacted", "Closed"] as const;
 const filters = [...statuses, "All"] as const;
 const STATUS_STYLE: Record<Enquiry["status"], string> = {
-  New: "border-violet-200 bg-violet-50 text-violet-700",
+  New: "border-violet-200 bg-violet-50 text-violet-700 dark:border-[#8c6d2f] dark:bg-[#3a2e17] dark:text-[#f4c76b]",
   Contacted: "border-amber-200 bg-amber-50 text-amber-800",
   Closed: "border-slate-200 bg-slate-100 text-slate-600",
 };
@@ -176,7 +176,7 @@ export default function EnquiriesTable({ enquiries: initialEnquiries, error = fa
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex justify-end gap-2">
-                            <a href={safeMailtoHref(item.email)} aria-label={`Email ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Mail size={15} /></a>
+                            <a href={safeMailtoHref(item.email)} aria-label={`Email ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700 dark:hover:text-[#f4c76b]"><Mail size={15} /></a>
                             {item.phone && <a href={safeTelHref(item.phone)} aria-label={`Call ${item.name}`} className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 hover:text-violet-700"><Phone size={15} /></a>}
                           </div>
                         </td>

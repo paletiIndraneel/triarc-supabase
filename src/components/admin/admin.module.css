@@ -68,3 +68,9 @@
 .adminShell[data-admin-theme="dark"] :global(.text-amber-800) { color: #f4d38b !important; }
 .adminShell[data-admin-theme="dark"] :global(.bg-red-50) { background-color: #3b1919 !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-red-700) { color: #ffb4b4 !important; }
+
+
+/* Keep the CMS charging status readable against dark admin surfaces. */
+.adminShell[data-admin-theme="dark"] :global(.bg-emerald-50) { background-color: #163b2c !important; }
+.adminShell[data-admin-theme="dark"] :global(.text-emerald-700),
+.adminShell[data-admin-theme="dark"] :global(.text-emerald-600) { color: #a7f3c9 !important; }

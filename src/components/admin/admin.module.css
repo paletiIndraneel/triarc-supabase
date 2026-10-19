@@ -68,3 +68,24 @@
 .adminShell[data-admin-theme="dark"] :global(.text-amber-800) { color: #f4d38b !important; }
 .adminShell[data-admin-theme="dark"] :global(.bg-red-50) { background-color: #3b1919 !important; }
 .adminShell[data-admin-theme="dark"] :global(.text-red-700) { color: #ffb4b4 !important; }
+
+
+/* Admin-wide dark-mode accent override: purple utilities become amber, without
+   changing light mode or the semantic red/green status colours. */
+.adminShell[data-admin-theme="dark"] :global([class*="bg-violet-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="bg-purple-"]) {
+  background-color: #3a2e17 !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="text-violet-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="text-purple-"]) {
+  color: #f4c76b !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="border-violet-"]),
+.adminShell[data-admin-theme="dark"] :global([class*="border-purple-"]) {
+  border-color: #8c6d2f !important;
+}
+.adminShell[data-admin-theme="dark"] :global([class*="focus:ring-violet-"]:focus),
+.adminShell[data-admin-theme="dark"] :global([class*="focus-visible:outline-violet-"]:focus-visible) {
+  --tw-ring-color: #d4a94f !important;
+  outline-color: #d4a94f !important;
+}

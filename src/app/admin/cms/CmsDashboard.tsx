@@ -1588,13 +1588,13 @@ function StatusCard({ count, sessions, showLocation, onSelect }: { count: number
   const charging = count > 0;
   const shown = sessions.slice(0, ACTIVE_LIST_LIMIT);
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <GlassCard className="cms-status-card min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Status</p>
         <div className="flex items-center gap-3">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-              charging ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+              charging ? "bg-emerald-50 text-emerald-700 dark:bg-[#15382b] dark:text-[#65e6ae]" : "bg-slate-100 text-slate-500 dark:bg-[#25342d] dark:text-[#b6c5bc]"
             }`}
           >
             <span
@@ -1618,10 +1618,10 @@ function StatusCard({ count, sessions, showLocation, onSelect }: { count: number
                 type="button"
                 onClick={() => onSelect(session)}
                 title="Show live details"
-                className="group -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-slate-200 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-violet-600"
+                className="group -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-slate-200 hover:bg-slate-50 dark:hover:border-[#35483e] dark:hover:bg-[#1b2a23] focus-visible:outline-2 focus-visible:outline-violet-600"
               >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
+              <span className="min-w-0 flex-1 truncate font-semibold text-slate-800 dark:text-[#e7f0ec]">
                 {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
                 {showLocation && session.location && (
                   <span className="font-normal text-slate-400"> · {displayLocation(session.location)}</span>

@@ -1505,8 +1505,8 @@ export default function CmsOperatorDashboard() {
                           {columnId === "createdAt" && formatDate(transaction.createdAt)}
                           {columnId === "updatedAt" && formatDate(transaction.updatedAt)}
                           {columnId === visibleColumns[0] && isActive && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                              <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-emerald-300" />Active
+                            <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                              <span className="h-1.5 w-1.5 motion-safe:animate-pulse rounded-full bg-emerald-500 dark:bg-emerald-400" />Active
                             </span>
                           )}
                         </td>

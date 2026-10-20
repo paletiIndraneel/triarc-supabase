@@ -1,6 +1,7 @@
 "use client";
 
-import { Settings2, Sun, Moon } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Settings2, Sun, Moon, ChevronDown, LogOut } from "lucide-react";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
 import LogoutButton from "@/components/admin/LogoutButton";
 import { ADMIN_NAV_ITEMS, canOpenModule } from "@/components/admin/adminNavigation";
@@ -9,6 +10,29 @@ import { BUSINESSES, GROUP_NAME, MODULE_BUSINESS, businessName } from "@/compone
 
 export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" | "dark"; onToggleTheme: () => void }) {
   const { activeModule, setActiveModule, isPartner } = useAdminModule();
+  const accountMenuRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    function closeOnOutsideClick(event: PointerEvent) {
+      const menu = accountMenuRef.current;
+      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) {
+        menu.open = false;
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && accountMenuRef.current?.open) {
+        accountMenuRef.current.open = false;
+      }
+    }
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
   // The active module's business; on group-wide modules (Overview) show it only while there is one business.
   const business = businessName(MODULE_BUSINESS[activeModule]) ?? (BUSINESSES.length === 1 ? BUSINESSES[0].name : null);
 
@@ -45,14 +69,29 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
         </button>}
         </div>
       </nav>
-      <div className="ml-auto flex items-center gap-4 text-[#667085]">
-
-        <span className="hidden sm:block"><AdminUserBadge /></span>
-
-        <button type="button" onClick={onToggleTheme} aria-label={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"} title={"Switch to " + (theme === "dark" ? "light" : "dark") + " mode"} className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#e2e4ec] px-2.5 py-[7px] text-[13px] font-semibold text-[#172033] transition hover:bg-white">{theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}<span className="hidden lg:inline">{theme === "dark" ? "Light" : "Dark"}</span></button>
-
-        <LogoutButton className="rounded-[10px] border border-[#e2e4ec] px-[12px] py-[7px] text-[13px] font-semibold text-[#172033] transition hover:bg-white hover:text-[#7157d9]" />
-
+      <div className="ml-auto flex items-center text-[#667085]">
+        <details ref={accountMenuRef} className="group relative">
+          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-2.5 py-2 text-left transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#83999E] [&::-webkit-details-marker]:hidden">
+            <span className="hidden sm:block"><AdminUserBadge /></span>
+            <span className="text-sm font-semibold text-[#172033] sm:hidden">Account</span>
+            <ChevronDown size={16} className="shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-[#83999E]/50 bg-white p-2 shadow-xl">
+            <div className="border-b border-[#83999E]/30 px-3 py-3">
+              <p className="text-sm font-semibold text-[#172033]">Account settings</p>
+              <p className="mt-0.5 text-xs text-[#5d6577]">Appearance and session</p>
+            </div>
+            <button type="button" onClick={onToggleTheme} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-[#172033] transition hover:bg-[#CCDBDB]/60">
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+              <span>{theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}</span>
+            </button>
+            <div className="my-1 border-t border-[#83999E]/30" />
+            <LogoutButton className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#172033] transition hover:bg-[#CCDBDB]/60 hover:text-[#5C6E6F]">
+              <LogOut size={17} />
+              <span>Sign out</span>
+            </LogoutButton>
+          </div>
+        </details>
       </div>
     </header>
   );

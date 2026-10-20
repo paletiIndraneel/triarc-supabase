@@ -199,7 +199,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                     <div className="mt-auto pt-3 text-xs text-[#5d6577]">
                       {c.sessions !== undefined && <p>{c.sessions} sessions</p>}
                       {"compare" in c && c.compare != null && (
-                        <p className={`mt-1.5 font-semibold ${c.compare >= 0 ? "text-[#1e7b3c]" : "text-[#c92a2a]"}`}>
+                        <p className="mt-1.5 font-semibold" style={{ color: c.compare >= 0 ? "#1e7b3c" : "#c92a2a" }}>
                           {c.compare >= 0 ? "▲" : "▼"} {inr(Math.abs(c.compare))} vs same days last month
                         </p>
                       )}

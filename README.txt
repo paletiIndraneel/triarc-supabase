@@ -9,19 +9,25 @@ removing a platform does not change the dashboard, Overview or billing.
 1. WHICH TABLE HOLDS THE SESSIONS
 ---------------------------------
 
-  charging_sessions   used by the app now. Sessions from every platform, with a
-                      `provider` column. Session ids carry the platform's prefix, e.g.
+  cms_transactions    used by the app. Sessions from every platform, with a `provider`
+                      column. Session ids carry the platform's prefix, e.g.
                       chrgmod_1792591530932__16183870.
-                      Created 2026-10-21 by supabase/migrations/20261021000600_charging_sessions.sql
-                      as a copy of cms_transactions (1,600 rows).
+                      Changed 2026-10-21 by
+                      supabase/migrations/20261021000700_cms_transactions_multi_platform.sql
+                      (provider column added, ids prefixed; no rows removed).
 
-  cms_transactions    the earlier ChargeMOD-only table (ids without prefix). Left
-                      untouched. The app no longer reads or writes it.
+  cms_transactions_backup_20261021
+                      safety copy of cms_transactions taken just before that change
+                      (1,602 rows, original ids without prefix). Locked: only database
+                      admins can read it.
+
+  charging_sessions   the copy used while the multi-platform version was tested
+                      (migration 20261021000600). No longer used; can be dropped.
 
 The table name is set in ONE place:
 
     src/lib/cms/transactionStore.ts
-        export const SESSIONS_TABLE = "charging_sessions";
+        export const SESSIONS_TABLE = "cms_transactions";
 
 Everything that reads or writes sessions uses it: /api/cms/operator (sync), /api/cms/live
 (live readings), /api/cms/live/backfill, the CMS dashboard's stored copy, and the New Bill
@@ -31,23 +37,19 @@ session suggestion.
 2. HOW TO CHANGE THE TABLE REFERENCE LATER
 ------------------------------------------
 
-a) Keep charging_sessions for good (once tested):
-   nothing to change in code. cms_transactions can stay as an archive.
-
-b) Go back to cms_transactions (if charging_sessions did not work out):
-   - Revert the multi-platform commit (git revert <commit>). A plain switch of
-     SESSIONS_TABLE is not enough: that table has no `provider` column and its ids have
-     no prefix.
-   - Sessions synced into charging_sessions meanwhile are fetched again from ChargeMOD by
-     the normal delta sync; meter readings for them come back with the backfill button.
-
-c) Point the app at another table (e.g. a renamed one):
-   - Create it with the same columns as charging_sessions (including `provider`) and the
-     same RLS policies (see the migration above).
+a) Point the app at another table (e.g. a renamed one):
+   - Create it with the same columns as cms_transactions (including `provider`) and the
+     same RLS policies (copy them from the cms_transactions policies).
    - Copy the rows: INSERT INTO new_table (<column list>) SELECT <column list> FROM
-     charging_sessions;  (list the columns; do not use (jsonb_populate_record(...)).* - it
+     cms_transactions;  (list the columns; do not use (jsonb_populate_record(...)).* - it
      timed out on this table).
    - Change SESSIONS_TABLE to the new name, run `npm run build`, push.
+   - Do it with the CMS dashboard closed, so no session is written to the old table meanwhile
+     (the delta sync refetches anything missed anyway).
+
+b) Restore the pre-multi-platform data (ids without prefix):
+   - The rows are in cms_transactions_backup_20261021. The code expects prefixed ids, so a
+     restore also means reverting the multi-platform commits (git revert).
 
 
 3. HOW TO ADD A PLATFORM (e.g. Ather)

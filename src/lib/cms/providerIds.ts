@@ -1,5 +1,5 @@
 // The charging platforms (CMS providers) the admin knows. The id is stored on every session
-// (charging_sessions.provider) and on billing customers (session_source). Safe to import in
+// (cms_transactions.provider) and on billing customers (session_source). Safe to import in
 // the browser: the dashboard filter and the billing "Charging sessions from" list read it.
 // To add a platform: add it here, write its connector and register it in ./provider.ts.
 // Pure, so tests/ can load it.

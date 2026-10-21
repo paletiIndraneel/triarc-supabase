@@ -4,10 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CmsTransaction, CmsTransactionRow } from "./types";
 import type { MeterResult } from "./provider";
 
-// The table every session is stored in. charging_sessions holds all platforms (ids carry their
-// prefix); cms_transactions is the earlier ChargeMOD-only table, kept untouched. README.txt
-// says how to switch.
-export const SESSIONS_TABLE = "charging_sessions";
+// The table every session is stored in: all platforms, with a `provider` column and ids that
+// carry the platform prefix (migration 20261021000700). README.txt says how to switch it.
+export const SESSIONS_TABLE = "cms_transactions";
 
 // The columns the dashboard reads: everything except the large meter-values JSON.
 export const SESSION_COLUMNS = "provider,transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at";

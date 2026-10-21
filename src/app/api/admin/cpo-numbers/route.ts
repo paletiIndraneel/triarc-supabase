@@ -10,9 +10,10 @@ function normalizeIndianMobile(value: string) {
 }
 
 
+// The list is partner-only; the CMS dashboard only asks the cpo_mobile_matches function.
 export async function GET() {
-  const { supabase, user } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   const { data, error } = await supabase.from("cpo_mobile_numbers")
     .select("id, mobile_number, normalized_mobile, created_at, updated_at")
     .order("mobile_number", { ascending: true });
@@ -28,7 +29,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 }); // investors can only read
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   try {
     const body = await request.json() as { mobileNumber?: unknown };
     if (typeof body.mobileNumber !== "string" || !body.mobileNumber.trim())
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 }); // investors can only read
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   try {
     const body = await request.json() as { id?: unknown; mobileNumber?: unknown };
     if (typeof body.id !== "string" || !body.id || typeof body.mobileNumber !== "string" || !body.mobileNumber.trim())
@@ -73,7 +74,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 }); // investors can only read
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   try {
     const body = await request.json() as { id?: unknown };
     if (typeof body.id !== "string" || !body.id) return NextResponse.json({ error: "A number ID is required." }, { status: 400 });

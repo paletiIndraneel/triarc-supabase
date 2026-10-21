@@ -70,7 +70,7 @@ export function chargerCurrent(transaction: FilterableTransaction): "ac" | "dc" 
   return null;
 }
 
-function normalizeMobile(value: string | null | undefined) {
+export function normalizeMobile(value: string | null | undefined) {
   const digits = String(value ?? "").replace(/\D/g, "");
   return digits.length >= 10 ? digits.slice(-10) : null;
 }

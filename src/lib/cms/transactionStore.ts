@@ -1,8 +1,16 @@
-// Pure helpers for the cms_transactions table (migration 20261016000700): column mapping
+// Pure helpers for the sessions table (SESSIONS_TABLE below): column mapping
 // and the delta-sync start. Only type imports, so tests/ can load this file directly.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CmsTransaction, CmsTransactionRow } from "./types";
 import type { MeterResult } from "./provider";
+
+// The table every session is stored in. charging_sessions holds all platforms (ids carry their
+// prefix); cms_transactions is the earlier ChargeMOD-only table, kept untouched. README.txt
+// says how to switch.
+export const SESSIONS_TABLE = "charging_sessions";
+
+// The columns the dashboard reads: everything except the large meter-values JSON.
+export const SESSION_COLUMNS = "provider,transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at";
 
 // ChargeMOD joins first and last name itself and sends "Guest User undefined" when a part
 // is missing. Drops "undefined"/"null" words and extra spaces; "Unknown" when nothing is left.
@@ -90,7 +98,7 @@ export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransa
   const openIds = rows.filter((row) => !row.stopped_at).map((row) => row.transaction_id);
   if (openIds.length) {
     const { data, error } = await supabase
-      .from("cms_transactions")
+      .from(SESSIONS_TABLE)
       .select("transaction_id,energy_kwh,start_soc,end_soc")
       .in("transaction_id", openIds);
     if (error) console.error("[cms] reading stored meter values failed:", error.message);
@@ -99,7 +107,7 @@ export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransa
   let written = 0;
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
-    const { error } = await supabase.from("cms_transactions").upsert(chunk, { onConflict: "transaction_id" });
+    const { error } = await supabase.from(SESSIONS_TABLE).upsert(chunk, { onConflict: "transaction_id" });
     if (error) return { written, error: error.message };
     written += chunk.length;
   }
@@ -111,14 +119,14 @@ export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransa
 // rows without an error, so that counts as failed too.
 export async function saveMeterReadings(supabase: SupabaseClient, transactionId: string, meter: MeterResult) {
   const { data: row, error: readError } = await supabase
-    .from("cms_transactions")
+    .from(SESSIONS_TABLE)
     .select("stopped_at,energy_kwh,start_soc,end_soc")
     .eq("transaction_id", transactionId)
     .maybeSingle();
   if (readError) return readError.message;
   if (!row) return "session is not stored yet";
   const { data, error } = await supabase
-    .from("cms_transactions")
+    .from(SESSIONS_TABLE)
     .update({
       ...meterPatch(row, meter.metrics),
       meter_values_response: meter.payload,

@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
-import { getChargingProvider, providerErrorMessage, type MeterResult } from "@/lib/cms/provider";
-import { saveMeterReadings } from "@/lib/cms/transactionStore";
+import { getChargingProviders, providerErrorMessage, type MeterResult } from "@/lib/cms/provider";
+import { saveMeterReadings, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
 
 export const dynamic = "force-dynamic";
 
 const CACHE_MS = 15_000;
 const cache = new Map<string, { at: number } & MeterResult>();
 
+// Live meter readings for one session, by its stored id (with the platform prefix).
 export async function GET(_request: Request, context: { params: Promise<{ transactionId: string }> }) {
   const { supabase, user } = await getAdminClient();
   if (!user) return new NextResponse("Forbidden", { status: 403 });
 
-  const provider = await getChargingProvider(supabase);
-  if (!provider) return new NextResponse("Not Found", { status: 404 });
+  const providers = await getChargingProviders(supabase);
+  if (!providers.length) return new NextResponse("Not Found", { status: 404 });
 
   const { transactionId } = await context.params;
   if (!/^[\w-]{1,80}$/.test(transactionId)) return new NextResponse("Bad Request", { status: 400 });
@@ -23,10 +24,19 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
     return NextResponse.json({ ...hit.metrics, transactionDetails: hit.payload, parsedReadings: hit.readings });
   }
 
+  // The session's platform: from its stored row, else the one whose id prefix it carries.
+  const { data: row } = await supabase.from(SESSIONS_TABLE).select("provider").eq("transaction_id", transactionId).maybeSingle();
+  const provider =
+    providers.find((p) => p.id === row?.provider) ??
+    providers.find((p) => p.idPrefix && transactionId.startsWith(p.idPrefix));
+  if (!provider?.fetchMeterReadings) {
+    return NextResponse.json({ error: `Live readings are not available for ${provider?.label ?? "this session"}.` }, { status: 404 });
+  }
+
   try {
     const meter = await provider.fetchMeterReadings(transactionId);
 
-    // Keep the latest raw API payload and normalized readings on the existing transaction row.
+    // Keep the latest raw API payload and normalized readings on the existing session row.
     const saveError = await saveMeterReadings(supabase, transactionId, meter);
     if (saveError) {
       // Live metrics should remain available even if persistence is temporarily unavailable.

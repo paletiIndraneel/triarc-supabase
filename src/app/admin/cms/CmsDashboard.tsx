@@ -18,20 +18,21 @@ import {
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
-import { fromStoredRow, previousBillingCycle } from "@/lib/cms/transactionStore";
+import { fromStoredRow, previousBillingCycle, SESSION_COLUMNS, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
+import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
 import SessionDetails from "./SessionDetails";
 import { useLiveMetrics, withLiveValues } from "./useLiveMetrics";
 
-// Sessions saved in cms_transactions that started in [from, to), oldest first.
+// Sessions saved in SESSIONS_TABLE that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
   const rows: CmsTransactionRow[] = [];
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supabase
-      .from("cms_transactions")
+      .from(SESSIONS_TABLE)
       // Avoid transferring the large historical meter-values JSON for every dashboard load.
-      .select("transaction_id,id,charger_id,connector_id,started_at,stopped_at,user_name,mobile,user_type,tag_reference,location,location_id,charger_name,station_type,type,stop_reason,energy_kwh,start_soc,end_soc,vehicle_name,vehicle_number,tariff_amount,vat,invoice_available,user_id,vehicle_id,geo_latitude,geo_longitude,id_tag,is_free,base_deductive_amount,is_alpha_guaranteed,is_time_based_tariff,start_value,stop_value,created_at,updated_at,invoice_link,organization_id,project_id,solar_type,user_email,vehicle_model_id,starting_balance,ending_balance,synced_at")
+      .select(SESSION_COLUMNS)
       .gte("started_at", from)
       .lt("started_at", to)
       .order("started_at")
@@ -71,7 +72,7 @@ export type CmsCache = {
   active?: ActiveTransactionResponse;
 };
 
-const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v7";
+const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v8";
 const CMS_BACKFILL_KEY = "triarc-cms-history-backfill-2026-07-v1";
 
 function readCmsCache(): CmsCache {
@@ -888,7 +889,7 @@ export default function CmsOperatorDashboard() {
     try {
       const sync = await post({ stage: "transactions" });
       const synced = sync.result as {
-        retrieved?: { cms: number; ocpi: number };
+        retrieved?: Record<string, number>; // sessions per platform
         sessions?: number;
         synced?: number;
         sourceErrors?: string[];
@@ -899,9 +900,10 @@ export default function CmsOperatorDashboard() {
       }
       if (synced.sourceErrors?.length) {
         console.warn("Backfill source errors:", synced.sourceErrors);
-        sourceWarning = ` · OCPI failed (${synced.sourceErrors.join("; ")}), so OCPI sessions may be missing; run it again later`;
+        sourceWarning = ` · some sources failed (${synced.sourceErrors.join("; ")}), so their sessions may be missing; run it again later`;
       }
-      const sessionsLine = `${(synced.synced ?? 0).toLocaleString()} sessions saved (CMS ${synced.retrieved?.cms ?? 0}, OCPI ${synced.retrieved?.ocpi ?? 0})`;
+      const perPlatform = Object.entries(synced.retrieved ?? {}).map(([label, n]) => `${label} ${n}`).join(", ");
+      const sessionsLine = `${(synced.synced ?? 0).toLocaleString()} sessions saved${perPlatform ? ` (${perPlatform})` : ""}`;
       setBackfillStatus(`${sessionsLine}${sourceWarning} · fetching meter readings…`);
 
       for (let batch = 1; batch <= 30; batch += 1) {
@@ -1008,6 +1010,12 @@ export default function CmsOperatorDashboard() {
     () => [...new Set(allTransactions.map((transaction) => transaction.location).filter(Boolean))].sort(),
     [allTransactions]
   );
+  // Platforms with sessions in the loaded window; the platform filter and labels only show
+  // when there is more than one.
+  const providerOptions = useMemo(
+    () => [...new Set(allTransactions.map((transaction) => transaction.provider).filter(Boolean))].sort(),
+    [allTransactions]
+  );
   const chargerOptions = useMemo(
     () => [...new Set(allTransactions.map(chargerLabel).filter(Boolean))].sort(),
     [allTransactions]
@@ -1034,7 +1042,11 @@ export default function CmsOperatorDashboard() {
     };
     const rows = transactions.map((transaction) =>
       CMS_COLUMN_IDS.map((columnId) =>
-        csvCell(transaction[columnId as keyof Transaction])
+        csvCell(
+          columnId === "id" || columnId === "transactionId"
+            ? displaySessionId(transaction.provider, transaction[columnId])
+            : transaction[columnId as keyof Transaction]
+        )
       )
     );
     const csv = [headers.map(csvCell).join(","), ...rows.map((row) => row.join(","))].join("\r\n");
@@ -1202,7 +1214,7 @@ export default function CmsOperatorDashboard() {
             names={locationOptions}
             live={new Set(liveSessions.map((session) => session.location))}
           />
-          <StatusCard count={activeCount} sessions={liveShown} showLocation={locationCount > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
+          <StatusCard count={activeCount} sessions={liveShown} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
@@ -1357,6 +1369,19 @@ export default function CmsOperatorDashboard() {
               className={`${filterSelectClass} w-full sm:w-64`}
               aria-label="Search transactions"
             />
+            {providerOptions.length > 1 && (
+              <select
+                value={filters.provider}
+                onChange={(event) => updateFilter("provider", event.target.value)}
+                className={filterSelectClass}
+                aria-label="Platform"
+              >
+                <option value="" className="bg-white">All platforms</option>
+                {providerOptions.map((provider) => (
+                  <option key={provider} value={provider} className="bg-white">{providerLabel(provider)}</option>
+                ))}
+              </select>
+            )}
             <select
               value={filters.location}
               onChange={(event) => updateFilter("location", event.target.value)}
@@ -1491,8 +1516,8 @@ export default function CmsOperatorDashboard() {
                     <tr key={transaction.id} className="hover:bg-slate-50">
                       {visibleColumns.map((columnId) => (
                         <td key={columnId} className="whitespace-nowrap px-4 py-3 text-slate-600">
-                          {columnId === "id" && transaction.id}
-                          {columnId === "transactionId" && transaction.transactionId}
+                          {columnId === "id" && displaySessionId(transaction.provider, transaction.id)}
+                          {columnId === "transactionId" && displaySessionId(transaction.provider, transaction.transactionId)}
                           {columnId === "chargerId" && transaction.chargerId}
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
                           {columnId === "startedAt" && formatDate(transaction.startedAt)}
@@ -1589,7 +1614,7 @@ const ACTIVE_LIST_LIMIT = 4;
 
 // Charging state and the sessions charging now. ChargeMOD's stuck sessions (past 7 hours, or
 // an older duplicate on a gun) are already filtered out by splitActiveSessions.
-function StatusCard({ count, sessions, showLocation, onSelect }: { count: number; sessions: Transaction[]; showLocation: boolean; onSelect: (session: Transaction) => void }) {
+function StatusCard({ count, sessions, showLocation, showProvider, onSelect }: { count: number; sessions: Transaction[]; showLocation: boolean; showProvider: boolean; onSelect: (session: Transaction) => void }) {
   const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
   const dateTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   const today = istDateString();
@@ -1637,6 +1662,7 @@ function StatusCard({ count, sessions, showLocation, onSelect }: { count: number
                 {showLocation && session.location && (
                   <span className="font-normal text-slate-400"> · {displayLocation(session.location)}</span>
                 )}
+                {showProvider && <span className="font-normal text-slate-400"> · {providerLabel(session.provider)}</span>}
               </span>
               <span className="whitespace-nowrap text-slate-500">
                 {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}

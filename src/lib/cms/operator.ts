@@ -970,6 +970,7 @@ export function sanitizeTransaction(raw: ChargeModTransaction): CmsTransaction {
   const userType = Array.isArray(raw.userType) ? raw.userType[0] : raw.userType;
 
   return {
+    provider: "chargemod",
     id: String(raw._id ?? ""),
     transactionId: String(raw.transactionId ?? ""),
     chargerId: String(raw.identity ?? ""),

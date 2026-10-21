@@ -1,5 +1,5 @@
 // Shapes of a charging session at each step: ChargeMOD's API -> sanitizeTransaction ->
-// the dashboard / the cms_transactions table.
+// the dashboard / the sessions table (SESSIONS_TABLE in ./transactionStore).
 
 // One session as ChargeMOD's transaction list returns it (CMS rows; OCPI rows differ and
 // are read through the index signature). Values are as received, so most are loosely typed.
@@ -56,6 +56,7 @@ export interface ChargeModTransaction {
 
 // A session after sanitizeTransaction: what /api/cms/operator returns and the dashboard uses.
 export type CmsTransaction = {
+  provider: string; // the charging platform's id (./providerIds), e.g. "chargemod"
   id: string;
   transactionId: string;
   chargerId: string;
@@ -107,7 +108,7 @@ type SnakeCase<S extends string> = S extends `${infer Head}${infer Tail}`
   ? `${Head extends Uppercase<Head> ? (Head extends Lowercase<Head> ? Head : `_${Lowercase<Head>}`) : Head}${SnakeCase<Tail>}`
   : S;
 
-// A cms_transactions row: every CmsTransaction field in snake_case, plus when we saved it.
+// A sessions-table row: every CmsTransaction field in snake_case, plus when we saved it.
 export type CmsTransactionRow = {
   [K in keyof CmsTransaction as SnakeCase<K>]: CmsTransaction[K];
 } & { synced_at: string };

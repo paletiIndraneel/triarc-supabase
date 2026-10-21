@@ -1,6 +1,7 @@
 // Client-side filters for the CMS transactions table; they run on already-fetched rows.
 
 type FilterableTransaction = {
+  provider?: string;
   id: string;
   transactionId: string;
   chargerId: string;
@@ -20,6 +21,7 @@ type FilterableTransaction = {
 export type TransactionStatus = "live" | "completed" | "failed";
 
 export type TransactionFilters = {
+  provider: string; // a platform id from @/lib/cms/providerIds, "" for all
   location: string;
   charger: string;
   current: "" | "ac" | "dc";
@@ -30,6 +32,7 @@ export type TransactionFilters = {
 };
 
 export const EMPTY_TRANSACTION_FILTERS: TransactionFilters = {
+  provider: "",
   location: "",
   charger: "",
   current: "",
@@ -120,6 +123,7 @@ export function matchesTransactionFilters(
   isLive: boolean,
   cpoMobileNumbers: Set<string>
 ) {
+  if (filters.provider && transaction.provider !== filters.provider) return false;
   if (filters.location && transaction.location !== filters.location) return false;
   if (filters.charger && chargerLabel(transaction) !== filters.charger) return false;
   if (filters.current && chargerCurrent(transaction) !== filters.current) return false;

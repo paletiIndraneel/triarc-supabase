@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import type { CmsTransaction } from "@/lib/cms/types";
 import { shortChargerLabel } from "./transactionFilters";
+import { displaySessionId } from "@/lib/cms/providerIds";
 import type { LiveState } from "./useLiveMetrics";
 
 const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -111,7 +112,7 @@ export default function SessionDetails({ session, live, onClose }: { session: Cm
         {(session.vehicleNumber || session.vehicleName) && (
           <div className="flex justify-between gap-3"><dt className="text-slate-500">Vehicle</dt><dd className="truncate font-medium">{session.vehicleNumber || session.vehicleName}</dd></div>
         )}
-        <div className="flex justify-between gap-3"><dt className="text-slate-500">Session ID</dt><dd className="truncate font-mono">{id}</dd></div>
+        <div className="flex justify-between gap-3"><dt className="text-slate-500">Session ID</dt><dd className="truncate font-mono">{displaySessionId(session.provider, id)}</dd></div>
         <p className="pt-1 text-slate-400">
           {metrics?.lastReadingAt ? `Updated ${time.format(new Date(metrics.lastReadingAt))} · ` : ""}refreshes every 30 s
         </p>

@@ -28,7 +28,7 @@ const chargerType = (row) => {
   return null;
 };
 
-// rows: cms_transactions rows (station_type, charger_name, type, mobile, energy_kwh).
+// rows: sessions-table rows (station_type, charger_name, type, mobile, energy_kwh).
 // ChargeMOD bills every session, so CPO sessions count in AC/DC too; `cpo` only says how
 // much of those totals they are.
 export function summarizeSessions(rows, cpoNumbers = new Set()) {

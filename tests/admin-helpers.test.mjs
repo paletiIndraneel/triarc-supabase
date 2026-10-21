@@ -430,3 +430,27 @@ test("cleanUserName drops ChargeMOD's undefined/null name parts", () => {
   assert.equal(cleanUserName(null), "Unknown");
   assert.equal(cleanUserName("Undefinedson Rao"), "Undefinedson Rao");
 });
+
+test("platform session ids: prefixed when stored, stripped for the platform's API and for display", async () => {
+  const { PROVIDERS, storedSessionId, platformSessionId, displaySessionId, providerLabel } = await import("../src/lib/cms/providerIds.ts");
+  const chargemod = PROVIDERS.find((p) => p.id === "chargemod");
+  assert.equal(storedSessionId(chargemod, "1792591530932__16183870"), "chrgmod_1792591530932__16183870");
+  assert.equal(platformSessionId(chargemod, "chrgmod_1792591530932__16183870"), "1792591530932__16183870");
+  assert.equal(platformSessionId(chargemod, "1792591530932__16183870"), "1792591530932__16183870"); // already plain
+  assert.equal(storedSessionId(chargemod, ""), ""); // an empty id stays empty
+  assert.equal(displaySessionId("chargemod", "chrgmod_abc"), "abc");
+  assert.equal(displaySessionId("unknown", "x_abc"), "x_abc");
+  assert.equal(providerLabel("chargemod"), "ChargeMOD");
+  // ids must stay valid for the live-readings route
+  assert.match(storedSessionId(chargemod, "1792591530932__16183870"), /^[\w-]{1,80}$/);
+  assert.equal(new Set(PROVIDERS.map((p) => p.idPrefix)).size, PROVIDERS.length); // prefixes are unique
+});
+
+test("the platform filter keeps one platform's sessions; storedRows keeps the platform", () => {
+  const t = (provider) => ({ provider, id: provider, transactionId: provider, chargerId: "", chargerName: "AC", stationType: "AC", location: "", type: "WALLET", userName: "", mobile: null, vehicleNumber: null, energyKwh: 1 });
+  const f = { ...EMPTY_TRANSACTION_FILTERS, provider: "chargemod" };
+  assert.equal(matchesTransactionFilters(t("chargemod"), f, false, new Set()), true);
+  assert.equal(matchesTransactionFilters(t("ather"), f, false, new Set()), false);
+  assert.equal(matchesTransactionFilters(t("ather"), EMPTY_TRANSACTION_FILTERS, false, new Set()), true);
+  assert.equal(storedRows([], [{ provider: "ather", transactionId: "ather_1", id: "" }], "2026-10-21T00:00:00Z")[0].provider, "ather");
+});

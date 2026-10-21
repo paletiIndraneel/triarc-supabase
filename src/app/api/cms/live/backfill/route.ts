@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
-import { getCmsConfig, getCmsErrorMessage, getMeterValues, getOperatorData } from "@/lib/cms/operator";
-import { liveMetrics, parseMeterValues } from "@/lib/cms/liveMetrics";
-import { backfillWindow, storedRows, upsertStoredRows } from "@/lib/cms/transactionStore";
+import { getChargingProvider, providerErrorMessage } from "@/lib/cms/provider";
+import { backfillWindow, saveMeterReadings, storedRows, upsertStoredRows } from "@/lib/cms/transactionStore";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -21,8 +20,8 @@ export async function POST(request: Request) {
   const { supabase, user } = await getAdminClient();
   if (!user) return new NextResponse("Forbidden", { status: 403 });
 
-  const config = await getCmsConfig();
-  if (!config.enabled) return new NextResponse("Not Found", { status: 404 });
+  const provider = await getChargingProvider(supabase);
+  if (!provider) return new NextResponse("Not Found", { status: 404 });
 
   const body = await request.json().catch(() => ({})) as {
     stage?: unknown; from?: unknown; to?: unknown; limit?: unknown; exclude?: unknown;
@@ -32,12 +31,7 @@ export async function POST(request: Request) {
 
   if (body.stage === "transactions") {
     try {
-      const data = await getOperatorData(config, supabase, {
-        page: 1,
-        perPage: 100,
-        startDate: range.from,
-        endDate: range.to,
-      });
+      const data = await provider.fetchSessions({ startDate: range.from, endDate: range.to });
       const rows = storedRows(data.active.transactions, data.transactions.transactions, new Date().toISOString());
       const { written, error } = await upsertStoredRows(supabase, rows);
       const report = {
@@ -54,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json(report);
     } catch (error) {
       console.error("[cms/backfill] transactions", error);
-      return NextResponse.json({ error: getCmsErrorMessage(error) }, { status: 502 });
+      return NextResponse.json({ error: providerErrorMessage(error) }, { status: 502 });
     }
   }
 
@@ -99,27 +93,11 @@ export async function POST(request: Request) {
       if (!transactionId) continue;
 
       try {
-        const payload = await getMeterValues({ ...config, store: supabase }, transactionId);
-        const readings = parseMeterValues(payload);
-        const metrics = liveMetrics(readings);
-        const { data: saved, error: saveError } = await supabase
-          .from("cms_transactions")
-          .update({
-            meter_values_response: payload as never,
-            meter_values_readings: readings as never,
-            current_soc: metrics.currentSoc,
-            meter_values_last_reading_at: metrics.lastReadingAt,
-            meter_values_fetched_at: new Date().toISOString(),
-          })
-          .eq("transaction_id", transactionId)
-          .select("transaction_id");
-
-        if (saveError) throw new Error(`Saving failed: ${saveError.message}`);
-        // RLS can refuse an update without an error; it then changes no rows.
-        if (!saved?.length) throw new Error("Saving failed: no row was updated.");
+        const saveError = await saveMeterReadings(supabase, transactionId, await provider.fetchMeterReadings(transactionId));
+        if (saveError) throw new Error(`Saving failed: ${saveError}`);
         succeeded += 1;
       } catch (error) {
-        const message = getCmsErrorMessage(error);
+        const message = providerErrorMessage(error);
         failures.push({ transactionId, error: message });
         if (/\b429\b|too many requests|rate.?limit/i.test(message)) {
           rateLimited = true;
@@ -142,6 +120,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[cms/backfill]", error);
-    return NextResponse.json({ error: getCmsErrorMessage(error) }, { status: 502 });
+    return NextResponse.json({ error: providerErrorMessage(error) }, { status: 502 });
   }
 }

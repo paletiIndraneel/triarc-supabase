@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
-import {
-  getCmsConfig,
-  getCmsErrorMessage,
-  getOperatorData,
-} from "@/lib/cms/operator";
+import { getChargingProvider, providerErrorMessage } from "@/lib/cms/provider";
 import { fromStoredRow, storedRows, syncStartDate, upsertStoredRows } from "@/lib/cms/transactionStore";
 import type { CmsTransactionRow } from "@/lib/cms/types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const { supabase, user, isPartner } = await getAdminClient();
+  const { supabase, user } = await getAdminClient();
   if (!user) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
-  const config = await getCmsConfig();
-  if (!config.enabled) {
+  const provider = await getChargingProvider(supabase);
+  if (!provider) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
@@ -85,7 +81,7 @@ export async function GET(request: Request) {
       if (syncStart > endDate) syncStart = endDate;
     }
 
-    const data = await getOperatorData(config, supabase, {
+    const data = await provider.fetchSessions({
       page,
       perPage,
       startDate: syncStart,
@@ -97,14 +93,13 @@ export async function GET(request: Request) {
     // Start persisting fetched sessions as soon as they are available, then overlap
     // the upsert with the historical read. Await persistence before responding so
     // serverless runtimes cannot terminate the write after the response has returned.
+    // Every active admin's load saves (RLS: insert/update for active admins).
     let persistPromise: Promise<void> = Promise.resolve();
-    if (isPartner) {
-      const rows = storedRows(data.active.transactions, data.transactions.transactions, new Date().toISOString());
-      if (rows.length > 0) {
-        persistPromise = upsertStoredRows(supabase, rows).then(({ error }) => {
-          if (error) console.error("[cms/operator] saving transactions failed:", error);
-        });
-      }
+    const rows = storedRows(data.active.transactions, data.transactions.transactions, new Date().toISOString());
+    if (rows.length > 0) {
+      persistPromise = upsertStoredRows(supabase, rows).then(({ error }) => {
+        if (error) console.error("[cms/operator] saving transactions failed:", error);
+      });
     }
 
     const historicalPromise = syncStart !== startDate
@@ -132,7 +127,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[cms/operator]", error);
     return NextResponse.json(
-      { error: getCmsErrorMessage(error) },
+      { error: providerErrorMessage(error) },
       { status: 502 }
     );
   }

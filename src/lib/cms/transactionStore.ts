@@ -2,6 +2,7 @@
 // and the delta-sync start. Only type imports, so tests/ can load this file directly.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CmsTransaction, CmsTransactionRow } from "./types";
+import type { MeterResult } from "./provider";
 
 // The history backfill button covers this many days back from when it is pressed.
 export const HISTORY_BACKFILL_DAYS = 15;
@@ -39,6 +40,24 @@ export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransa
     written += chunk.length;
   }
   return { written, error: null };
+}
+
+// Stores a session's latest meter readings on its row. Returns an error message, or null when
+// saved; an update RLS refuses changes no rows without an error, so that counts as failed too.
+export async function saveMeterReadings(supabase: SupabaseClient, transactionId: string, meter: MeterResult) {
+  const { data, error } = await supabase
+    .from("cms_transactions")
+    .update({
+      meter_values_response: meter.payload,
+      meter_values_readings: meter.readings,
+      current_soc: meter.metrics.currentSoc,
+      meter_values_last_reading_at: meter.metrics.lastReadingAt,
+      meter_values_fetched_at: new Date().toISOString(),
+    })
+    .eq("transaction_id", transactionId)
+    .select("transaction_id");
+  if (error) return error.message;
+  return data?.length ? null : "no row was updated";
 }
 
 // Sessions can't stay active for days, so a stored session with no stop time that started

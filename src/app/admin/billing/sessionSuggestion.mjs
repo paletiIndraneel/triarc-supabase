@@ -53,21 +53,16 @@ export function itemFor(inventory, customerId, type) {
   return ofType.find((p) => p.customer_id === customerId) ?? ofType.find((p) => !p.customer_id) ?? null;
 }
 
-const SOURCE_LABEL = { chargemod: 'ChargeMOD', ather: 'Ather' };
-const day = new Intl.DateTimeFormat('en-IN', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric' });
-const fmt = (d) => day.format(new Date(`${d}T00:00:00Z`));
-
 // Invoice lines for the AC and DC totals, ready for the items table. Types with no kWh or no
 // item are left out (missing items are reported by the caller, never billed at a guessed rate).
-export function suggestedLines(summary, inventory, customerId, source, from, to) {
-  const label = SOURCE_LABEL[source] ?? source;
+export function suggestedLines(summary, inventory, customerId) {
   return ['DC', 'AC'].flatMap((type) => {
     const total = summary[type];
     const item = itemFor(inventory, customerId, type);
     if (!total.kwh || !item) return [];
     return [{
       inventory_id: item.id,
-      description: `${item.product_name}, ${label} sessions ${fmt(from)} – ${fmt(to)}`,
+      description: item.product_name, // the invoice shows just the item name, as typed
       hsn: item.hsn || '',
       unit: item.unit || 'KWH',
       quantity: total.kwh,

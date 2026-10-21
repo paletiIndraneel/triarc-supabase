@@ -328,13 +328,13 @@ test("summarizeSessions totals AC and DC like ChargeMOD's bill: CPO included (an
   const inventory = [
     { id: "ac", product_name: "AC EV Charging", charger_type: "AC", customer_id: null, selling_price: "18", gst_rate: "18", hsn: "996749", unit: "KWH" },
     { id: "dc", product_name: "DC EV Charging", charger_type: "DC", customer_id: null, selling_price: "26", gst_rate: "18", hsn: "996749", unit: "KWH" },
-    { id: "dc-cm", product_name: "DC EV Charging · ChargeMOD", charger_type: "DC", customer_id: "bpm", selling_price: "24", gst_rate: "18", hsn: "996749", unit: "KWH" },
+    { id: "dc-cm", product_name: "DC EV Charging", charger_type: "DC", customer_id: "bpm", selling_price: "24", gst_rate: "18", hsn: "996749", unit: "KWH" },
   ];
   assert.equal(itemFor(inventory, "bpm", "DC").id, "dc-cm"); // the customer's own item wins
   assert.equal(itemFor(inventory, "other", "DC").id, "dc"); // else the general one
-  const lines = suggestedLines(s, inventory, "bpm", "chargemod", "2026-10-01", "2026-10-15");
+  const lines = suggestedLines(s, inventory, "bpm");
   assert.deepEqual(lines.map((l) => [l.inventory_id, l.quantity, l.unit_price, l.source_sessions]), [["dc-cm", 68.812, 24, 4], ["ac", 3.174, 18, 1]]);
-  assert.match(lines[0].description, /ChargeMOD sessions 01 Oct 2026 – 15 Oct 2026/);
+  assert.equal(lines[0].description, "DC EV Charging"); // just the item name
 
   const p = periodBounds("2026-10-01", "2026-10-15");
   assert.equal(p.start, "2026-09-30T18:30:00.000Z");

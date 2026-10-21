@@ -51,3 +51,5 @@ public/           # images and logos
 ```
 
 Edit page text in `src/data/`. The components only handle layout.
+
+

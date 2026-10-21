@@ -29,16 +29,21 @@ const chargerType = (row) => {
 };
 
 // rows: cms_transactions rows (station_type, charger_name, type, mobile, energy_kwh).
+// ChargeMOD bills every session, so CPO sessions count in AC/DC too; `cpo` only says how
+// much of those totals they are.
 export function summarizeSessions(rows, cpoNumbers = new Set()) {
   const out = { AC: { kwh: 0, sessions: 0 }, DC: { kwh: 0, sessions: 0 }, cpo: { kwh: 0, sessions: 0 }, other: { kwh: 0, sessions: 0 } };
   for (const row of rows) {
     const kwh = Number(row.energy_kwh);
     if (!Number.isFinite(kwh) || kwh <= 0) continue; // failed or empty sessions are not billed
-    const bucket = isCpo(row, cpoNumbers) ? out.cpo : out[chargerType(row) ?? 'other'];
-    bucket.kwh += kwh;
-    bucket.sessions += 1;
+    const buckets = [out[chargerType(row) ?? 'other']];
+    if (isCpo(row, cpoNumbers)) buckets.push(out.cpo);
+    for (const bucket of buckets) {
+      bucket.kwh += kwh;
+      bucket.sessions += 1;
+    }
   }
-  for (const b of Object.values(out)) b.kwh = Math.round(b.kwh * 1000) / 1000;
+  for (const b of Object.values(out)) b.kwh = Math.round(b.kwh * 10000) / 10000;
   return out;
 }
 

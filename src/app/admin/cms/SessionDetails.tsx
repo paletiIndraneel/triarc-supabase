@@ -7,7 +7,7 @@ import { shortChargerLabel } from "./transactionFilters";
 import type { LiveState } from "./useLiveMetrics";
 
 const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
-const num = (n: number, digits = 1) => n.toLocaleString("en-IN", { maximumFractionDigits: digits });
+const num = (n: number, digits = 4) => n.toLocaleString("en-IN", { maximumFractionDigits: digits });
 
 function duration(minutes: number) {
   const m = Math.max(0, Math.round(minutes));
@@ -39,7 +39,7 @@ export default function SessionDetails({ session, live, onClose }: { session: Cm
   // to-full and time-left rows are left out once the readings show there is no SoC.
   const hasSoc = startSoc != null || currentSoc != null || metrics == null;
   const rows: Array<[string, React.ReactNode]> = [
-    ["Energy", energy == null ? dash : `${num(energy, 2)} kWh`],
+    ["Energy", energy == null ? dash : `${num(energy)} kWh`],
     ["Power now", metrics?.kwNow == null ? dash : `${num(metrics.kwNow)} kW`],
     ["Peak power", metrics?.peakKw == null ? dash : `${num(metrics.peakKw)} kW`],
   ];

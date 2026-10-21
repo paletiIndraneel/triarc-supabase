@@ -484,13 +484,14 @@ function displayCharger(value: string) {
 
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 type PeriodSplit = {
-  energy: { total: number; ac: number; dc: number; cpo: number };
+  energy: { total: number; ac: number; dc: number; cpo: number; cpoAc: number; cpoDc: number };
   revenue: { total: number; ac: number; dc: number };
 };
 
-// AC/DC energy and revenue exclude CPO sessions; the totals include them.
+// AC/DC energy and revenue exclude CPO sessions; the totals include them. CPO energy is also
+// split by charger (cpoAc/cpoDc).
 function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>): PeriodSplit {
-  const energy = { total: 0, ac: 0, dc: 0, cpo: 0 };
+  const energy = { total: 0, ac: 0, dc: 0, cpo: 0, cpoAc: 0, cpoDc: 0 };
   const revenue = { total: 0, ac: 0, dc: 0 };
   for (const transaction of transactions) {
     const cpo = isCpoTransaction(transaction, cpoMobileNumbers);
@@ -498,7 +499,11 @@ function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>)
     const kwh = Number(transaction.energyKwh);
     if (Number.isFinite(kwh) && kwh > 0) {
       energy.total += kwh;
-      if (cpo) energy.cpo += kwh;
+      if (cpo) {
+        energy.cpo += kwh;
+        const cpoCurrent = chargerCurrent(transaction);
+        if (cpoCurrent) energy[cpoCurrent === "ac" ? "cpoAc" : "cpoDc"] += kwh;
+      }
       else if (current) energy[current] += kwh;
     }
     const amount = Number(transaction.tariffAmount);
@@ -510,13 +515,14 @@ function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>)
   return { energy, revenue };
 }
 
-const formatKwh = (value: number) => `${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`;
+const formatKwh = (value: number) => `${value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`;
 
 function SplitCard({ title, split }: { title: string; split: PeriodSplit | null }) {
   const rows: Array<[string, number | undefined, number | undefined]> = [
     ["AC Charger", split?.energy.ac, split?.revenue.ac],
     ["DC Charger", split?.energy.dc, split?.revenue.dc],
-    ["CPO", split?.energy.cpo, undefined],
+    ["CPO AC", split?.energy.cpoAc, undefined],
+    ["CPO DC", split?.energy.cpoDc, undefined],
   ];
   return (
     <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
@@ -531,10 +537,10 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
         </thead>
         <tbody className="font-semibold whitespace-nowrap text-slate-800">
           {rows.map(([label, kwh, amount]) => (
-            <tr key={label} className={label === "CPO" ? "text-violet-700" : undefined}>
-              <th scope="row" className={`py-1 text-left text-xs ${label === "CPO" ? "font-semibold text-violet-600" : "font-medium text-slate-500"}`}>{label}</th>
+            <tr key={label} className={label.startsWith("CPO") ? "text-violet-700" : undefined}>
+              <th scope="row" className={`py-1 text-left text-xs ${label.startsWith("CPO") ? "font-semibold text-violet-600" : "font-medium text-slate-500"}`}>{label}</th>
               <td className="py-1 text-right">{kwh === undefined ? "—" : formatKwh(kwh)}</td>
-              <td className="py-1 text-right">{label === "CPO" ? "" : amount === undefined ? "—" : money(amount)}</td>
+              <td className="py-1 text-right">{label.startsWith("CPO") ? "" : amount === undefined ? "—" : money(amount)}</td>
             </tr>
           ))}
           <tr className="border-t border-slate-200 text-sm font-bold text-slate-900">
@@ -1171,7 +1177,7 @@ export default function CmsOperatorDashboard() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
                 <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
                   {historicalConsumption?.items[0]
-                    ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh`
+                    ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`
                     : "—"}
                 </p>
                 <p className="mt-1 text-xs font-medium text-slate-500">
@@ -1184,7 +1190,7 @@ export default function CmsOperatorDashboard() {
                   <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                     <p className="min-w-0 text-xs font-medium text-slate-500">{item.label}</p>
                     <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
-                      {item.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })} kWh
+                      {item.value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh
                     </p>
                   </div>
                 ))}
@@ -1500,7 +1506,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "chargerName" && displayCharger(transaction.chargerName)}
                           {columnId === "stationType" && (transaction.stationType ?? "—")}
                           {columnId === "stopReason" && (transaction.stopReason ?? "—")}
-                          {columnId === "energyKwh" && (transaction.energyKwh == null ? "—" : `${transaction.energyKwh.toFixed(2)} kWh`)}
+                          {columnId === "energyKwh" && (transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh))}
                           {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}

@@ -78,7 +78,7 @@ export function meterPatch(
   const charging = !row.stopped_at;
   const patch: Partial<CmsTransactionRow> = {};
   if (metrics.kwhDelivered != null && metrics.kwhDelivered > 0 && (charging || !((row.energy_kwh ?? 0) > 0))) {
-    patch.energy_kwh = Math.round(metrics.kwhDelivered * 1000) / 1000;
+    patch.energy_kwh = Math.round(metrics.kwhDelivered * 10000) / 10000;
   }
   if (metrics.startSoc != null && row.start_soc == null) patch.start_soc = metrics.startSoc;
   if (metrics.currentSoc != null && (charging || row.end_soc == null)) patch.end_soc = metrics.currentSoc;

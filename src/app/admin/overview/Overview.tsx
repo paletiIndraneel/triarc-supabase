@@ -23,7 +23,7 @@ type CmsState =
   | { status: "ok"; metrics: ReturnType<typeof overviewMetrics>; sessions: Transaction[]; active: number | null; live: Transaction[] | null; updatedAt: string | null; refreshing?: boolean };
 
 const inr = (n: number) => "₹" + Math.round(n).toLocaleString("en-IN");
-const kwh = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: n >= 100 ? 0 : 1 });
+const kwh = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 4 });
 const istDay = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 const istTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
 const dataTill = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });

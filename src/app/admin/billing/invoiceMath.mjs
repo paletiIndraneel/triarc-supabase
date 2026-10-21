@@ -25,6 +25,6 @@ export function gstinError(gstin){
 // Lines for the same item at the same rate become one line with the quantities added.
 export function mergeLines(items){
  const out=new Map();
- for(const x of items){const k=[x.inventory_id,x.description,x.hsn,x.unit,+x.unit_price,+x.gst_rate,+x.discount_percent||0].join('|'),prev=out.get(k);out.set(k,prev?{...prev,quantity:Math.round((+prev.quantity+ +x.quantity)*1000)/1000}:{...x})}
+ for(const x of items){const k=[x.inventory_id,x.description,x.hsn,x.unit,+x.unit_price,+x.gst_rate,+x.discount_percent||0].join('|'),prev=out.get(k);out.set(k,prev?{...prev,quantity:Math.round((+prev.quantity+ +x.quantity)*10000)/10000}:{...x})}
  return [...out.values()];
 }

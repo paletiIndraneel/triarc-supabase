@@ -139,6 +139,7 @@ test("mergeLines adds quantities of identical item lines and keeps different rat
   const merged = mergeLines([line("a", 1, 15), line("a", "0.1", 15), line("a", 0.2, 15), line("a", 2, 16)]);
   assert.equal(merged.length, 2);
   assert.equal(merged[0].quantity, 1.3);
+  assert.equal(mergeLines([line("b", 1.2345, 15), line("b", 0.0001, 15)])[0].quantity, 1.2346); // 4 decimals kept
   assert.equal(merged[1].quantity, 2);
   assert.equal(calc(merged, "IGST").total, calc([line("a", 1.3, 15), line("a", 2, 16)], "IGST").total);
 });
@@ -309,7 +310,7 @@ test("parseMeterValues finds readings in flat and OCPP-shaped payloads", () => {
   assert.equal(ocpp[0].value, 86);
 });
 
-test("summarizeSessions totals AC and DC for a period and leaves out CPO and empty sessions", async () => {
+test("summarizeSessions totals AC and DC like ChargeMOD's bill: CPO included (and shown), empty sessions left out", async () => {
   const { summarizeSessions, suggestedLines, periodBounds, itemFor } = await import("../src/app/admin/billing/sessionSuggestion.mjs");
   const rows = [
     { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "WALLET", mobile: "9000000001", energy_kwh: "33.965" },
@@ -320,7 +321,7 @@ test("summarizeSessions totals AC and DC for a period and leaves out CPO and emp
     { station_type: "DC", charger_name: "Triarc | DC 60kW CCS-2", type: "WALLET", mobile: null, energy_kwh: 0 }, // failed
   ];
   const s = summarizeSessions(rows, new Set(["9876543210"]));
-  assert.deepEqual(s.DC, { kwh: 53.812, sessions: 2 });
+  assert.deepEqual(s.DC, { kwh: 68.812, sessions: 4 }); // ChargeMOD bills CPO sessions too
   assert.deepEqual(s.AC, { kwh: 3.174, sessions: 1 });
   assert.deepEqual(s.cpo, { kwh: 15, sessions: 2 });
 
@@ -332,7 +333,7 @@ test("summarizeSessions totals AC and DC for a period and leaves out CPO and emp
   assert.equal(itemFor(inventory, "bpm", "DC").id, "dc-cm"); // the customer's own item wins
   assert.equal(itemFor(inventory, "other", "DC").id, "dc"); // else the general one
   const lines = suggestedLines(s, inventory, "bpm", "chargemod", "2026-10-01", "2026-10-15");
-  assert.deepEqual(lines.map((l) => [l.inventory_id, l.quantity, l.unit_price, l.source_sessions]), [["dc-cm", 53.812, 24, 2], ["ac", 3.174, 18, 1]]);
+  assert.deepEqual(lines.map((l) => [l.inventory_id, l.quantity, l.unit_price, l.source_sessions]), [["dc-cm", 68.812, 24, 4], ["ac", 3.174, 18, 1]]);
   assert.match(lines[0].description, /ChargeMOD sessions 01 Oct 2026 – 15 Oct 2026/);
 
   const p = periodBounds("2026-10-01", "2026-10-15");
@@ -405,9 +406,9 @@ test("previousBillingCycle picks the cycle before the current one, in IST", () =
 
 test("meterPatch fills Energy/SoC while charging, only empty columns once finished", () => {
   const m = { kwhDelivered: 12.3456, startSoc: 20, currentSoc: 55 };
-  assert.deepEqual(meterPatch({ stopped_at: null, energy_kwh: 0, start_soc: null, end_soc: 30 }, m), { energy_kwh: 12.346, start_soc: 20, end_soc: 55 });
+  assert.deepEqual(meterPatch({ stopped_at: null, energy_kwh: 0, start_soc: null, end_soc: 30 }, m), { energy_kwh: 12.3456, start_soc: 20, end_soc: 55 });
   assert.deepEqual(meterPatch({ stopped_at: "2026-10-20T10:00:00Z", energy_kwh: 11.9, start_soc: 21, end_soc: 80 }, m), {});
-  assert.deepEqual(meterPatch({ stopped_at: "2026-10-20T10:00:00Z", energy_kwh: null, start_soc: null, end_soc: null }, m), { energy_kwh: 12.346, start_soc: 20, end_soc: 55 });
+  assert.deepEqual(meterPatch({ stopped_at: "2026-10-20T10:00:00Z", energy_kwh: null, start_soc: null, end_soc: null }, m), { energy_kwh: 12.3456, start_soc: 20, end_soc: 55 });
   assert.deepEqual(meterPatch({ stopped_at: null, energy_kwh: 5, start_soc: 10, end_soc: null }, { kwhDelivered: null, startSoc: null, currentSoc: null }), {});
 });
 

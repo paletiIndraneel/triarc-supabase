@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import type { CmsTransaction } from "@/lib/cms/types";
-import type { LiveMetrics } from "@/lib/cms/liveMetrics";
 import { shortChargerLabel } from "./transactionFilters";
+import type { LiveState } from "./useLiveMetrics";
 
-const REFRESH_MS = 30_000;
 const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
 const num = (n: number, digits = 1) => n.toLocaleString("en-IN", { maximumFractionDigits: digits });
 
@@ -16,51 +15,16 @@ function duration(minutes: number) {
 }
 
 // Details of one live session, opened from the Status card. Metrics come from the session's
-// meter values via /api/cms/live and refresh while the panel is open and the tab is visible.
-export default function SessionDetails({ session, onClose }: { session: CmsTransaction; onClose: () => void }) {
+// meter values, which the dashboard polls for every charging session (useLiveMetrics).
+export default function SessionDetails({ session, live, onClose }: { session: CmsTransaction; live: LiveState | undefined; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [metrics, setMetrics] = useState<LiveMetrics | null>(null);
-  const [error, setError] = useState("");
+  const metrics = live?.metrics ?? null;
+  const error = live?.error ?? "";
   const id = session.transactionId || session.id;
 
   useEffect(() => {
     ref.current?.showModal();
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const endpoint = `/api/cms/live/${encodeURIComponent(id)}`;
-        console.info("[SessionDetails] Requesting live transaction details", { endpoint });
-        const response = await fetch(endpoint, { cache: "no-store" });
-        const rawBody = await response.text();
-        let data: (LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown }) | null = null;
-        try {
-          data = JSON.parse(rawBody) as LiveMetrics & { error?: string; transactionDetails?: unknown; parsedReadings?: unknown };
-        } catch {
-          // Non-JSON response is surfaced as an inline error below.
-        }
-        if (cancelled) return;
-        if (!response.ok) {
-          const message = (data?.error ?? rawBody) || `HTTP ${response.status}`;
-          throw new Error(message);
-        }
-        if (!data) throw new Error(`Live transaction API returned non-JSON data (HTTP ${response.status}): ${rawBody.slice(0, 500)}`);
-        setMetrics(data);
-        setError("");
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Live readings are unavailable.");
-      }
-    };
-    void load();
-    const timer = window.setInterval(load, REFRESH_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [id]);
 
   // Start SoC comes from the transaction record; Current SoC comes only from the latest live meter reading.
   const startSoc = session.startSoc ?? metrics?.startSoc ?? null;

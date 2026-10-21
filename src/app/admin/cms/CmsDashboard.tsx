@@ -18,10 +18,11 @@ import {
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
-import { fromStoredRow, HISTORY_BACKFILL_DAYS } from "@/lib/cms/transactionStore";
+import { fromStoredRow, previousBillingCycle } from "@/lib/cms/transactionStore";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
 import SessionDetails from "./SessionDetails";
+import { useLiveMetrics, withLiveValues } from "./useLiveMetrics";
 
 // Sessions saved in cms_transactions that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
@@ -854,16 +855,17 @@ export default function CmsOperatorDashboard() {
 
   const startHistoricalBackfill = useCallback(async () => {
     if (backfillRunning) return;
+    // One fixed window, the previous billing cycle, for both stages and every batch of this run.
+    const { from, to } = previousBillingCycle();
+    const day = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+    const cycle = `${day.format(new Date(from))} – ${day.format(new Date(Date.parse(to) - 1))}`;
     const confirmed = window.confirm(
-      `Start history backfill? This saves every ChargeMOD session from the last ${HISTORY_BACKFILL_DAYS} days, then fetches their meter readings in batches. It may take several minutes.`
+      `Start history backfill for the previous billing cycle (${cycle})? This saves every ChargeMOD session in it, then fetches their meter readings in batches. It may take several minutes.`
     );
     if (!confirmed) return;
 
     setBackfillRunning(true);
-    setBackfillStatus(`Fetching sessions from the last ${HISTORY_BACKFILL_DAYS} days…`);
-    // One fixed window for both stages and every batch of this run.
-    const to = new Date().toISOString();
-    const from = new Date(Date.parse(to) - HISTORY_BACKFILL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    setBackfillStatus(`Fetching sessions for ${cycle}…`);
     const post = async (body: Record<string, unknown>) => {
       const response = await fetch("/api/cms/live/backfill", {
         method: "POST",
@@ -1052,6 +1054,9 @@ export default function CmsOperatorDashboard() {
   }, [allTransactions, activeTransactions]);
   // Stuck sessions (past 7 hours, or an older duplicate on the same gun) are not counted as charging.
   const { live: liveSessions } = useMemo(() => splitActiveSessions(activeSessions), [activeSessions]);
+  // Live meter readings for every charging session; the Status list shows their Energy.
+  const liveById = useLiveMetrics(liveSessions.map((s) => s.transactionId || s.id));
+  const liveShown = useMemo(() => liveSessions.map((s) => withLiveValues(s, liveById[s.transactionId || s.id])), [liveSessions, liveById]);
   const activeCount = activeSessions.length ? liveSessions.length : active;
   const locationCount = Math.max(collectionLength(baseDashboard?.locations), locationOptions.length);
 
@@ -1190,7 +1195,7 @@ export default function CmsOperatorDashboard() {
             names={locationOptions}
             live={new Set(liveSessions.map((session) => session.location))}
           />
-          <StatusCard count={activeCount} sessions={liveSessions} showLocation={locationCount > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
+          <StatusCard count={activeCount} sessions={liveShown} showLocation={locationCount > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
@@ -1567,7 +1572,7 @@ export default function CmsOperatorDashboard() {
     </main>
     {(() => {
       const open = openSessionId ? liveSessions.find((s) => (s.transactionId || s.id) === openSessionId) : null;
-      return open ? <SessionDetails session={open} onClose={() => setOpenSessionId(null)} /> : null;
+      return open ? <SessionDetails session={open} live={liveById[openSessionId!]} onClose={() => setOpenSessionId(null)} /> : null;
     })()}
     </>
   );

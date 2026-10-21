@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { backfillWindow, fromStoredRow, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
+import { backfillWindow, fromStoredRow, keepMeterValues, meterPatch, previousBillingCycle, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
@@ -377,4 +377,35 @@ test("storedRows keeps one row per session and prefers the finished copy", () =>
   assert.equal(rows.length, 2);
   assert.equal(rows.find((r) => r.transaction_id === "a").stopped_at, "2026-10-20T10:00:00Z");
   assert.ok(rows.some((r) => r.transaction_id === "b"));
+});
+
+test("previousBillingCycle picks the cycle before the current one, in IST", () => {
+  // 21 Oct (16th–end cycle) -> 1–15 Oct
+  assert.deepEqual(previousBillingCycle(new Date("2026-10-21T08:00:00Z")), { from: "2026-09-30T18:30:00.000Z", to: "2026-10-15T18:30:00.000Z" });
+  // 5 Oct (1st–15th cycle) -> 16–30 Sep
+  assert.deepEqual(previousBillingCycle(new Date("2026-10-05T08:00:00Z")), { from: "2026-09-15T18:30:00.000Z", to: "2026-09-30T18:30:00.000Z" });
+  // 10 Jan -> 16–31 Dec of the year before (a 16-day cycle the window check accepts)
+  const jan = previousBillingCycle(new Date("2027-01-10T08:00:00Z"));
+  assert.deepEqual(jan, { from: "2026-12-15T18:30:00.000Z", to: "2026-12-31T18:30:00.000Z" });
+  assert.deepEqual(backfillWindow(jan.from, jan.to, Date.parse("2027-01-10T08:00:00Z")), jan);
+  // 00:10 IST on the 16th is already the second half
+  assert.equal(previousBillingCycle(new Date("2026-10-15T18:40:00Z")).to, "2026-10-15T18:30:00.000Z");
+});
+
+test("meterPatch fills Energy/SoC while charging, only empty columns once finished", () => {
+  const m = { kwhDelivered: 12.3456, startSoc: 20, currentSoc: 55 };
+  assert.deepEqual(meterPatch({ stopped_at: null, energy_kwh: 0, start_soc: null, end_soc: 30 }, m), { energy_kwh: 12.346, start_soc: 20, end_soc: 55 });
+  assert.deepEqual(meterPatch({ stopped_at: "2026-10-20T10:00:00Z", energy_kwh: 11.9, start_soc: 21, end_soc: 80 }, m), {});
+  assert.deepEqual(meterPatch({ stopped_at: "2026-10-20T10:00:00Z", energy_kwh: null, start_soc: null, end_soc: null }, m), { energy_kwh: 12.346, start_soc: 20, end_soc: 55 });
+  assert.deepEqual(meterPatch({ stopped_at: null, energy_kwh: 5, start_soc: 10, end_soc: null }, { kwhDelivered: null, startSoc: null, currentSoc: null }), {});
+});
+
+test("keepMeterValues keeps stored meter figures on charging sessions only", () => {
+  const stored = [{ transaction_id: "a", energy_kwh: 8.2, start_soc: 20, end_soc: 60 }, { transaction_id: "b", energy_kwh: 9, start_soc: 10, end_soc: 90 }];
+  const [a, b] = keepMeterValues(
+    [{ transaction_id: "a", stopped_at: null, energy_kwh: 0, start_soc: null, end_soc: null }, { transaction_id: "b", stopped_at: "2026-10-20T10:00:00Z", energy_kwh: 9.4, start_soc: 11, end_soc: 92 }],
+    stored
+  );
+  assert.deepEqual([a.energy_kwh, a.start_soc, a.end_soc], [8.2, 20, 60]);
+  assert.deepEqual([b.energy_kwh, b.end_soc], [9.4, 92]); // finished: ChargeMOD's final values
 });

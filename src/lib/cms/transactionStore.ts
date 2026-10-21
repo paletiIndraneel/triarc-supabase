@@ -4,18 +4,32 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CmsTransaction, CmsTransactionRow } from "./types";
 import type { MeterResult } from "./provider";
 
-// The history backfill button covers this many days back from when it is pressed.
-export const HISTORY_BACKFILL_DAYS = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// A billing cycle is at most 16 days (16th to the 31st).
+const MAX_BACKFILL_DAYS = 16;
+
+// The history backfill button covers the previous billing cycle (IST): pressed on the
+// 16th–month end it is the 1st–15th of this month; on the 1st–15th, the 16th–end of last month.
+// `to` is exclusive.
+export function previousBillingCycle(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "numeric", day: "numeric" })
+    .formatToParts(now);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const [year, month, day] = [get("year"), get("month"), get("day")];
+  const istMidnight = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d) - 330 * 60 * 1000).toISOString();
+  return day >= 16
+    ? { from: istMidnight(year, month, 1), to: istMidnight(year, month, 16) }
+    : { from: istMidnight(year, month - 1, 16), to: istMidnight(year, month, 1) };
+}
 
 // Checks a backfill window sent by the browser: valid ISO times, from < to, not in the
-// future and no longer than HISTORY_BACKFILL_DAYS (plus a day of slack). Null when invalid.
+// future and no longer than a billing cycle. Null when invalid.
 export function backfillWindow(from: unknown, to: unknown, now = Date.now()) {
   if (typeof from !== "string" || typeof to !== "string") return null;
   const start = Date.parse(from);
   const end = Date.parse(to);
   if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) return null;
-  if (end > now + 5 * 60 * 1000 || end - start > (HISTORY_BACKFILL_DAYS + 1) * DAY_MS) return null;
+  if (end > now + 5 * 60 * 1000 || end - start > MAX_BACKFILL_DAYS * DAY_MS) return null;
   return { from: new Date(start).toISOString(), to: new Date(end).toISOString() };
 }
 
@@ -30,8 +44,51 @@ export function storedRows(active: CmsTransaction[], finished: CmsTransaction[],
   return Array.from(byId.values());
 }
 
+type MeterFields = Pick<CmsTransactionRow, "transaction_id" | "energy_kwh" | "start_soc" | "end_soc">;
+
+// ChargeMOD's copy of a session still charging often has energy 0 and no SoC. Keep the
+// values the meter readings stored on those rows rather than wiping them on every sync.
+export function keepMeterValues(rows: CmsTransactionRow[], stored: MeterFields[]) {
+  const byId = new Map(stored.map((s) => [s.transaction_id, s]));
+  return rows.map((row) => {
+    const known = byId.get(row.transaction_id);
+    if (row.stopped_at || !known) return row;
+    return {
+      ...row,
+      energy_kwh: (row.energy_kwh ?? 0) > 0 ? row.energy_kwh : known.energy_kwh ?? row.energy_kwh,
+      start_soc: row.start_soc ?? known.start_soc,
+      end_soc: row.end_soc ?? known.end_soc,
+    };
+  });
+}
+
+// The session columns meter readings fill in: everything while the session is charging,
+// only empty columns once it has finished (ChargeMOD's final figures win).
+export function meterPatch(
+  row: Pick<CmsTransactionRow, "stopped_at" | "energy_kwh" | "start_soc" | "end_soc">,
+  metrics: MeterResult["metrics"]
+) {
+  const charging = !row.stopped_at;
+  const patch: Partial<CmsTransactionRow> = {};
+  if (metrics.kwhDelivered != null && metrics.kwhDelivered > 0 && (charging || !((row.energy_kwh ?? 0) > 0))) {
+    patch.energy_kwh = Math.round(metrics.kwhDelivered * 1000) / 1000;
+  }
+  if (metrics.startSoc != null && row.start_soc == null) patch.start_soc = metrics.startSoc;
+  if (metrics.currentSoc != null && (charging || row.end_soc == null)) patch.end_soc = metrics.currentSoc;
+  return patch;
+}
+
 // Upserts by transaction_id in chunks of 500 and stops at the first failed chunk.
 export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransactionRow[]) {
+  const openIds = rows.filter((row) => !row.stopped_at).map((row) => row.transaction_id);
+  if (openIds.length) {
+    const { data, error } = await supabase
+      .from("cms_transactions")
+      .select("transaction_id,energy_kwh,start_soc,end_soc")
+      .in("transaction_id", openIds);
+    if (error) console.error("[cms] reading stored meter values failed:", error.message);
+    else rows = keepMeterValues(rows, data as MeterFields[]);
+  }
   let written = 0;
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
@@ -42,12 +99,21 @@ export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransa
   return { written, error: null };
 }
 
-// Stores a session's latest meter readings on its row. Returns an error message, or null when
-// saved; an update RLS refuses changes no rows without an error, so that counts as failed too.
+// Stores a session's latest meter readings on its row, and the Energy/SoC they give (see
+// meterPatch). Returns an error message, or null when saved; an update RLS refuses changes no
+// rows without an error, so that counts as failed too.
 export async function saveMeterReadings(supabase: SupabaseClient, transactionId: string, meter: MeterResult) {
+  const { data: row, error: readError } = await supabase
+    .from("cms_transactions")
+    .select("stopped_at,energy_kwh,start_soc,end_soc")
+    .eq("transaction_id", transactionId)
+    .maybeSingle();
+  if (readError) return readError.message;
+  if (!row) return "session is not stored yet";
   const { data, error } = await supabase
     .from("cms_transactions")
     .update({
+      ...meterPatch(row, meter.metrics),
       meter_values_response: meter.payload,
       meter_values_readings: meter.readings,
       current_soc: meter.metrics.currentSoc,

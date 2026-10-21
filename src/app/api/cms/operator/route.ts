@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
 import { getChargingProvider, providerErrorMessage } from "@/lib/cms/provider";
-import { fromStoredRow, storedRows, syncStartDate, upsertStoredRows } from "@/lib/cms/transactionStore";
+import { fromStoredRow, MAX_ACTIVE_MS, storedRows, syncStartDate, upsertStoredRows } from "@/lib/cms/transactionStore";
 import type { CmsTransactionRow } from "@/lib/cms/types";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +61,9 @@ export async function GET(request: Request) {
     if (!searchKey) {
       const latestStart = (open: boolean) => {
         let query = supabase.from("cms_transactions").select("started_at").not("started_at", "is", null);
-        if (open) query = query.is("stopped_at", null);
+        // Only open sessions from the last MAX_ACTIVE_MS: an older one is a ChargeMOD ghost and,
+        // as the oldest, would hide the real ones still waiting for their stop time.
+        if (open) query = query.is("stopped_at", null).gte("started_at", new Date(Date.now() - MAX_ACTIVE_MS).toISOString());
         return query.order("started_at", { ascending: open }).limit(1).maybeSingle();
       };
       const [newest, oldestOpen] = await Promise.all([

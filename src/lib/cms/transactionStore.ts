@@ -156,7 +156,11 @@ export function fromStoredRow(row: CmsTransactionRow): CmsTransaction {
 
 // Where the ChargeMOD fetch starts: the whole window when nothing is stored yet; otherwise
 // the newest stored session's start, or the oldest still-charging stored session's start
-// when that is earlier (so it gets its final values). Never before the window itself.
+// when that is earlier (so it gets its final values). Starts SYNC_OVERLAP_MS early, since
+// ChargeMOD leaves out a session that starts exactly at startDate (re-saving one is harmless).
+// Never before the window itself.
+const SYNC_OVERLAP_MS = 60 * 1000;
+
 export function syncStartDate(
   windowStart: string,
   newestStoredStart: string | null | undefined,
@@ -168,5 +172,6 @@ export function syncStartDate(
     const open = new Date(oldestOpenStart).getTime();
     if (open < start && start - open <= MAX_ACTIVE_MS) start = open;
   }
+  start -= SYNC_OVERLAP_MS;
   return start > new Date(windowStart).getTime() ? new Date(start).toISOString() : windowStart;
 }

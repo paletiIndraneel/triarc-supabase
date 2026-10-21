@@ -191,10 +191,12 @@ test("delta sync starts at the newest stored session, or the oldest one still ch
   const windowStart = "2026-08-31T18:30:00.000Z";
   const newest = "2026-10-16T10:00:00.000Z";
   assert.equal(syncStartDate(windowStart, null), windowStart);
-  assert.equal(syncStartDate(windowStart, newest), newest);
-  assert.equal(syncStartDate(windowStart, newest, "2026-10-16T08:00:00.000Z"), "2026-10-16T08:00:00.000Z");
+  // one minute early: ChargeMOD leaves out a session starting exactly at startDate
+  assert.equal(syncStartDate(windowStart, newest), "2026-10-16T09:59:00.000Z");
+  assert.equal(syncStartDate(windowStart, newest, "2026-10-16T08:00:00.000Z"), "2026-10-16T07:59:00.000Z");
   // a session "charging" for more than 2 days is stuck and doesn't hold the sync back
-  assert.equal(syncStartDate(windowStart, newest, "2026-10-10T08:00:00.000Z"), newest);
+  assert.equal(syncStartDate(windowStart, newest, "2026-10-10T08:00:00.000Z"), "2026-10-16T09:59:00.000Z");
+  assert.equal(syncStartDate(windowStart, "2026-08-31T18:30:30.000Z"), windowStart);
   assert.equal(syncStartDate(windowStart, "2026-08-01T00:00:00.000Z"), windowStart);
 });
 

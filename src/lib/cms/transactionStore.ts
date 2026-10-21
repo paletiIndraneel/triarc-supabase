@@ -4,6 +4,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CmsTransaction, CmsTransactionRow } from "./types";
 import type { MeterResult } from "./provider";
 
+// ChargeMOD joins first and last name itself and sends "Guest User undefined" when a part
+// is missing. Drops "undefined"/"null" words and extra spaces; "Unknown" when nothing is left.
+export function cleanUserName(value: unknown) {
+  const name = String(value ?? "").split(/\s+/).filter((word) => word && !/^(undefined|null)$/i.test(word)).join(" ");
+  return name || "Unknown";
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 // A billing cycle is at most 16 days (16th to the 31st).
 const MAX_BACKFILL_DAYS = 16;

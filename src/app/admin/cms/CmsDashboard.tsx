@@ -951,6 +951,20 @@ export default function CmsOperatorDashboard() {
     }
   }, [backfillRunning]);
 
+  // Live sessions for the Active now card; a stored copy can carry better energy figures.
+  const activeSessions = useMemo(() => {
+    const stored = new Map(allTransactions.map((t) => [t.transactionId || t.id, t]));
+    return activeTransactions
+      .map((t) => {
+        const known = stored.get(t.transactionId || t.id);
+        return known ? mergeTransactionData(known, t) : t;
+      });
+  }, [allTransactions, activeTransactions]);
+  // Stuck sessions (past 7 hours, or an older duplicate on the same gun) are not counted as charging.
+  const { live: liveSessions } = useMemo(() => splitActiveSessions(activeSessions), [activeSessions]);
+  // Live meter readings for every charging session; the Status list shows their Energy.
+  const liveById = useLiveMetrics(liveSessions.map((s) => s.transactionId || s.id));
+  const liveShown = useMemo(() => liveSessions.map((s) => withLiveValues(s, liveById[s.transactionId || s.id])), [liveSessions, liveById]);
   const transactions = useMemo(() => {
     const dateRange =
       datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
@@ -969,7 +983,8 @@ export default function CmsOperatorDashboard() {
       uniqueLive.set(key, existing ? mergeTransactionData(existing, transaction) : transaction);
     }
 
-    const live = Array.from(uniqueLive.values());
+    // Charging sessions show their live meter Energy/SoC, the same figures as the Status list.
+    const live = Array.from(uniqueLive.values()).map((t) => withLiveValues(t, liveById[t.transactionId || t.id]));
     const liveKeys = new Set(live.map((transaction) => transaction.transactionId || transaction.id));
     // Do not let a stale stored/completed copy hide the live version of the same session.
     const completedOrHistorical = filtered.filter(
@@ -982,7 +997,7 @@ export default function CmsOperatorDashboard() {
     return [...live, ...completedOrHistorical].filter((transaction) =>
       matchesTransactionFilters(transaction, filters, isLive(transaction), cpoMobileNumbers)
     );
-  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers]);
+  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers, liveById]);
   const locationOptions = useMemo(
     () => [...new Set(allTransactions.map((transaction) => transaction.location).filter(Boolean))].sort(),
     [allTransactions]
@@ -1043,20 +1058,6 @@ export default function CmsOperatorDashboard() {
       ? (summary.transactionDetails as Record<string, unknown>)
       : {};
   // From the location list, not the filtered rows, so a quiet day doesn't show 0.
-  // Live sessions for the Active now card; a stored copy can carry better energy figures.
-  const activeSessions = useMemo(() => {
-    const stored = new Map(allTransactions.map((t) => [t.transactionId || t.id, t]));
-    return activeTransactions
-      .map((t) => {
-        const known = stored.get(t.transactionId || t.id);
-        return known ? mergeTransactionData(known, t) : t;
-      });
-  }, [allTransactions, activeTransactions]);
-  // Stuck sessions (past 7 hours, or an older duplicate on the same gun) are not counted as charging.
-  const { live: liveSessions } = useMemo(() => splitActiveSessions(activeSessions), [activeSessions]);
-  // Live meter readings for every charging session; the Status list shows their Energy.
-  const liveById = useLiveMetrics(liveSessions.map((s) => s.transactionId || s.id));
-  const liveShown = useMemo(() => liveSessions.map((s) => withLiveValues(s, liveById[s.transactionId || s.id])), [liveSessions, liveById]);
   const activeCount = activeSessions.length ? liveSessions.length : active;
   const locationCount = Math.max(collectionLength(baseDashboard?.locations), locationOptions.length);
 

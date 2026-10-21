@@ -1,6 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ChargeModTransaction, CmsTransaction } from "./types";
+import { cleanUserName } from "./transactionStore";
 
 type CmsConfig = {
   enabled: boolean;
@@ -975,7 +976,7 @@ export function sanitizeTransaction(raw: ChargeModTransaction): CmsTransaction {
     connectorId: toNumber(raw.connectorId),
     startedAt: raw.startAt ?? null,
     stoppedAt: raw.stopAt ?? null,
-    userName: String(raw.userName ?? "Unknown"),
+    userName: cleanUserName(raw.userName),
     mobile:
       raw.userMobile !== null && raw.userMobile !== undefined && String(raw.userMobile).trim() !== ""
         ? String(raw.userMobile)

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { backfillWindow, fromStoredRow, keepMeterValues, meterPatch, previousBillingCycle, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
+import { backfillWindow, cleanUserName, fromStoredRow, keepMeterValues, meterPatch, previousBillingCycle, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
@@ -408,4 +408,13 @@ test("keepMeterValues keeps stored meter figures on charging sessions only", () 
   );
   assert.deepEqual([a.energy_kwh, a.start_soc, a.end_soc], [8.2, 20, 60]);
   assert.deepEqual([b.energy_kwh, b.end_soc], [9.4, 92]); // finished: ChargeMOD's final values
+});
+
+test("cleanUserName drops ChargeMOD's undefined/null name parts", () => {
+  assert.equal(cleanUserName("Guest User undefined"), "Guest User");
+  assert.equal(cleanUserName("Kotapati Srinivasa Reddy  undefined"), "Kotapati Srinivasa Reddy");
+  assert.equal(cleanUserName(" venky undefined"), "venky");
+  assert.equal(cleanUserName("undefined null"), "Unknown");
+  assert.equal(cleanUserName(null), "Unknown");
+  assert.equal(cleanUserName("Undefinedson Rao"), "Undefinedson Rao");
 });

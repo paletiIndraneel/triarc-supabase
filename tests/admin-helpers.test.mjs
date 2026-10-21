@@ -2,7 +2,7 @@
 import { liveMetrics, parseMeterValues } from "../src/lib/cms/liveMetrics.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
+import { calc, gstinError, mergeLines, rateExGst, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
 import { backfillWindow, cleanUserName, fromStoredRow, keepMeterValues, meterPatch, previousBillingCycle, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
@@ -10,29 +10,38 @@ import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters,
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
 
-test("calc splits GST into CGST+SGST within Telangana", () => {
-  const t = calc([item(100, 20)], "CGST_SGST");
-  assert.equal(t.taxable, 2000);
-  assert.equal(t.cgst, 180);
-  assert.equal(t.sgst, 180);
+test("calc takes GST out of a GST-inclusive rate, CGST+SGST within Telangana", () => {
+  const t = calc([item(100, 23.6)], "CGST_SGST");
+  assert.ok(Math.abs(t.taxable - 2000) < 1e-9);
+  assert.ok(Math.abs(t.cgst - 180) < 1e-9);
+  assert.ok(Math.abs(t.sgst - 180) < 1e-9);
   assert.equal(t.igst, 0);
-  assert.equal(t.total, 2360);
+  assert.equal(t.total, 2360); // quantity x rate: GST is inside the rate, not added on top
+  assert.ok(Math.abs(t.rows[0].line_total - 2360) < 1e-9);
 });
 
-test("calc charges IGST outside Telangana", () => {
+test("calc charges IGST outside Telangana, still inside the rate", () => {
   const t = calc([item(100, 20)], "IGST");
-  assert.equal(t.igst, 360);
+  assert.ok(Math.abs(t.taxable - 2000 / 1.18) < 1e-9);
+  assert.ok(Math.abs(t.igst - (2000 - 2000 / 1.18)) < 1e-9);
   assert.equal(t.cgst + t.sgst, 0);
-  assert.equal(t.total, 2360);
+  assert.equal(t.total, 2000);
 });
 
-test("calc applies discounts before tax and rounds the total to the rupee", () => {
+test("calc applies discounts to the inclusive amount and rounds the total to the rupee", () => {
   const t = calc([item(10.5, 19.99, 18, 10), item(3, 7.33)], "CGST_SGST");
-  const taxable = 10.5 * 19.99 * 0.9 + 3 * 7.33;
-  assert.ok(Math.abs(t.taxable - taxable) < 1e-9);
+  const incl = 10.5 * 19.99 * 0.9 + 3 * 7.33;
+  assert.ok(Math.abs(t.taxable - incl / 1.18) < 1e-9);
   assert.equal(t.rows[0].discount_amount, 10.5 * 19.99 * 0.1);
-  assert.equal(t.total, Math.round(taxable * 1.18));
+  assert.equal(t.total, Math.round(incl));
   assert.ok(Math.abs(t.round) <= 0.5);
+});
+
+test("rateExGst is the rate the invoice prints: quantity x it = taxable amount", () => {
+  assert.ok(Math.abs(rateExGst(23.6, 18) - 20) < 1e-9);
+  assert.equal(rateExGst(20, 0), 20);
+  const t = calc([item(37.5, 22)], "IGST");
+  assert.ok(Math.abs(37.5 * rateExGst(22, 18) - t.rows[0].taxable_amount) < 1e-9);
 });
 
 test("words reads rupees and paise", () => {

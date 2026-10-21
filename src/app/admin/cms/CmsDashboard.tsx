@@ -18,9 +18,9 @@ import {
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
-import { fromStoredRow } from "@/lib/cms/transactionStore";
+import { fromStoredRow, HISTORY_BACKFILL_DAYS } from "@/lib/cms/transactionStore";
 import { supabase } from "@/lib/supabase/billing";
-import { getCpoMobileNumbers } from "./cpoNumbersCache";
+import { matchCpoMobiles } from "./cpoNumbersCache";
 import SessionDetails from "./SessionDetails";
 
 // Sessions saved in cms_transactions that started in [from, to), oldest first.
@@ -191,13 +191,11 @@ function fetchOperatorData(query: string, key: string) {
 
 
 // Switching modules remounts the dashboard, so these answers are kept for the tab instead of
-// re-requested on every switch. CPO numbers (only consulted when ChargeMOD leaves a
+// re-requested on every switch. CPO number matches (only consulted when ChargeMOD leaves a
 // transaction's type empty) live in ./cpoNumbersCache, which CPO Settings clears on save.
 // Column preferences are refreshed after CMS_CACHE_MAX_AGE_MS and updated on save.
 let columnPrefsMemo: { at: number; value: Promise<unknown> } | null = null;
 const memoFresh = (memo: { at: number } | null) => Boolean(memo && Date.now() - memo.at < CMS_CACHE_MAX_AGE_MS);
-
-const fetchCpoMobileNumbers = getCpoMobileNumbers;
 
 function fetchColumnPreferences(): Promise<unknown> {
   if (!memoFresh(columnPrefsMemo)) {
@@ -700,7 +698,6 @@ export default function CmsOperatorDashboard() {
       // Fetch one consistent transaction window for all dashboard metrics and the
       // table; the table's date filter is applied client-side and never refetches. It covers the previous
       // calendar month and the current month-to-date.
-      const cpoMobileNumbersRequest = fetchCpoMobileNumbers();
       const apply = async (cache: CmsCache) => {
       if (cache.dashboard) setBaseDashboard(cache.dashboard);
       const activeData = cache.active ?? {};
@@ -765,7 +762,9 @@ export default function CmsOperatorDashboard() {
         setTotalEnergyToday(todayTransactions.reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0));
         setTotalRevenueToday(todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0));
 
-        const cpoMobileNumbers = await cpoMobileNumbersRequest;
+        const cpoMobileNumbers = await matchCpoMobiles(
+          metricTransactions.filter((transaction) => !transaction.type?.trim()).map((transaction) => transaction.mobile)
+        );
         setCpoMobileNumbers(cpoMobileNumbers);
         const mtdTransactions = filterTransactionsByRange(
           metricTransactions,
@@ -856,23 +855,50 @@ export default function CmsOperatorDashboard() {
   const startHistoricalBackfill = useCallback(async () => {
     if (backfillRunning) return;
     const confirmed = window.confirm(
-      "Start historical ChargeMOD meter-values backfill? This will fetch readings for old transactions in batches and may take several minutes."
+      `Start history backfill? This saves every ChargeMOD session from the last ${HISTORY_BACKFILL_DAYS} days, then fetches their meter readings in batches. It may take several minutes.`
     );
     if (!confirmed) return;
 
     setBackfillRunning(true);
-    setBackfillStatus("Starting historical backfill…");
+    setBackfillStatus(`Fetching sessions from the last ${HISTORY_BACKFILL_DAYS} days…`);
+    // One fixed window for both stages and every batch of this run.
+    const to = new Date().toISOString();
+    const from = new Date(Date.parse(to) - HISTORY_BACKFILL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    const post = async (body: Record<string, unknown>) => {
+      const response = await fetch("/api/cms/live/backfill", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ from, to, ...body }),
+      });
+      return { response, result: await response.json().catch(() => ({})) };
+    };
     let totalSucceeded = 0;
     let totalFailed = 0;
+    const failedIds = new Set<string>();
+    let sourceWarning = "";
     try {
+      const sync = await post({ stage: "transactions" });
+      const synced = sync.result as {
+        retrieved?: { cms: number; ocpi: number };
+        sessions?: number;
+        synced?: number;
+        sourceErrors?: string[];
+        error?: string;
+      };
+      if (!sync.response.ok) {
+        throw new Error(`${synced.error || `Session sync failed (HTTP ${sync.response.status})`}. Meter readings were not fetched.`);
+      }
+      if (synced.sourceErrors?.length) {
+        console.warn("Backfill source errors:", synced.sourceErrors);
+        sourceWarning = ` · OCPI failed (${synced.sourceErrors.join("; ")}), so OCPI sessions may be missing; run it again later`;
+      }
+      const sessionsLine = `${(synced.synced ?? 0).toLocaleString()} sessions saved (CMS ${synced.retrieved?.cms ?? 0}, OCPI ${synced.retrieved?.ocpi ?? 0})`;
+      setBackfillStatus(`${sessionsLine}${sourceWarning} · fetching meter readings…`);
+
       for (let batch = 1; batch <= 30; batch += 1) {
-        const response = await fetch("/api/cms/live/backfill", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify({ limit: 10 }),
-        });
-        const result = await response.json().catch(() => ({})) as {
+        const { response, result: raw } = await post({ stage: "meters", limit: 10, exclude: [...failedIds] });
+        const result = raw as {
           requested?: number;
           succeeded?: number;
           failed?: number;
@@ -884,52 +910,37 @@ export default function CmsOperatorDashboard() {
         };
         if (!response.ok) {
           console.error(`Batch ${batch} failed with HTTP ${response.status}.`, result);
-          throw new Error(result.error || `Backfill request failed (HTTP ${response.status}).`);
+          throw new Error(`${sessionsLine}, but meter readings stopped: ${result.error || `HTTP ${response.status}`}`);
         }
 
         totalSucceeded += result.succeeded ?? 0;
         totalFailed += result.failed ?? 0;
+        for (const failure of result.failures ?? []) failedIds.add(failure.transactionId);
         if (result.failures?.length) {
-          console.warn(`Batch ${batch} transaction failures:`);
+          console.warn(`Batch ${batch} meter-reading failures:`);
           console.table(result.failures);
         }
-        setBackfillStatus(
-          `Backfill running · ${totalSucceeded.toLocaleString()} fetched · ${(result.remaining ?? "unknown").toLocaleString()} remaining · ${totalFailed} failed`
-        );
+        const meters = `meter readings: ${totalSucceeded.toLocaleString()} saved · ${totalFailed} failed · ${(result.remaining ?? "unknown").toLocaleString()} remaining`;
+        setBackfillStatus(`${sessionsLine}${sourceWarning} · ${meters}`);
 
         if (result.rateLimited) {
-          console.warn("Backfill paused because ChargeMOD rate-limited requests. Wait before restarting.", { batch, response: result });
-          setBackfillStatus(`Backfill paused by ChargeMOD rate limit · ${totalSucceeded.toLocaleString()} fetched · ${(result.remaining ?? "unknown").toLocaleString()} remaining. Wait a few minutes before restarting.`);
+          setBackfillStatus(`Paused by ChargeMOD rate limit · ${sessionsLine}${sourceWarning} · ${meters}. Wait a few minutes, then click again to continue.`);
           return;
         }
-
+        // remaining counts failed sessions too, so complete means every one was saved.
         if (result.complete) {
-          const summary = {
-            status: "complete",
-            totalSucceeded,
-            totalFailed,
-            finishedAt: new Date().toISOString(),
-          };
-          setBackfillStatus(`Backfill complete · ${totalSucceeded.toLocaleString()} fetched · ${totalFailed} failed`);
+          setBackfillStatus(sourceWarning
+            ? `Meter readings done, but not complete · ${sessionsLine}${sourceWarning} · ${meters}`
+            : `Backfill complete · ${sessionsLine} · ${meters}`);
           return;
         }
-        if (!result.requested || !(result.succeeded ?? 0)) {
-          console.warn("Backfill paused because this batch made no successful progress.", {
-            batch,
-            response: result,
-          });
-          setBackfillStatus(
-            `Backfill paused · ${totalSucceeded} fetched · ${totalFailed} failed. Check the error details or retry after fixing the issue.`
-          );
+        // Nothing left to try in this run except sessions that already failed.
+        if (!result.requested) {
+          setBackfillStatus(`Not complete · ${sessionsLine}${sourceWarning} · ${meters}. Click again to retry the failed sessions.`);
           return;
         }
       }
-      console.warn("Backfill paused after reaching the 300-record run limit.", {
-        totalSucceeded,
-        totalFailed,
-        at: new Date().toISOString(),
-      });
-      setBackfillStatus(`Backfill paused after 300-record run limit · ${totalSucceeded} fetched · ${totalFailed} failed. Click again to continue.`);
+      setBackfillStatus(`Paused after 300 sessions · ${sessionsLine}${sourceWarning} · meter readings: ${totalSucceeded} saved · ${totalFailed} failed. Click again to continue.`);
     } catch (error) {
       console.error("Historical backfill stopped due to an error.", error);
       setBackfillStatus(error instanceof Error ? `Backfill stopped: ${error.message}` : "Backfill stopped due to an unknown error.");

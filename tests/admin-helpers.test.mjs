@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { fromStoredRow, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
+import { backfillWindow, fromStoredRow, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
@@ -354,4 +354,27 @@ test("parseMeterValues inherits OCPP timestamps and preserves a real zero power 
   assert.equal(metrics.kwNow, 0);
   assert.equal(metrics.peakKw, 18.5);
   assert.equal(metrics.lastReadingAt, "2026-10-18T14:01:00.000Z");
+});
+
+test("backfillWindow accepts a 15-day window and rejects bad ones", () => {
+  const now = Date.parse("2026-10-21T08:00:00Z");
+  const to = "2026-10-21T08:00:00.000Z";
+  const from = "2026-10-06T08:00:00.000Z";
+  assert.deepEqual(backfillWindow(from, to, now), { from, to });
+  assert.equal(backfillWindow("2026-09-01T00:00:00Z", to, now), null); // too long
+  assert.equal(backfillWindow(to, from, now), null); // reversed
+  assert.equal(backfillWindow(from, "2026-10-22T08:00:00Z", now), null); // future
+  assert.equal(backfillWindow("nope", to, now), null);
+  assert.equal(backfillWindow(undefined, to, now), null);
+});
+
+test("storedRows keeps one row per session and prefers the finished copy", () => {
+  const rows = storedRows(
+    [{ transactionId: "a", id: "a", stoppedAt: null }],
+    [{ transactionId: "a", id: "a", stoppedAt: "2026-10-20T10:00:00Z" }, { transactionId: "", id: "b", stoppedAt: null }],
+    "2026-10-21T00:00:00Z"
+  );
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((r) => r.transaction_id === "a").stopped_at, "2026-10-20T10:00:00Z");
+  assert.ok(rows.some((r) => r.transaction_id === "b"));
 });

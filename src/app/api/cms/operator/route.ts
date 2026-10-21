@@ -5,7 +5,7 @@ import {
   getCmsErrorMessage,
   getOperatorData,
 } from "@/lib/cms/operator";
-import { fromStoredRow, syncStartDate, toStoredRow } from "@/lib/cms/transactionStore";
+import { fromStoredRow, storedRows, syncStartDate, upsertStoredRows } from "@/lib/cms/transactionStore";
 import type { CmsTransactionRow } from "@/lib/cms/types";
 
 export const dynamic = "force-dynamic";
@@ -99,26 +99,11 @@ export async function GET(request: Request) {
     // serverless runtimes cannot terminate the write after the response has returned.
     let persistPromise: Promise<void> = Promise.resolve();
     if (isPartner) {
-      const syncedAt = new Date().toISOString();
-      const byId = new Map(
-        [...data.active.transactions, ...data.transactions.transactions].map((t) => {
-          const row = toStoredRow(t, syncedAt);
-          return [row.transaction_id, row] as const;
-        })
-      );
-      const rows = Array.from(byId.values());
+      const rows = storedRows(data.active.transactions, data.transactions.transactions, new Date().toISOString());
       if (rows.length > 0) {
-        persistPromise = (async () => {
-          for (let i = 0; i < rows.length; i += 500) {
-            const { error } = await supabase
-              .from("cms_transactions")
-              .upsert(rows.slice(i, i + 500), { onConflict: "transaction_id" });
-            if (error) {
-              console.error("[cms/operator] saving transactions failed:", error.message);
-              break;
-            }
-          }
-        })();
+        persistPromise = upsertStoredRows(supabase, rows).then(({ error }) => {
+          if (error) console.error("[cms/operator] saving transactions failed:", error);
+        });
       }
     }
 

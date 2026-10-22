@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
+import { CMS_COLUMN_IDS } from "@/app/admin/cms/transactionFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -44,8 +45,10 @@ export async function PUT(request: Request) {
 
   try {
     const body = (await request.json()) as { columns?: unknown };
+    // Only real table columns, each once, in the order given.
+    const allowed = new Set<string>(CMS_COLUMN_IDS);
     const columns = Array.isArray(body.columns)
-      ? body.columns.filter((column): column is string => typeof column === "string")
+      ? [...new Set(body.columns.filter((column): column is string => typeof column === "string" && allowed.has(column)))]
       : [];
 
     const { data, error } = await supabase

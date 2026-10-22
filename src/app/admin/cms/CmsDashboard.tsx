@@ -6,6 +6,8 @@ import GlassCard from "@/components/ui/GlassCard";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "./cmsWindowStore";
 import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } from "./dateRanges";
 import {
+  CMS_COLUMN_IDS,
+  type CmsColumnId,
   EMPTY_TRANSACTION_FILTERS,
   type TransactionFilters,
   chargerCurrent,
@@ -352,25 +354,6 @@ function formatDate(value: string | null) {
     timeStyle: "short",
   });
 }
-
-type CmsColumnId =
-  | "id" | "transactionId" | "chargerId" | "connectorId" | "startedAt" | "stoppedAt"
-  | "userName" | "mobile" | "userType" | "tagReference" | "location" | "locationId"
-  | "chargerName" | "stationType" | "stopReason" | "energyKwh" | "startSoc" | "endSoc"
-  | "vehicleName" | "vehicleNumber" | "tariffAmount" | "vat" | "invoiceAvailable"
-  | "userId" | "vehicleId" | "geoLatitude" | "geoLongitude" | "idTag" | "isFree"
-  | "baseDeductiveAmount" | "isAlphaGuaranteed" | "isTimeBasedTariff" | "startValue"
-  | "stopValue" | "createdAt" | "updatedAt";
-
-const CMS_COLUMN_IDS: CmsColumnId[] = [
-  "id", "transactionId", "chargerId", "connectorId", "startedAt", "stoppedAt",
-  "userName", "mobile", "userType", "tagReference", "location", "locationId",
-  "chargerName", "stationType", "stopReason", "energyKwh", "startSoc", "endSoc",
-  "vehicleName", "vehicleNumber", "tariffAmount", "vat", "invoiceAvailable",
-  "userId", "vehicleId", "geoLatitude", "geoLongitude", "idTag", "isFree",
-  "baseDeductiveAmount", "isAlphaGuaranteed", "isTimeBasedTariff", "startValue",
-  "stopValue", "createdAt", "updatedAt",
-];
 
 const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> =
   CMS_COLUMN_IDS.map((id) => ({ id, label: id }));

@@ -154,3 +154,23 @@ export function matchesTransactionFilters(
 
   return true;
 }
+
+// Every column the transactions table can show; also what /api/admin/preferences accepts.
+export type CmsColumnId =
+  | "id" | "transactionId" | "chargerId" | "connectorId" | "startedAt" | "stoppedAt"
+  | "userName" | "mobile" | "userType" | "tagReference" | "location" | "locationId"
+  | "chargerName" | "stationType" | "stopReason" | "energyKwh" | "startSoc" | "endSoc"
+  | "vehicleName" | "vehicleNumber" | "tariffAmount" | "vat" | "invoiceAvailable"
+  | "userId" | "vehicleId" | "geoLatitude" | "geoLongitude" | "idTag" | "isFree"
+  | "baseDeductiveAmount" | "isAlphaGuaranteed" | "isTimeBasedTariff" | "startValue"
+  | "stopValue" | "createdAt" | "updatedAt";
+
+export const CMS_COLUMN_IDS: CmsColumnId[] = [
+  "id", "transactionId", "chargerId", "connectorId", "startedAt", "stoppedAt",
+  "userName", "mobile", "userType", "tagReference", "location", "locationId",
+  "chargerName", "stationType", "stopReason", "energyKwh", "startSoc", "endSoc",
+  "vehicleName", "vehicleNumber", "tariffAmount", "vat", "invoiceAvailable",
+  "userId", "vehicleId", "geoLatitude", "geoLongitude", "idTag", "isFree",
+  "baseDeductiveAmount", "isAlphaGuaranteed", "isTimeBasedTariff", "startValue",
+  "stopValue", "createdAt", "updatedAt",
+];

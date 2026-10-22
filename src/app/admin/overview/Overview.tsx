@@ -104,7 +104,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const loadInvoices = useCallback(() => {
     if (!isPartner) return;
     void supabase.from("billing_invoices")
-      .select("*")
+      .select("id, invoice_number, billing_name, invoice_date, due_date, billing_period_from, billing_period_to, invoice_status, grand_total, amount_paid, taxable_amount, cgst_amount, sgst_amount, igst_amount")
       .order("invoice_date", { ascending: false })
       .then(({ data, error }) => {
         setBillingError(Boolean(error));

@@ -8,6 +8,7 @@ import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } fr
 import {
   CMS_COLUMN_IDS,
   type CmsColumnId,
+  displayLocation,
   EMPTY_TRANSACTION_FILTERS,
   type TransactionFilters,
   chargerCurrent,
@@ -457,10 +458,6 @@ function displayUserName(value: string) {
     .trim();
 
   return cleaned || "Guest";
-}
-
-function displayLocation(value: string) {
-  return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
 }
 
 function displayCharger(value: string) {
@@ -1036,7 +1033,9 @@ export default function CmsOperatorDashboard() {
         csvCell(
           columnId === "id" || columnId === "transactionId"
             ? displaySessionId(transaction.provider, transaction[columnId])
-            : transaction[columnId as keyof Transaction]
+            : columnId === "location"
+              ? displayLocation(transaction.location)
+              : transaction[columnId as keyof Transaction]
         )
       )
     );
@@ -1382,7 +1381,7 @@ export default function CmsOperatorDashboard() {
             >
               <option value="" className="bg-white">All locations</option>
               {locationOptions.map((location) => (
-                <option key={location} value={location} className="bg-white">{location}</option>
+                <option key={location} value={location} className="bg-white">{displayLocation(location)}</option>
               ))}
             </select>
             <select

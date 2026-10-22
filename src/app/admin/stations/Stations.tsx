@@ -5,6 +5,7 @@ import { Link2, MapPin, Pencil, Plus, RefreshCw, Unlink, X } from "lucide-react"
 import { confirmDialog } from "@/components/admin/confirmDialog";
 import { supabase } from "@/lib/supabase/billing";
 import { PROVIDERS, providerLabel } from "@/lib/cms/providerIds";
+import { displayLocation } from "@/app/admin/cms/transactionFilters";
 
 // Stations and the charging-platform locations that feed them (station_locations). Partner-only
 // (adminNavigation + RLS). New Bill counts a station's sessions through these links, so a new
@@ -79,7 +80,7 @@ export default function Stations() {
       () => editingId
         ? supabase.from("billing_invoice_stations").update(value).eq("id", editingId)
         : supabase.from("billing_invoice_stations").insert({ ...value, active: true }),
-      editingId ? `${name} updated.` : `${name} added.`
+      editingId ? `${displayLocation(name)} updated.` : `${displayLocation(name)} added.`
     );
     setForm(EMPTY_STATION);
     setEditingId(null);
@@ -87,7 +88,7 @@ export default function Stations() {
 
   function linkLocation(location: { provider: string; location_id: string; location_name: string | null }, stationId: string) {
     if (!stationId) return setError("Pick the station this location belongs to.");
-    const station = stations.find((s) => s.id === stationId)?.name ?? "the station";
+    const station = displayLocation(stations.find((s) => s.id === stationId)?.name ?? "the station");
     return run(
       () => supabase.from("station_locations").insert({ station_id: stationId, provider: location.provider, location_id: location.location_id, location_name: location.location_name }),
       `${providerLabel(location.provider)} location ${location.location_name ?? location.location_id} linked to ${station}.`
@@ -131,10 +132,10 @@ export default function Stations() {
           <ul className="mt-3 space-y-2">{unassigned.map((loc) => {
             const k = key(loc.provider, loc.location_id);
             return <li key={k} className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm">
-              <span className="min-w-0 flex-1"><b>{providerLabel(loc.provider)}</b> · {loc.location_name ?? "Unnamed"} <span className="font-mono text-xs text-slate-500">({loc.location_id})</span> · {loc.sessions} sessions</span>
+              <span className="min-w-0 flex-1"><b>{providerLabel(loc.provider)}</b> · {loc.location_name ? displayLocation(loc.location_name) : "Unnamed"} <span className="font-mono text-xs text-slate-500">({loc.location_id})</span> · {loc.sessions} sessions</span>
               <select value={assign[k] ?? ""} onChange={(e) => setAssign((a) => ({ ...a, [k]: e.target.value }))} aria-label={`Station for ${loc.location_name ?? loc.location_id}`} className={inputClass}>
                 <option value="">Pick station…</option>
-                {activeStations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {activeStations.map((s) => <option key={s.id} value={s.id}>{displayLocation(s.name)}</option>)}
               </select>
               <button type="button" disabled={saving} onClick={() => void linkLocation(loc, assign[k] ?? "")} className={buttonClass}><Link2 size={15}/> Link</button>
             </li>;
@@ -147,22 +148,22 @@ export default function Stations() {
             return <article key={station.id} className={`rounded-xl border p-4 ${station.active ? "border-slate-200" : "border-slate-200 bg-slate-50 opacity-75"}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold">{station.name}{!station.active && <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">Inactive</span>}</h2>
+                  <h2 className="text-base font-bold">{displayLocation(station.name)}{!station.active && <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">Inactive</span>}</h2>
                   <p className="text-xs text-slate-500">Place of supply {station.place_of_supply ?? "—"} · state code {station.state_code ?? "—"}</p>
                 </div>
                 <div className="flex gap-2">
                   <button type="button" disabled={saving} onClick={() => { setEditingId(station.id); setForm({ name: station.name, place_of_supply: station.place_of_supply ?? "", state_code: station.state_code ?? "" }); }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Pencil size={13}/> Edit</button>
-                  <button type="button" disabled={saving} onClick={() => void run(() => supabase.from("billing_invoice_stations").update({ active: !station.active }).eq("id", station.id), `${station.name} ${station.active ? "turned off" : "turned on"}.`)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{station.active ? "Turn off" : "Turn on"}</button>
+                  <button type="button" disabled={saving} onClick={() => void run(() => supabase.from("billing_invoice_stations").update({ active: !station.active }).eq("id", station.id), `${displayLocation(station.name)} ${station.active ? "turned off" : "turned on"}.`)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{station.active ? "Turn off" : "Turn on"}</button>
                 </div>
               </div>
               {stationLinks.length === 0 ? <p className="mt-3 text-sm text-amber-700">No platform location linked: New Bill finds no sessions for this station.</p> : <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100">{stationLinks.map((link) => {
                 const stats = seenByKey.get(key(link.provider, link.location_id));
                 return <li key={link.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1"><b>{providerLabel(link.provider)}</b> · {link.location_name ?? "Unnamed"} <span className="font-mono text-xs text-slate-500">({link.location_id})</span>
+                  <span className="min-w-0 flex-1"><b>{providerLabel(link.provider)}</b> · {link.location_name ? displayLocation(link.location_name) : "Unnamed"} <span className="font-mono text-xs text-slate-500">({link.location_id})</span>
                     <span className="text-slate-500"> · {stats ? `${stats.sessions} sessions, last ${stats.last_session_at ? dateFmt.format(new Date(stats.last_session_at)) : "—"}` : "no sessions yet"}</span></span>
                   <select value="" disabled={saving} onChange={(e) => e.target.value && void run(() => supabase.from("station_locations").update({ station_id: e.target.value }).eq("id", link.id), "Location moved.")} aria-label={`Move ${link.location_name ?? link.location_id} to another station`} className={inputClass}>
                     <option value="">Move to…</option>
-                    {activeStations.filter((s) => s.id !== station.id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {activeStations.filter((s) => s.id !== station.id).map((s) => <option key={s.id} value={s.id}>{displayLocation(s.name)}</option>)}
                   </select>
                   <button type="button" title="Unlink location" aria-label={`Unlink ${link.location_name ?? link.location_id}`} disabled={saving} onClick={() => void unlink(link)} className="rounded-md p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Unlink size={16}/></button>
                 </li>;
@@ -176,9 +177,9 @@ export default function Stations() {
         <form onSubmit={saveStation} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between"><h2 className="text-base font-bold">{editingId ? "Edit station" : "Add station"}</h2>
             {editingId && <button type="button" onClick={() => { setEditingId(null); setForm(EMPTY_STATION); }} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800"><X size={14}/> Cancel</button>}</div>
-          <p className="mt-1 text-xs text-slate-500">The place of supply and state code go on the station&apos;s invoices (CGST+SGST for 36 Telangana customers, else IGST).</p>
+          <p className="mt-1 text-xs text-slate-500">The name, place of supply and state code are printed on the station&apos;s invoices as written (CGST+SGST for 36 Telangana customers, else IGST). The admin shows the name without &quot;Triarc EV hub |&quot;.</p>
           <div className="mt-3 grid gap-3">
-            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Station name, e.g. Triarc EV hub | Bhadrachalam" aria-label="Station name" className={inputClass}/>
+            <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Name as printed on invoices, e.g. Triarc EV hub | Bhadrachalam" aria-label="Station name" className={inputClass}/>
             <input value={form.place_of_supply} onChange={(e) => setForm((f) => ({ ...f, place_of_supply: e.target.value }))} placeholder="Place of supply, e.g. Bhadrachalam-Telangana" aria-label="Place of supply" className={inputClass}/>
             <input value={form.state_code} onChange={(e) => setForm((f) => ({ ...f, state_code: e.target.value }))} placeholder="State code, e.g. 36" inputMode="numeric" maxLength={2} aria-label="GST state code" className={inputClass}/>
             <button type="submit" disabled={saving} className={buttonClass}><Plus size={15}/> {editingId ? "Save station" : "Add station"}</button>
@@ -196,7 +197,7 @@ export default function Stations() {
             <input value={manual.location_name} onChange={(e) => setManual((m) => ({ ...m, location_name: e.target.value }))} placeholder="Location name (optional)" aria-label="Location name" className={inputClass}/>
             <select value={manual.station_id} onChange={(e) => setManual((m) => ({ ...m, station_id: e.target.value }))} aria-label="Station" className={inputClass}>
               <option value="">Pick station…</option>
-              {activeStations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {activeStations.map((s) => <option key={s.id} value={s.id}>{displayLocation(s.name)}</option>)}
             </select>
             <button type="submit" disabled={saving} className={buttonClass}><Link2 size={15}/> Link location</button>
           </div>

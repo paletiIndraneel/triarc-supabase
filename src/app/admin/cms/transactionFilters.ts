@@ -192,3 +192,14 @@ export function filterByStation<T extends { provider?: string; locationId?: numb
   if (stationId === ALL_STATIONS) return sessions;
   return sessions.filter((s) => stationOfLocation.get(stationLocationKey(s.provider, s.locationId)) === stationId);
 }
+
+// A location as people should read it: Triarc is the company and EV Hub the business, so
+// ChargeMOD's "Triarc EV hub | Bhadrachalam" shows as "Bhadrachalam". Stored names stay as the
+// platform sends them.
+export function displayLocation(value: string) {
+  const name = value.trim();
+  for (const prefix of ["triarc ev hub |", "triarc |"]) {
+    if (name.toLowerCase().startsWith(prefix)) return name.slice(prefix.length).trim() || name;
+  }
+  return name || value;
+}

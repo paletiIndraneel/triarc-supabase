@@ -465,3 +465,11 @@ test("filterByStation keeps one station's sessions; all keeps every session", as
   assert.deepEqual(filterByStation(sessions, links, "station2"), [sessions[2]]);
   assert.deepEqual(filterByStation(sessions, links, "nowhere"), []);
 });
+
+test("displayLocation shows the place, not the company and business", async () => {
+  const { displayLocation } = await import("../src/app/admin/cms/transactionFilters.ts");
+  assert.equal(displayLocation("Triarc EV hub | Bhadrachalam"), "Bhadrachalam");
+  assert.equal(displayLocation("triarc | Khammam"), "Khammam");
+  assert.equal(displayLocation("Bhadrachalam"), "Bhadrachalam");
+  assert.equal(displayLocation("Triarc EV hub |"), "Triarc EV hub |"); // nothing after it: keep as is
+});

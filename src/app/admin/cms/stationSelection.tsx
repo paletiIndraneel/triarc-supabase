@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { supabase } from "@/lib/supabase/billing";
-import { ALL_STATIONS, filterByStation, stationLocationKey } from "./transactionFilters";
+import { ALL_STATIONS, displayLocation, filterByStation, stationLocationKey } from "./transactionFilters";
 
 // The station selector shared by the CMS dashboard and Overview: one choice for the tab, kept in
 // this browser. Stations come from billing_invoice_stations + station_locations (Stations page);
@@ -30,7 +30,7 @@ function loadStations(): Promise<StationData> {
     const linked = new Set(stationOfLocation.values());
     const options = stations.data
       .filter((s) => linked.has(s.id))
-      .map((s) => ({ id: s.id as string, name: s.name as string }))
+      .map((s) => ({ id: s.id as string, name: displayLocation(s.name as string) }))
       .sort((a, b) => a.name.localeCompare(b.name));
     return { options, stationOfLocation };
   })();

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { getChargingProviders, providerErrorMessage, type ChargingProvider } from "@/lib/cms/provider";
 import {
   fromStoredRow,
   MAX_ACTIVE_MS,
   SESSION_COLUMNS,
   SESSIONS_TABLE,
+  stationLocationKeys,
   storedRows,
   syncStartDate,
   upsertStoredRows,
@@ -17,7 +19,7 @@ export const dynamic = "force-dynamic";
 type Supabase = Awaited<ReturnType<typeof getAdminClient>>["supabase"];
 
 export async function GET(request: Request) {
-  const { supabase, user } = await getAdminClient();
+  const { supabase, user, stationIds } = await getAdminClient();
   if (!user) {
     return new NextResponse("Forbidden", { status: 403 });
   }
@@ -67,12 +69,15 @@ export async function GET(request: Request) {
     // one session exists, all requests use normal delta sync instead of repeatedly
     // fetching history from the requested start date (including new browsers).
     const backfillRequested = url.searchParams.get("backfill") === "1" && !searchKey;
+    // Sessions are saved with the server's secret key (the user is checked above), so a
+    // station-limited investor's load still saves every session the platform returns.
+    const writer = (await getServiceClient()) ?? supabase;
 
     // Each platform syncs on its own; one that fails is reported in sourceErrors and the
     // others still load. Only when every platform fails does the request fail.
     const results = await Promise.allSettled(
       providers.map((provider) =>
-        syncProvider(supabase, provider, { page, perPage, startDate, endDate, searchField, searchKey, backfillRequested })
+        syncProvider(supabase, writer, provider, { page, perPage, startDate, endDate, searchField, searchKey, backfillRequested })
       )
     );
     const synced = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
@@ -81,8 +86,12 @@ export async function GET(request: Request) {
     );
     if (!synced.length) throw results.find((r) => r.status === "rejected")?.reason;
 
-    const transactions = synced.flatMap((s) => s.transactions);
-    const active = synced.flatMap((s) => s.active);
+    // A station-limited investor gets only their stations' sessions (the database read policy
+    // already limits the stored ones; this covers what the platform returned live).
+    const allowed = stationIds ? await stationLocationKeys(supabase, stationIds) : null;
+    const visible = (t: CmsTransaction) => !allowed || allowed.has(`${t.provider}|${t.locationId ?? ""}`);
+    const transactions = synced.flatMap((s) => s.transactions).filter(visible);
+    const active = synced.flatMap((s) => s.active).filter(visible);
     return NextResponse.json({
       // shortcut: the dashboard's summary/locations come from the first platform that has one
       // (ChargeMOD); merge them when a second platform brings its own.
@@ -111,6 +120,7 @@ export async function GET(request: Request) {
 // it, and add its older sessions of the window from the table.
 async function syncProvider(
   supabase: Supabase,
+  writer: Supabase,
   provider: ChargingProvider,
   options: {
     page: number;
@@ -125,8 +135,10 @@ async function syncProvider(
   const { page, perPage, startDate, endDate, searchField, searchKey, backfillRequested } = options;
   let syncStart = startDate;
   if (!searchKey) {
+    // Where to resume is a fact about the whole table, so it is read with the writer (a
+    // station-limited investor's own client would only see their stations' newest row).
     const latestStart = (open: boolean) => {
-      let query = supabase
+      let query = writer
         .from(SESSIONS_TABLE)
         .select("started_at")
         .eq("provider", provider.id)
@@ -159,7 +171,7 @@ async function syncProvider(
   let persistPromise: Promise<void> = Promise.resolve();
   const rows = storedRows(data.active, data.transactions, new Date().toISOString());
   if (rows.length > 0) {
-    persistPromise = upsertStoredRows(supabase, rows).then(({ error }) => {
+    persistPromise = upsertStoredRows(writer, rows).then(({ error }) => {
       if (error) console.error(`[cms/operator] saving ${provider.id} sessions failed:`, error);
     });
   }

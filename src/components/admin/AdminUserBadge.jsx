@@ -1,12 +1,13 @@
 "use client";
 
+import { accessLabel } from '@/lib/adminAccess';
 import { useEffect, useState } from "react";
 import { UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase/billing";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 
 export default function AdminUserBadge() {
-  const { isPartner } = useAdminModule();
+  const { access } = useAdminModule();
   const [name, setName] = useState("Loading…");
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function AdminUserBadge() {
       <UserRound size={18} className="shrink-0 text-slate-600" />
       <span className="min-w-0 leading-tight">
         <b className="block max-w-[150px] truncate text-xs font-bold text-slate-900">{name}</b>
-        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">{isPartner ? "Partner" : "Investor"}</small>
+        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">{accessLabel(access)}</small>
       </span>
     </div>
   );

@@ -8,6 +8,7 @@ import Overview from "@/app/admin/overview/Overview";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
 import Stations from "@/app/admin/stations/Stations";
+import Access from "@/app/admin/access/Access";
 import { ToastProvider } from "@/components/BillingToast";
 import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
 import { ADMIN_NAV_ITEMS, canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
@@ -25,7 +26,7 @@ type Enquiry = {
   created_at: string;
 };
 
-export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean }) {
+export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner, access }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean; access: string | null }) {
   const [moduleState, setModuleState] = useState<AdminModule>(initialModule);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -72,7 +73,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
   }, []);
 
   return (
-    <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner }}>
+    <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner, access }}>
       <div data-admin-theme={theme} className={adminStyles.adminShell}>
       <AdminHeader theme={theme} onToggleTheme={toggleTheme} />
       {activeModule === "overview" && <Overview enquiries={enquiries} />}
@@ -94,6 +95,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
         </main>
       )}
       {activeModule === "stations" && <Stations />}
+      {activeModule === "access" && <Access />}
       {activeModule === "cpo-settings" && <CpoSettings />}
       </div>
     </AdminModuleContext.Provider>

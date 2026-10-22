@@ -23,7 +23,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const { module } = await searchParams;
   // proxy.ts has already checked this is an active admin; checked again here in case the
   // proxy is bypassed or misconfigured, and this adds partner vs investor.
-  const { supabase, user, isPartner } = await getAdminClient();
+  const { supabase, user, isPartner, access } = await getAdminClient();
   if (!user) redirect("/signin?callbackUrl=%2Fadmin");
   const { data, error } = await supabase
     .from("enquiries")
@@ -36,6 +36,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       enquiryError={Boolean(error)}
       initialModule={parseAdminModule(typeof module === "string" ? module : null)}
       isPartner={isPartner}
+      access={access}
     />
   );
 }

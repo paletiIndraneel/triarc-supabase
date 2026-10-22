@@ -9,7 +9,8 @@ export type { AdminModule };
 type AdminModuleContextValue = {
   activeModule: AdminModule;
   setActiveModule: (module: AdminModule) => void;
-  isPartner: boolean;
+  isPartner: boolean; // full access: partner or IT admin
+  access: string | null; // admin_users.access, for labels
 };
 
 export const AdminModuleContext = createContext<AdminModuleContextValue | null>(null);

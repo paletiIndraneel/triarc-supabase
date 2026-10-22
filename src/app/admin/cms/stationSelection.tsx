@@ -5,9 +5,10 @@ import { supabase } from "@/lib/supabase/billing";
 import { ALL_STATIONS, displayLocation, filterByStation, stationLocationKey } from "./transactionFilters";
 
 // The station selector shared by the CMS dashboard and Overview: one choice for the tab, kept in
-// this browser. Stations come from billing_invoice_stations + station_locations (Stations page);
-// only stations with a linked platform location are offered, and "All stations" shows everything,
-// including sessions from locations not linked yet.
+// this browser. Stations come from billing_invoice_stations + station_locations (Stations page).
+// Offered: active stations with a linked platform location, and for a station-limited investor
+// only their own stations; with fewer than two to choose from the selector is hidden. "All
+// stations" shows everything the admin may see, including locations not linked yet.
 
 export type StationOption = { id: string; name: string };
 type StationData = { options: StationOption[]; stationOfLocation: Map<string, string> };
@@ -18,18 +19,21 @@ let memo: Promise<StationData> | null = null;
 
 function loadStations(): Promise<StationData> {
   memo ??= (async () => {
-    const [stations, links] = await Promise.all([
-      supabase.from("billing_invoice_stations").select("id, name"),
+    const userId = (await supabase.auth.getSession()).data.session?.user.id ?? "";
+    const [stations, links, mine] = await Promise.all([
+      supabase.from("billing_invoice_stations").select("id, name, active"),
       supabase.from("station_locations").select("station_id, provider, location_id"),
+      supabase.from("admin_station_access").select("station_id").eq("user_id", userId),
     ]);
-    if (stations.error || links.error) {
+    if (stations.error || links.error || mine.error) {
       memo = null; // don't keep a failed answer
       return EMPTY;
     }
     const stationOfLocation = new Map(links.data.map((l) => [stationLocationKey(l.provider, l.location_id), l.station_id as string]));
     const linked = new Set(stationOfLocation.values());
+    const limitedTo = mine.data.length ? new Set(mine.data.map((r) => r.station_id as string)) : null;
     const options = stations.data
-      .filter((s) => linked.has(s.id))
+      .filter((s) => s.active && linked.has(s.id) && (!limitedTo || limitedTo.has(s.id)))
       .map((s) => ({ id: s.id as string, name: displayLocation(s.name as string) }))
       .sort((a, b) => a.name.localeCompare(b.name));
     return { options, stationOfLocation };

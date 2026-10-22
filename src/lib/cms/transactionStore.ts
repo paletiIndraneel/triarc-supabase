@@ -182,3 +182,11 @@ export function syncStartDate(
   start -= SYNC_OVERLAP_MS;
   return start > new Date(windowStart).getTime() ? new Date(start).toISOString() : windowStart;
 }
+
+// The platform locations (provider|location_id, as stationLocationKey builds them) of the given
+// stations: what a station-limited investor may see.
+export async function stationLocationKeys(supabase: SupabaseClient, stationIds: string[]) {
+  const { data, error } = await supabase.from("station_locations").select("provider, location_id").in("station_id", stationIds);
+  if (error) throw new Error(`Station locations could not be read: ${error.message}`);
+  return new Set((data ?? []).map((l) => `${l.provider}|${l.location_id}`));
+}

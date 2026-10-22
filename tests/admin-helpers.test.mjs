@@ -146,8 +146,8 @@ test("mergeLines adds quantities of identical item lines and keeps different rat
 
 test("investors can open only the CMS dashboard and enquiries; partners open every module", async () => {
   const { canOpenModule } = await import("../src/components/admin/adminNavigation.ts");
-  assert.deepEqual(["cms", "billing", "enquiries", "cpo-settings"].map((m) => canOpenModule(m, false)), [true, false, true, false]);
-  assert.ok(["cms", "billing", "enquiries", "cpo-settings"].every((m) => canOpenModule(m, true)));
+  assert.deepEqual(["cms", "billing", "enquiries", "stations", "cpo-settings"].map((m) => canOpenModule(m, false)), [true, false, true, false, false]);
+  assert.ok(["cms", "billing", "enquiries", "stations", "cpo-settings"].every((m) => canOpenModule(m, true)));
 });
 
 test("overviewMetrics totals the current and previous half-month billing cycles in IST", async () => {

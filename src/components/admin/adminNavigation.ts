@@ -1,4 +1,4 @@
-const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "cpo-settings"] as const;
+const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "stations", "cpo-settings"] as const;
 
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
@@ -8,7 +8,7 @@ export function parseAdminModule(value: string | null | undefined): AdminModule 
 }
 
 // Investors see only the CMS dashboard and enquiries; RLS and the API enforce the same split.
-const PARTNER_ONLY_MODULES: AdminModule[] = ["billing", "cpo-settings"];
+const PARTNER_ONLY_MODULES: AdminModule[] = ["billing", "stations", "cpo-settings"];
 
 export function canOpenModule(module: AdminModule, isPartner: boolean) {
   return isPartner || !PARTNER_ONLY_MODULES.includes(module);
@@ -24,4 +24,5 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { label: "CMS Dashboard", key: "cms" },
   { label: "Billing", key: "billing" },
   { label: "Enquiries", key: "enquiries" },
+  { label: "Stations", key: "stations" },
 ];

@@ -17,6 +17,7 @@ export const MODULE_BUSINESS: Record<AdminModule, BusinessKey | null> = {
   cms: "ev-hub",
   billing: "ev-hub",
   enquiries: "ev-hub",
+  stations: "ev-hub",
   "cpo-settings": "ev-hub",
 };
 

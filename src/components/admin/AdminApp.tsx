@@ -7,6 +7,7 @@ import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
 import Overview from "@/app/admin/overview/Overview";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
+import Stations from "@/app/admin/stations/Stations";
 import { ToastProvider } from "@/components/BillingToast";
 import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
 import { ADMIN_NAV_ITEMS, canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
@@ -92,6 +93,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
           </div>
         </main>
       )}
+      {activeModule === "stations" && <Stations />}
       {activeModule === "cpo-settings" && <CpoSettings />}
       </div>
     </AdminModuleContext.Provider>

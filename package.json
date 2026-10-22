@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mjs",
-    "lint": "next lint",
+    "lint": "eslint .",
     "opennext-build": "opennextjs-cloudflare build",
     "preview": "opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare deploy"

@@ -13,6 +13,13 @@ const MAX_EMAIL_CHARS = 254;
 const MAX_PHONE_CHARS = 50;
 const MAX_MESSAGE_CHARS = 10_000;
 
+// Spam limits, counted from the enquiries table so they hold across function instances.
+// shortcut: no per-IP limit (no IP column); add one if spam comes from many addresses.
+const PER_EMAIL_LIMIT = 3; // per email address in PER_EMAIL_WINDOW_MS
+const PER_EMAIL_WINDOW_MS = 10 * 60 * 1000;
+const SITE_LIMIT = 30; // all enquiries in SITE_WINDOW_MS
+const SITE_WINDOW_MS = 60 * 60 * 1000;
+
 export default {
   fetch: withSupabase(
     { auth: "none" },
@@ -80,6 +87,29 @@ export default {
           return Response.json(
             { error: "Invalid email address." },
             { status: 400 }
+          );
+        }
+
+        // Honeypot: a field hidden from people (`website`); bots that fill it get a fake success.
+        if (typeof body.website === "string" && body.website.trim()) {
+          return Response.json({ success: true }, { status: 201 });
+        }
+
+        const since = (ms: number) => new Date(Date.now() - ms).toISOString();
+        const [byEmail, bySite] = await Promise.all([
+          ctx.supabaseAdmin.from("enquiries").select("id", { count: "exact", head: true })
+            .ilike("email", email.replace(/[\\%_]/g, "\\$&")) // case-insensitive exact match
+            .gte("created_at", since(PER_EMAIL_WINDOW_MS)),
+          ctx.supabaseAdmin.from("enquiries").select("id", { count: "exact", head: true })
+            .gte("created_at", since(SITE_WINDOW_MS)),
+        ]);
+        if (byEmail.error || bySite.error) {
+          // A failed count must not lose a real enquiry.
+          console.error("[submit-enquiry] rate-limit count failed:", byEmail.error ?? bySite.error);
+        } else if ((byEmail.count ?? 0) >= PER_EMAIL_LIMIT || (bySite.count ?? 0) >= SITE_LIMIT) {
+          return Response.json(
+            { error: "Too many enquiries right now. Please try again later or call us." },
+            { status: 429 }
           );
         }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/CmsDashboard";
 import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "@/app/admin/cms/cmsWindowStore";
 import { shortChargerLabel, splitActiveSessions } from "@/app/admin/cms/transactionFilters";
+import { StationSelect, useStationSelection } from "@/app/admin/cms/stationSelection";
 import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
 
 type Enquiry = { id: string; name: string; message: string; status: "New" | "Contacted" | "Closed"; created_at: string };
@@ -60,11 +61,16 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   // CMS (ChargeMOD) can fail on its own; Billing and Enquiries still show when it does.
   // The load is shared with the CMS dashboard (cmsWindowStore), so Refresh on either page
   // is one request and both pages show it.
+  // The station selector (shared with the CMS dashboard) narrows the charging figures; invoices
+  // stay all stations (older ones have no station). A new choice re-applies the loaded window.
+  const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
+  const windowRequested = useRef(false);
   useEffect(() => {
     let shownCache: CmsCache | null = null;
-    const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
-      if (cache && cache !== shownCache) {
-        shownCache = cache;
+    const sync = ({ cache: fullCache, refreshing, error }: CmsWindowSnapshot) => {
+      if (fullCache && fullCache !== shownCache) {
+        shownCache = fullCache;
+        const cache = filterCache(fullCache);
         const merged = new Map<string, Transaction>();
         for (const t of [...cache.transactions, ...(cache.active?.transactions ?? [])]) {
           const key = t.transactionId || t.id;
@@ -98,9 +104,12 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
     };
     sync(getCmsWindowSnapshot());
     const unsubscribe = subscribeCmsWindow(sync);
-    void requestCmsWindow();
+    if (!windowRequested.current) {
+      windowRequested.current = true;
+      void requestCmsWindow();
+    }
     return unsubscribe;
-  }, []);
+  }, [filterCache]);
   const loadInvoices = useCallback(() => {
     if (!isPartner) return;
     void supabase.from("billing_invoices")
@@ -146,6 +155,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {cms.status === "ok" && cms.updatedAt && (
               <p className="text-xs text-[#5d6577]">Data till {dataTill.format(new Date(cms.updatedAt))}</p>
             )}

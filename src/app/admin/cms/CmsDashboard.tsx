@@ -26,6 +26,7 @@ import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
 import SessionDetails from "./SessionDetails";
 import { useLiveMetrics, withLiveValues } from "./useLiveMetrics";
+import { StationSelect, useStationSelection } from "./stationSelection";
 
 // Sessions saved in SESSIONS_TABLE that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
@@ -821,6 +822,10 @@ export default function CmsOperatorDashboard() {
     }
   }, []);
 
+  // The station selector narrows every card and the table; a new choice re-applies the loaded
+  // window (this effect re-runs) without fetching again.
+  const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
+  const windowRequested = useRef(false);
   useEffect(() => {
     let shownCache: CmsCache | null = null;
     const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
@@ -832,14 +837,17 @@ export default function CmsOperatorDashboard() {
       if (cache && cache !== shownCache) {
         shownCache = cache;
         setDataTill(cache.coverage.at(-1)?.endDate ?? null);
-        void applyCache(cache);
+        void applyCache(filterCache(cache));
       }
     };
     sync(getCmsWindowSnapshot());
     const unsubscribe = subscribeCmsWindow(sync);
-    void requestCmsWindow();
+    if (!windowRequested.current) {
+      windowRequested.current = true;
+      void requestCmsWindow();
+    }
     return unsubscribe;
-  }, [applyCache]);
+  }, [applyCache, filterCache]);
 
   const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 
@@ -1113,6 +1121,7 @@ export default function CmsOperatorDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {dataTill && (
               <p className="text-xs text-slate-500">
                 Data till{" "}

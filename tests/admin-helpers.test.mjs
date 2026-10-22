@@ -454,3 +454,14 @@ test("the platform filter keeps one platform's sessions; storedRows keeps the pl
   assert.equal(matchesTransactionFilters(t("ather"), EMPTY_TRANSACTION_FILTERS, false, new Set()), true);
   assert.equal(storedRows([], [{ provider: "ather", transactionId: "ather_1", id: "" }], "2026-10-21T00:00:00Z")[0].provider, "ather");
 });
+
+test("filterByStation keeps one station's sessions; all keeps every session", async () => {
+  const { filterByStation, stationLocationKey, ALL_STATIONS } = await import("../src/app/admin/cms/transactionFilters.ts");
+  const links = new Map([[stationLocationKey("chargemod", "1783154310261"), "bhadrachalam"], [stationLocationKey("ather", "A1"), "bhadrachalam"], [stationLocationKey("chargemod", "456"), "station2"]]);
+  const s = (provider, locationId) => ({ provider, locationId });
+  const sessions = [s("chargemod", 1783154310261), s("ather", "A1"), s("chargemod", 456), s("chargemod", 999), s("chargemod", null)];
+  assert.equal(filterByStation(sessions, links, ALL_STATIONS).length, 5); // unlinked ones too
+  assert.deepEqual(filterByStation(sessions, links, "bhadrachalam"), [sessions[0], sessions[1]]); // both platforms, number id matched as text
+  assert.deepEqual(filterByStation(sessions, links, "station2"), [sessions[2]]);
+  assert.deepEqual(filterByStation(sessions, links, "nowhere"), []);
+});

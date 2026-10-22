@@ -174,3 +174,21 @@ export const CMS_COLUMN_IDS: CmsColumnId[] = [
   "baseDeductiveAmount", "isAlphaGuaranteed", "isTimeBasedTariff", "startValue",
   "stopValue", "createdAt", "updatedAt",
 ];
+
+// "all", or one station's id (billing_invoice_stations), as chosen in the station selector.
+export const ALL_STATIONS = "all";
+
+// The key a session's platform location is linked by in station_locations.
+export const stationLocationKey = (provider: string | null | undefined, locationId: string | number | null | undefined) =>
+  `${provider ?? ""}|${locationId ?? ""}`;
+
+// One station's sessions: those whose platform location is linked to it. "all" keeps every
+// session, including those of locations not linked to any station yet.
+export function filterByStation<T extends { provider?: string; locationId?: number | string | null }>(
+  sessions: T[],
+  stationOfLocation: Map<string, string>,
+  stationId: string
+) {
+  if (stationId === ALL_STATIONS) return sessions;
+  return sessions.filter((s) => stationOfLocation.get(stationLocationKey(s.provider, s.locationId)) === stationId);
+}

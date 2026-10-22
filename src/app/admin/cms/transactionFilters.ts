@@ -178,7 +178,24 @@ export const CMS_COLUMN_IDS: CmsColumnId[] = [
 // "all", or one station's id (billing_invoice_stations), as chosen in the station selector.
 export const ALL_STATIONS = "all";
 
-// The key a session's platform location is linked by in station_locations.
+// A billing_invoice_stations record: one station on one charging platform (provider +
+// location_id, empty until linked). Records with the same name are one station in the admin.
+export type StationRecord = { id: string; name: string; active: boolean; provider?: string | null; location_id?: string | null; location_name?: string | null };
+export type StationGroup<R extends StationRecord> = { name: string; ids: string[]; active: boolean; records: R[] };
+
+export function groupStations<R extends StationRecord>(records: R[]): StationGroup<R>[] {
+  const groups = new Map<string, StationGroup<R>>();
+  for (const r of records) {
+    const g = groups.get(r.name) ?? { name: r.name, ids: [], active: false, records: [] };
+    g.ids.push(r.id);
+    g.records.push(r);
+    g.active ||= r.active;
+    groups.set(r.name, g);
+  }
+  return [...groups.values()].sort((a, b) => displayLocation(a.name).localeCompare(displayLocation(b.name)));
+}
+
+// The key a session's platform location is linked to its station by.
 export const stationLocationKey = (provider: string | null | undefined, locationId: string | number | null | undefined) =>
   `${provider ?? ""}|${locationId ?? ""}`;
 

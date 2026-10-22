@@ -11,6 +11,7 @@ type AdminModuleContextValue = {
   setActiveModule: (module: AdminModule) => void;
   isPartner: boolean; // full access: partner or IT admin
   access: string | null; // admin_users.access, for labels
+  canOpen: (module: AdminModule) => boolean; // canOpenModule for this admin
 };
 
 export const AdminModuleContext = createContext<AdminModuleContextValue | null>(null);

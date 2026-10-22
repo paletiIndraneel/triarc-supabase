@@ -144,10 +144,23 @@ test("mergeLines adds quantities of identical item lines and keeps different rat
   assert.equal(calc(merged, "IGST").total, calc([line("a", 1.3, 15), line("a", 2, 16)], "IGST").total);
 });
 
-test("investors can open only the CMS dashboard and enquiries; partners open every module", async () => {
+test("admins open the ticked modules (Access only with full access); full access opens every module", async () => {
   const { canOpenModule } = await import("../src/components/admin/adminNavigation.ts");
-  assert.deepEqual(["cms", "billing", "enquiries", "stations", "access", "cpo-settings"].map((m) => canOpenModule(m, false)), [true, false, true, false, false, false]);
-  assert.ok(["cms", "billing", "enquiries", "stations", "access", "cpo-settings"].every((m) => canOpenModule(m, true)));
+  const all = ["overview", "cms", "billing", "enquiries", "stations", "access", "cpo-settings"];
+  const investor = ["overview", "cms", "enquiries"];
+  assert.deepEqual(all.map((m) => canOpenModule(m, false, investor)), [true, true, false, true, false, false, false]);
+  assert.deepEqual(all.map((m) => canOpenModule(m, false, ["billing", "access"])), [true, false, true, false, false, false, false]);
+  assert.ok(all.every((m) => canOpenModule(m, true)));
+});
+
+test("station records with the same name are one station", async () => {
+  const { groupStations } = await import("../src/app/admin/cms/transactionFilters.ts");
+  const groups = groupStations([
+    { id: "a", name: "Triarc EV hub | Bhadrachalam", active: true, provider: "chargemod", location_id: "1" },
+    { id: "m", name: "Mock", active: false, provider: null, location_id: null },
+    { id: "b", name: "Triarc EV hub | Bhadrachalam", active: false, provider: "ather", location_id: "x" },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.name, g.ids, g.active]), [["Triarc EV hub | Bhadrachalam", ["a", "b"], true], ["Mock", ["m"], false]]);
 });
 
 test("overviewMetrics totals the current and previous half-month billing cycles in IST", async () => {
@@ -474,25 +487,30 @@ test("displayLocation shows the place, not the company and business", async () =
   assert.equal(displayLocation("Triarc EV hub |"), "Triarc EV hub |"); // nothing after it: keep as is
 });
 
-test("access levels: partners and IT admins have full access; lock-out guards hold", async () => {
-  const { hasFullAccess, accessChangeError, accessLabel, isEmail } = await import("../src/lib/adminAccess.ts");
+test("access roles come from the picklist; partners and IT admins have full access; lock-out guards hold", async () => {
+  const { hasFullAccess, accessChangeError, roleLabel, toLevels, isEmail } = await import("../src/lib/adminAccess.ts");
   assert.equal(hasFullAccess("partner"), true);
   assert.equal(hasFullAccess("it_admin"), true);
   assert.equal(hasFullAccess("investor"), false);
+  assert.equal(hasFullAccess("accountant"), false); // a new picklist value is limited until marked full
   assert.equal(hasFullAccess(undefined), false);
-  assert.equal(accessLabel("it_admin"), "IT admin");
+  assert.equal(roleLabel("it_admin"), "IT admin");
+  assert.equal(roleLabel("partner"), "Partner");
+  assert.equal(roleLabel("station_manager"), "Station manager");
+  assert.deepEqual(toLevels(["partner", "investor"]), [{ id: "partner", label: "Partner", full: true }, { id: "investor", label: "Investor", full: false }]);
+  const levels = ["partner", "investor", "it_admin"];
   const admins = [
     { user_id: "p", access: "partner", active: true },
     { user_id: "i", access: "investor", active: true },
   ];
-  assert.match(accessChangeError(admins, "p", "p", { access: "investor" }), /your own/);
-  assert.match(accessChangeError(admins, "p", "p", { active: false }), /your own/);
-  assert.equal(accessChangeError(admins, "p", "i", { access: "it_admin" }), null); // promote an investor
+  assert.match(accessChangeError(admins, "p", "p", { access: "investor" }, levels), /your own/);
+  assert.match(accessChangeError(admins, "p", "p", { active: false }, levels), /your own/);
+  assert.equal(accessChangeError(admins, "p", "i", { access: "it_admin" }, levels), null); // promote an investor
   const two = [...admins, { user_id: "t", access: "it_admin", active: true }];
-  assert.equal(accessChangeError(two, "p", "t", { access: "investor" }), null); // p still has full access
-  assert.match(accessChangeError([{ user_id: "t", access: "it_admin", active: true }, { user_id: "x", access: "investor", active: true }], "x", "t", { active: false }), /must remain/);
-  assert.match(accessChangeError(admins, "p", "nobody", {}), /does not exist/);
-  assert.match(accessChangeError(admins, "p", "i", { access: "owner" }), /Unknown/);
+  assert.equal(accessChangeError(two, "p", "t", { access: "investor" }, levels), null); // p still has full access
+  assert.match(accessChangeError([{ user_id: "t", access: "it_admin", active: true }, { user_id: "x", access: "investor", active: true }], "x", "t", { active: false }, levels), /must remain/);
+  assert.match(accessChangeError(admins, "p", "nobody", {}, levels), /does not exist/);
+  assert.match(accessChangeError(admins, "p", "i", { access: "owner" }, levels), /Unknown/);
   assert.equal(isEmail("a@b.in"), true);
   assert.equal(isEmail("not an email"), false);
 });

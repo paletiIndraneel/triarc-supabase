@@ -4,12 +4,12 @@ import { useEffect, useRef } from "react";
 import { Settings2, Sun, Moon, ChevronDown, LogOut } from "lucide-react";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
 import LogoutButton from "@/components/admin/LogoutButton";
-import { ADMIN_NAV_ITEMS, canOpenModule } from "@/components/admin/adminNavigation";
+import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNavigation";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { BUSINESSES, GROUP_NAME, MODULE_BUSINESS, businessName } from "@/components/admin/brand";
 
 export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" | "dark"; onToggleTheme: () => void }) {
-  const { activeModule, setActiveModule, isPartner } = useAdminModule();
+  const { activeModule, setActiveModule, canOpen } = useAdminModule();
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
       </div>
       <nav className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:px-0" aria-label="Admin modules">
         <div className="flex shrink-0 items-center gap-1.5">
-        {ADMIN_NAV_ITEMS.filter((item) => canOpenModule(item.key, isPartner)).map((item) => (
+        {ADMIN_NAV_ITEMS.filter((item) => canOpen(item.key)).map((item) => (
           <button
             key={item.key}
             type="button"
@@ -59,7 +59,7 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
           </button>
         ))}
 
-        {isPartner && <button
+        {canOpen("cpo-settings") && <button
           type="button"
           onClick={() => setActiveModule("cpo-settings")}
           aria-current={activeModule === "cpo-settings" ? "page" : undefined}

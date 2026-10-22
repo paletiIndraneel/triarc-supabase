@@ -186,7 +186,9 @@ export function syncStartDate(
 // The platform locations (provider|location_id, as stationLocationKey builds them) of the given
 // stations: what a station-limited investor may see.
 export async function stationLocationKeys(supabase: SupabaseClient, stationIds: string[]) {
-  const { data, error } = await supabase.from("station_locations").select("provider, location_id").in("station_id", stationIds);
+  // A record stands for its whole station: every record with the same name (one per platform).
+  const { data, error } = await supabase.from("billing_invoice_stations").select("id, name, provider, location_id");
   if (error) throw new Error(`Station locations could not be read: ${error.message}`);
-  return new Set((data ?? []).map((l) => `${l.provider}|${l.location_id}`));
+  const names = new Set((data ?? []).filter((s) => stationIds.includes(s.id)).map((s) => s.name));
+  return new Set((data ?? []).filter((s) => names.has(s.name) && s.provider && s.location_id).map((s) => `${s.provider}|${s.location_id}`));
 }

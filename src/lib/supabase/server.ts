@@ -35,31 +35,27 @@ export async function createClient() {
 
 // Route handlers aren't covered by the /admin proxy guard, so each one calls this.
 // Returns the cookie-bound client plus the user when they are an active admin.
-// `isPartner` means full access (partner or IT admin, see @/lib/adminAccess); investors get
-// the CMS dashboard and enquiries, and `stationIds` lists the stations an investor is limited
-// to (null = all stations).
+// `isPartner` means full access (partner or IT admin, see @/lib/adminAccess); other roles open
+// the `modules` ticked for them on the Access page (admin_users.modules), and `stationIds` lists
+// the station records such an admin is limited to (admin_users.station_ids; null = all stations).
 export async function getAdminClient() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { supabase, user: null, isPartner: false, access: null, stationIds: null };
+  if (!user) return { supabase, user: null, isPartner: false, access: null, modules: [] as string[], stationIds: null };
 
   const { data: admin, error } = await supabase
     .from("admin_users")
-    .select("access")
+    .select("access, station_ids, modules")
     .eq("user_id", user.id)
     .eq("role", "admin")
     .eq("active", true)
     .maybeSingle();
-  if (error || !admin) return { supabase, user: null, isPartner: false, access: null, stationIds: null };
+  if (error || !admin) return { supabase, user: null, isPartner: false, access: null, modules: [] as string[], stationIds: null };
 
   const isPartner = hasFullAccess(admin.access);
-  let stationIds: string[] | null = null;
-  if (!isPartner) {
-    const { data: rows } = await supabase.from("admin_station_access").select("station_id").eq("user_id", user.id);
-    // shortcut: a failed read counts as "all stations"; the database's own policy still limits what they read.
-    stationIds = rows?.length ? rows.map((r) => r.station_id as string) : null;
-  }
-  return { supabase, user, isPartner, access: admin.access as string, stationIds };
+  const limited = (admin.station_ids as string[] | null) ?? [];
+  const stationIds = !isPartner && limited.length ? limited : null;
+  return { supabase, user, isPartner, access: admin.access as string, modules: (admin.modules as string[] | null) ?? [], stationIds };
 }

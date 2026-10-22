@@ -51,7 +51,8 @@ function prettyRange(label: string) {
 }
 
 export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
-  const { isPartner, setActiveModule } = useAdminModule();
+  const { canOpen, setActiveModule } = useAdminModule();
+  const canBill = canOpen("billing"); // invoices are read with the billing module
   const [cms, setCms] = useState<CmsState>({ status: "loading" });
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
   const [billingError, setBillingError] = useState(false);
@@ -111,7 +112,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
     return unsubscribe;
   }, [filterCache]);
   const loadInvoices = useCallback(() => {
-    if (!isPartner) return;
+    if (!canBill) return;
     void supabase.from("billing_invoices")
       .select("id, invoice_number, billing_name, invoice_date, due_date, billing_period_from, billing_period_to, invoice_status, grand_total, amount_paid, taxable_amount, cgst_amount, sgst_amount, igst_amount")
       .order("invoice_date", { ascending: false })
@@ -119,7 +120,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
         setBillingError(Boolean(error));
         if (!error) setInvoices((data ?? []) as Invoice[]);
       });
-  }, [isPartner]);
+  }, [canBill]);
   useEffect(loadInvoices, [loadInvoices]);
 
   // Refresh reloads the charging data (shared with the CMS dashboard) and the invoices.
@@ -279,7 +280,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </>
         )}
 
-        {isPartner && (
+        {canBill && (
           <section aria-labelledby="fin-h" className={card}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="fin-h" className="text-base font-bold">Finance{finance && <span className="ml-2 text-xs font-semibold text-[#5d6577]">{finance.fyLabel}</span>}</h2>
@@ -393,8 +394,8 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </section>
         )}
 
-        <div className={`grid gap-3.5 ${isPartner ? "lg:grid-cols-2" : ""}`}>
-          {isPartner && (
+        <div className={`grid gap-3.5 ${canBill ? "lg:grid-cols-2" : ""}`}>
+          {canBill && (
             <section aria-labelledby="bill-h" className={card}>
               <div className="flex items-center justify-between">
                 <h2 id="bill-h" className="text-base font-bold">Billing</h2>

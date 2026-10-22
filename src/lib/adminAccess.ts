@@ -1,38 +1,47 @@
-// Admin access levels (admin_users.access) and the rules the Access page enforces. Pure, so
-// tests/ can load it and the browser can import it.
+// Admin roles and the rules the Access page enforces. A role is a value of the admin_access
+// picklist (admin_users.access); the list itself comes from the database
+// (admin_access_levels()), so a value added there needs no code change. Pure, so tests/ can
+// load it and the browser can import it.
 
-export type AccessLevel = "partner" | "it_admin" | "investor";
+export type AccessLevel = string;
+export type Level = { id: AccessLevel; label: string; full: boolean };
 
-export const ACCESS_LEVELS: Array<{ id: AccessLevel; label: string; full: boolean }> = [
-  { id: "partner", label: "Partner", full: true },
-  { id: "it_admin", label: "IT admin", full: true },
-  { id: "investor", label: "Investor", full: false },
-];
+// The roles that see and manage everything. Same set as admin_full_access() in Postgres; any
+// other role sees the CMS dashboard and enquiries, for all stations or only its own.
+export const FULL_ACCESS_ROLES = ["partner", "it_admin"];
 
-// Partners and IT admins see and manage everything; investors see the CMS dashboard and
-// enquiries, optionally only some stations. Same rule as admin_full_access() in Postgres.
 export function hasFullAccess(access: string | null | undefined) {
-  return ACCESS_LEVELS.some((level) => level.id === access && level.full);
+  return FULL_ACCESS_ROLES.includes(access ?? "");
 }
 
-export function accessLabel(access: string | null | undefined) {
-  return ACCESS_LEVELS.find((level) => level.id === access)?.label ?? "Admin";
+// A picklist value as people read it: "it_admin" -> "IT admin", "partner" -> "Partner"
+// (words of two letters or fewer are taken as abbreviations).
+export function roleLabel(access: string | null | undefined) {
+  if (!access) return "Admin";
+  const words = access.split("_").filter(Boolean).map((w) => (w.length <= 2 ? w.toUpperCase() : w.toLowerCase()));
+  const label = words.join(" ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+export function toLevels(values: string[]): Level[] {
+  return values.map((id) => ({ id, label: roleLabel(id), full: hasFullAccess(id) }));
 }
 
 export type AdminRecord = { user_id: string; access: string; active: boolean };
 
-// Why a change to `target` would be refused, or null. `actorId` is the admin making it.
-// Nobody can lower their own access or turn themselves off, and the last active full-access
-// admin stays, so the admin can never lock everyone out.
+// Why a change to `target` would be refused, or null. `actorId` is the admin making it and
+// `levels` the picklist's values. Nobody can lower their own access or turn themselves off,
+// and the last active full-access admin stays, so the admin can never lock everyone out.
 export function accessChangeError(
   admins: AdminRecord[],
   actorId: string,
   targetId: string,
-  change: { access?: string; active?: boolean }
+  change: { access?: string; active?: boolean },
+  levels: string[]
 ) {
   const target = admins.find((a) => a.user_id === targetId);
   if (!target) return "That admin does not exist.";
-  if (change.access !== undefined && !ACCESS_LEVELS.some((l) => l.id === change.access)) return "Unknown access level.";
+  if (change.access !== undefined && !levels.includes(change.access)) return "Unknown access level.";
   const losesFull =
     hasFullAccess(target.access) && target.active &&
     ((change.access !== undefined && !hasFullAccess(change.access)) || change.active === false);

@@ -7,12 +7,19 @@ export function parseAdminModule(value: string | null | undefined): AdminModule 
   return ADMIN_MODULES.find((module) => module === value) ?? "overview";
 }
 
-// Investors see only the CMS dashboard and enquiries; RLS and the API enforce the same split.
-// "Partner" here means full access: partners and IT admins (see @/lib/adminAccess).
-const PARTNER_ONLY_MODULES: AdminModule[] = ["billing", "stations", "access", "cpo-settings"];
+// The modules the Access page can tick for an admin without full access (admin_users.modules;
+// RLS and the API check the same list). Overview is always open; Access stays with full-access
+// admins (partners and IT admins, see @/lib/adminAccess), who open everything.
+export const GRANTABLE_MODULES: { key: AdminModule; label: string }[] = [
+  { key: "cms", label: "CMS Dashboard" },
+  { key: "billing", label: "Billing" },
+  { key: "enquiries", label: "Enquiries" },
+  { key: "stations", label: "Stations" },
+  { key: "cpo-settings", label: "CPO Settings" },
+];
 
-export function canOpenModule(module: AdminModule, isPartner: boolean) {
-  return isPartner || !PARTNER_ONLY_MODULES.includes(module);
+export function canOpenModule(module: AdminModule, isPartner: boolean, modules: readonly string[] = []) {
+  return isPartner || module === "overview" || (module !== "access" && modules.includes(module));
 }
 
 export type AdminNavItem = {

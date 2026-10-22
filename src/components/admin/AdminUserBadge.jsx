@@ -1,6 +1,6 @@
 "use client";
 
-import { accessLabel } from '@/lib/adminAccess';
+import { roleLabel } from '@/lib/adminAccess';
 import { useEffect, useState } from "react";
 import { UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabase/billing";
@@ -43,7 +43,7 @@ export default function AdminUserBadge() {
       <UserRound size={18} className="shrink-0 text-slate-600" />
       <span className="min-w-0 leading-tight">
         <b className="block max-w-[150px] truncate text-xs font-bold text-slate-900">{name}</b>
-        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">{accessLabel(access)}</small>
+        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">{roleLabel(access)}</small>
       </span>
     </div>
   );

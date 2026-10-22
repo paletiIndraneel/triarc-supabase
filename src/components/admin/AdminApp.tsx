@@ -26,7 +26,7 @@ type Enquiry = {
   created_at: string;
 };
 
-export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner, access }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean; access: string | null }) {
+export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner, access, modules }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean; access: string | null; modules: string[] }) {
   const [moduleState, setModuleState] = useState<AdminModule>(initialModule);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
@@ -48,16 +48,17 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
     setTheme(next);
   }, [theme]);
   // A module the user may not open (e.g. an investor following a ?module=billing link) shows the Overview.
-  const activeModule = canOpenModule(moduleState, isPartner) ? moduleState : "overview";
+  const canOpen = useCallback((module: AdminModule) => canOpenModule(module, isPartner, modules), [isPartner, modules]);
+  const activeModule = canOpen(moduleState) ? moduleState : "overview";
 
   const setActiveModule = useCallback((module: AdminModule) => {
-    if (!canOpenModule(module, isPartner)) return;
+    if (!canOpen(module)) return;
     setModuleState(module);
     const url = new URL(window.location.href);
     if (url.searchParams.get("module") === module) return;
     url.searchParams.set("module", module);
     window.history.pushState(null, "", url);
-  }, [isPartner]);
+  }, [canOpen]);
 
   // Tab title follows the module, e.g. "TRIARC GROUP | Billing · EV Hub".
   useEffect(() => {
@@ -73,7 +74,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
   }, []);
 
   return (
-    <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner, access }}>
+    <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner, access, canOpen }}>
       <div data-admin-theme={theme} className={adminStyles.adminShell}>
       <AdminHeader theme={theme} onToggleTheme={toggleTheme} />
       {activeModule === "overview" && <Overview enquiries={enquiries} />}

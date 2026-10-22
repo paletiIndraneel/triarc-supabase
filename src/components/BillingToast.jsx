@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const ToastCtx = createContext(null);
@@ -19,7 +19,9 @@ export function ToastProvider({ children }) {
     })}</div>
   </ToastCtx.Provider>;
 }
+// The same object on every render: effects list `toast` as a dependency (EVBilling's loader),
+// and a new object each render made them re-run on every render, reloading billing endlessly.
 export const useToast = () => {
-  const ctx = useContext(ToastCtx);
-  return { success: (m)=>ctx.addToast(m,'success'), error: (m)=>ctx.addToast(m,'error'), warning:(m)=>ctx.addToast(m,'warning'), info:(m)=>ctx.addToast(m,'info') };
+  const addToast = useContext(ToastCtx).addToast;
+  return useMemo(() => ({ success: (m)=>addToast(m,'success'), error: (m)=>addToast(m,'error'), warning:(m)=>addToast(m,'warning'), info:(m)=>addToast(m,'info') }), [addToast]);
 };

@@ -14,7 +14,7 @@ npm run build           # next build --webpack (webpack, not Turbopack)
 npm run lint            # eslint . (flat config in eslint.config.mjs; React Compiler rules are warnings for now)
 npm run opennext-build  # build the Cloudflare Worker bundle into .open-next/
 npm run preview         # run the Worker bundle locally (wrangler)
-npm run deploy          # deploy to Cloudflare (worker "dev-worker", see wrangler.jsonc); only when explicitly asked
+npm run deploy          # deploy to Cloudflare (worker "triarc" in the triarcgroup9 account, see wrangler.jsonc); only when explicitly asked. SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY must be set in the shell when building, since they are inlined at build time
 ```
 
 **Release flow:**

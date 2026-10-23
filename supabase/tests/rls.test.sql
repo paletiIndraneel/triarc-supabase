@@ -123,10 +123,15 @@ begin
   begin perform public.cms_session_acquire(30); denied := false;
   exception when insufficient_privilege then denied := true; end;
   if not denied then fails := fails || array['investor calls cms_session_acquire (ChargeMOD token)']; end if;
-  -- Known gap: device tables let any active admin write (devices, device_commands).
+  -- Devices and device commands: full-access admins only (migration 20261023000100).
+  total := total + 1;
   begin insert into public.devices (name, device_type, device_id) values ('RLS test', 'esp32_s3', 'rlstest-' || gen_random_uuid()); denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if not denied then gaps := gaps || array['investor can add devices / device commands (limit to full access)']; end if;
+  if not denied then fails := fails || array['investor adds a device']; end if;
+  total := total + 1;
+  begin insert into public.device_commands (device_id, command) values ('rlstest', 'reboot'); denied := false;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then fails := fails || array['investor queues a device command']; end if;
   perform set_config('role', 'postgres', true);
 
   -- 3. Investor with the billing module, and the station-limited investor.

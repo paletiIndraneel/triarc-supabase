@@ -7,10 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mjs",
-    "lint": "eslint .",
-    "opennext-build": "opennextjs-cloudflare build",
-    "preview": "opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare deploy"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -25,7 +22,6 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -33,19 +29,11 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "wrangler": "^4.132.0"
+    "typescript": "^5"
   },
   "allowScripts": {
     "sharp@0.34.5": true,
     "unrs-resolver@1.12.2": true,
-    "esbuild@0.28.1": true,
-    "workerd@1.20260915.1": true,
-    "core-js": true,
-    "esbuild": true,
-    "workerd": true
-  },
-  "overrides": {
-    "node-domexception": "npm:@nolyfill/domexception@^1.0.28"
+    "core-js": true
   }
 }

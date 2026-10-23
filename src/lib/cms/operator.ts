@@ -1,4 +1,3 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ChargeModTransaction, CmsTransaction } from "./types";
 import { cleanUserName } from "./transactionStore";
@@ -35,13 +34,9 @@ const MAX_COLLECTED_PAGES = 450;
 const TOKEN_TTL_MS = 45 * 60 * 1000;
 const TOKEN_REFRESH_SKEW_MS = 2 * 60 * 1000;
 
+// Runtime settings (secrets, CMS_*) come from the host's environment variables (Vercel).
 export async function getRuntimeEnv(): Promise<Record<string, unknown>> {
-  try {
-    const context = await getCloudflareContext({ async: true });
-    return context.env as unknown as Record<string, unknown>;
-  } catch {
-    return process.env as unknown as Record<string, unknown>;
-  }
+  return process.env as unknown as Record<string, unknown>;
 }
 
 export async function getCmsConfig(): Promise<CmsConfig> {

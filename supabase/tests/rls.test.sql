@@ -61,12 +61,14 @@ begin
       exception when insufficient_privilege then n := 0;
       end;
       total := total + 1;
-      if n <> 0 then fails := fails || format('%s reads %s rows of %s', who, n, tbl); end if;
+      if n <> 0 then fails := fails || array[format('%s reads %s rows of %s', who, n, tbl)]; end if;
     end loop;
     total := total + 1;
-    if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 0 then
-      fails := fails || format('%s gets CPO matches', who);
-    end if;
+    begin
+      n := (select count(*) from public.cpo_mobile_matches(array['0000000001']));
+    exception when insufficient_privilege then n := 0; -- anon may not call it at all
+    end;
+    if n <> 0 then fails := fails || array[format('%s gets CPO matches', who)]; end if;
     perform set_config('role', 'postgres', true);
   end loop;
 
@@ -76,55 +78,55 @@ begin
   perform set_config('role', 'authenticated', true);
 
   total := total + 1;
-  if (select count(*) from public.billing_invoices where id = inv) <> 0 then fails := fails || 'investor reads invoices'; end if;
+  if (select count(*) from public.billing_invoices where id = inv) <> 0 then fails := fails || array['investor reads invoices']; end if;
   total := total + 1;
   begin insert into public.billing_customers (name) values ('RLS test'); denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if not denied then fails := fails || 'investor adds a billing customer'; end if;
+  if not denied then fails := fails || array['investor adds a billing customer']; end if;
   total := total + 1;
-  if (select count(*) from public.cpo_mobile_numbers) <> 0 then fails := fails || 'investor reads the CPO number list'; end if;
+  if (select count(*) from public.cpo_mobile_numbers) <> 0 then fails := fails || array['investor reads the CPO number list']; end if;
   total := total + 1;
-  if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || 'investor cannot match a CPO number'; end if;
+  if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || array['investor cannot match a CPO number']; end if;
   total := total + 1;
-  if (select count(*) from public.enquiries where id = enq) <> 1 then fails := fails || 'investor cannot read enquiries'; end if;
+  if (select count(*) from public.enquiries where id = enq) <> 1 then fails := fails || array['investor cannot read enquiries']; end if;
   total := total + 1;
   update public.enquiries set status = 'Contacted' where id = enq; get diagnostics n = row_count;
-  if n <> 1 then fails := fails || 'investor cannot change an enquiry status'; end if;
+  if n <> 1 then fails := fails || array['investor cannot change an enquiry status']; end if;
   total := total + 1;
   delete from public.enquiries where id = enq; get diagnostics n = row_count;
-  if n <> 0 then fails := fails || 'investor deletes an enquiry'; end if;
+  if n <> 0 then fails := fails || array['investor deletes an enquiry']; end if;
   total := total + 1;
-  if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || 'investor (all stations) misses sessions'; end if;
+  if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || array['investor (all stations) misses sessions']; end if;
   total := total + 1;
-  if (select count(*) from public.billing_invoice_stations where id in (st_a, st_b)) <> 2 then fails := fails || 'investor cannot read station names'; end if;
+  if (select count(*) from public.billing_invoice_stations where id in (st_a, st_b)) <> 2 then fails := fails || array['investor cannot read station names']; end if;
   total := total + 1;
   begin update public.billing_invoice_stations set name = 'x' where id = st_a; get diagnostics n = row_count;
   exception when insufficient_privilege then n := 0; end;
-  if n <> 0 then fails := fails || 'investor renames a station'; end if;
+  if n <> 0 then fails := fails || array['investor renames a station']; end if;
   total := total + 1;
   begin update public.admin_users set access = 'partner' where user_id = u_i; denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if not denied then fails := fails || 'investor raises own access'; end if;
+  if not denied then fails := fails || array['investor raises own access']; end if;
   total := total + 1;
   begin update public.admin_users set modules = '{billing}' where user_id = u_i; denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if not denied then fails := fails || 'investor ticks own modules'; end if;
+  if not denied then fails := fails || array['investor ticks own modules']; end if;
   total := total + 1;
   update public.admin_users set cms_operator_columns = '["id"]' where user_id = u_i; get diagnostics n = row_count;
-  if n <> 1 then fails := fails || 'investor cannot save own column preferences'; end if;
+  if n <> 1 then fails := fails || array['investor cannot save own column preferences']; end if;
   total := total + 1;
   update public.admin_users set cms_operator_columns = '["id"]' where user_id = u_p; get diagnostics n = row_count;
-  if n <> 0 then fails := fails || 'investor changes another admin''s row'; end if;
+  if n <> 0 then fails := fails || array['investor changes another admin''s row']; end if;
   total := total + 1;
-  if (select count(*) from public.admin_users) <> 1 then fails := fails || 'investor reads other admin rows'; end if;
+  if (select count(*) from public.admin_users) <> 1 then fails := fails || array['investor reads other admin rows']; end if;
   total := total + 1;
   begin perform public.cms_session_acquire(30); denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if not denied then fails := fails || 'investor calls cms_session_acquire (ChargeMOD token)'; end if;
+  if not denied then fails := fails || array['investor calls cms_session_acquire (ChargeMOD token)']; end if;
   -- Known gap: device tables let any active admin write (devices, device_commands).
-  begin insert into public.devices (name, device_type, device_id) values ('RLS test', 'test', 'rlstest-' || gen_random_uuid()); denied := false;
+  begin insert into public.devices (name, device_type, device_id) values ('RLS test', 'esp32_s3', 'rlstest-' || gen_random_uuid()); denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if not denied then gaps := gaps || 'investor can add devices / device commands (limit to full access)'; end if;
+  if not denied then gaps := gaps || array['investor can add devices / device commands (limit to full access)']; end if;
   perform set_config('role', 'postgres', true);
 
   -- 3. Investor with the billing module, and the station-limited investor.
@@ -132,23 +134,23 @@ begin
   perform set_config('request.jwt.claim.sub', u_ib::text, true);
   perform set_config('role', 'authenticated', true);
   total := total + 1;
-  if (select count(*) from public.billing_invoices where id = inv) <> 1 then fails := fails || 'billing-module investor cannot read invoices'; end if;
+  if (select count(*) from public.billing_invoices where id = inv) <> 1 then fails := fails || array['billing-module investor cannot read invoices']; end if;
   total := total + 1;
   begin insert into public.billing_customers (name) values ('RLS test 2'); denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if denied then fails := fails || 'billing-module investor cannot add a customer'; end if;
+  if denied then fails := fails || array['billing-module investor cannot add a customer']; end if;
   perform set_config('role', 'postgres', true);
 
   perform set_config('request.jwt.claims', json_build_object('sub', u_is, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', u_is::text, true);
   perform set_config('role', 'authenticated', true);
   total := total + 1;
-  if (select count(*) from public.cms_transactions where transaction_id = tx_a) <> 1 then fails := fails || 'station-limited investor misses own station'; end if;
+  if (select count(*) from public.cms_transactions where transaction_id = tx_a) <> 1 then fails := fails || array['station-limited investor misses own station']; end if;
   total := total + 1;
-  if (select count(*) from public.cms_transactions where transaction_id = tx_b) <> 0 then fails := fails || 'station-limited investor reads another station'; end if;
+  if (select count(*) from public.cms_transactions where transaction_id = tx_b) <> 0 then fails := fails || array['station-limited investor reads another station']; end if;
   total := total + 1;
   update public.cms_transactions set user_name = 'x' where transaction_id = tx_b; get diagnostics n = row_count;
-  if n <> 0 then fails := fails || 'station-limited investor updates another station''s session'; end if;
+  if n <> 0 then fails := fails || array['station-limited investor updates another station''s session']; end if;
   perform set_config('role', 'postgres', true);
 
   -- 4. Full access: partner and IT admin.
@@ -157,19 +159,19 @@ begin
     perform set_config('request.jwt.claim.sub', case who when 'partner' then u_p::text else u_t::text end, true);
     perform set_config('role', 'authenticated', true);
     total := total + 1;
-    if (select count(*) from public.billing_invoices where id = inv) <> 1 then fails := fails || format('%s cannot read invoices', who); end if;
+    if (select count(*) from public.billing_invoices where id = inv) <> 1 then fails := fails || array[format('%s cannot read invoices', who)]; end if;
     total := total + 1;
-    if (select count(*) from public.cpo_mobile_numbers where normalized_mobile = '0000000001') <> 1 then fails := fails || format('%s cannot read CPO numbers', who); end if;
+    if (select count(*) from public.cpo_mobile_numbers where normalized_mobile = '0000000001') <> 1 then fails := fails || array[format('%s cannot read CPO numbers', who)]; end if;
     total := total + 1;
-    if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || format('%s misses sessions', who); end if;
+    if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || array[format('%s misses sessions', who)]; end if;
     total := total + 1;
     begin update public.admin_users set access = 'investor' where user_id = u_i; denied := false;
     exception when insufficient_privilege then denied := true; end;
-    if not denied then fails := fails || format('%s changes admin access from the browser (must go through /api/admin/access)', who); end if;
+    if not denied then fails := fails || array[format('%s changes admin access from the browser (must go through /api/admin/access)', who)]; end if;
     total := total + 1;
     begin perform public.cms_session_acquire(30); denied := false;
     exception when insufficient_privilege then denied := true; end;
-    if not denied then fails := fails || format('%s calls cms_session_acquire from a signed-in session', who); end if;
+    if not denied then fails := fails || array[format('%s calls cms_session_acquire from a signed-in session', who)]; end if;
     perform set_config('role', 'postgres', true);
   end loop;
   -- Last, since it removes the fixture: a partner may delete an enquiry.
@@ -178,7 +180,7 @@ begin
   perform set_config('role', 'authenticated', true);
   total := total + 1;
   delete from public.enquiries where id = enq; get diagnostics n = row_count;
-  if n <> 1 then fails := fails || 'partner cannot delete an enquiry'; end if;
+  if n <> 1 then fails := fails || array['partner cannot delete an enquiry']; end if;
   perform set_config('role', 'postgres', true);
 
   -- Always roll back: the outcome travels in the exception message.

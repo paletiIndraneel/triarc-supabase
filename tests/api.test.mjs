@@ -48,13 +48,18 @@ test("admin API refuses a forged session cookie", { skip }, async () => {
   }
 });
 
-test("/admin sends visitors to sign in, and old module URLs to /admin", { skip }, async () => {
-  const admin = await call("/admin");
-  assert.ok([302, 307].includes(admin.status), `/admin: HTTP ${admin.status}`);
-  assert.match(admin.headers.get("location") ?? "", /\/signin\?callbackUrl=%2Fadmin$/);
-  const old = await call("/admin/billing");
-  assert.ok([302, 307, 308].includes(old.status));
-  assert.match(old.headers.get("location") ?? "", /\/admin$/);
+test("the admin (/) sends visitors to sign in, and old /admin URLs to /", { skip }, async () => {
+  const home = await call("/");
+  assert.ok([302, 307].includes(home.status), `/: HTTP ${home.status}`);
+  assert.match(home.headers.get("location") ?? "", /\/signin\?callbackUrl=%2F$/);
+  for (const old of ["/admin", "/admin/billing"]) {
+    const res = await call(old);
+    assert.ok([302, 307, 308].includes(res.status), old);
+    assert.match(res.headers.get("location") ?? "", /^(https?:\/\/[^/]+)?\/$/, old);
+  }
+  const signin = await call("/signin");
+  assert.equal(signin.status, 200);
+  assert.match(await signin.text(), /Sign in/);
 });
 
 // Signs in with @supabase/ssr exactly as the browser does and returns the cookie header.
@@ -78,7 +83,7 @@ test("an admin without full access cannot manage access", { skip: !hasLogin("INV
   const prefs = await call("/api/admin/preferences", { cookie });
   assert.equal(prefs.status, 200);
   assert.ok(Array.isArray((await prefs.json()).columns));
-  assert.equal((await call("/admin", { cookie })).status, 200);
+  assert.equal((await call("/", { cookie })).status, 200);
 });
 
 test("a partner or IT admin can read the Access and CPO lists", { skip: !hasLogin("PARTNER") && "set TEST_PARTNER_EMAIL/_PASSWORD" }, async () => {

@@ -1,20 +1,18 @@
+import type { Metadata } from "next";
+import AuthShell, { authButtonClass } from "@/components/admin/AuthShell";
+import LogoutButton from "@/components/admin/LogoutButton";
+
+export const metadata: Metadata = {
+  title: { absolute: "TRIARC GROUP | No access" },
+  robots: { index: false, follow: false },
+};
+
 export default function UnauthorizedPage() {
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md text-center">
-        <h1 className="text-3xl font-semibold text-gray-900">
-          You are not authorised to visit this page
-        </h1>
-        <p className="mt-3 text-gray-600">
-          Your account does not have permission to access this area.
-        </p>
-        <a
-          href="/signin"
-          className="inline-flex mt-6 rounded-md bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          Back to sign in
-        </a>
+    <AuthShell title="No admin access" subtitle="This account is signed in but is not an active Triarc admin. Ask a partner to invite you, or sign in with another account.">
+      <div className="mt-6 grid">
+        <LogoutButton className={authButtonClass}>Sign in with another account</LogoutButton>
       </div>
-    </main>
+    </AuthShell>
   );
 }

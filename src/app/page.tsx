@@ -1,50 +1,43 @@
-import Hero from "@/components/Hero/Hero";
-import ExperienceTriArc from "@/components/Experience/ExperienceTriArc";
-import ChargingSolutions from "@/components/Charging/ChargingSolutions";
-import StationHighlights from "@/components/Location/StationHighlights";
-import ExploreNearby from "@/components/Explore/ExploreNearby";
-import VisitUs from "@/components/Visit/VisitUs";
-import Faq from "@/components/seo/Faq";
-import Footer from "@/components/Footer/Footer";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import AdminApp from "@/components/admin/AdminApp";
+import { parseAdminModule } from "@/components/admin/adminNavigation";
+import { getAdminClient } from "@/lib/supabase/server";
 
-const homeFaqItems = [
-  {
-    question: "What is TRIARC EV Hub?",
-    answer:
-      "TRIARC EV Hub is an EV charging station in Bhadrachalam, Telangana, offering EV charging and charging infrastructure solutions for vehicles, businesses and fleets.",
-  },
-  {
-    question: "Where is TRIARC EV Hub located?",
-    answer:
-      "TRIARC EV Hub is located on Park Road, next to Kakatiya Residency, Bhadrachalam, Telangana 507111.",
-  },
-  {
-    question: "Does TRIARC EV Hub offer DC fast charging?",
-    answer:
-      "Yes. TRIARC EV Hub offers DC fast charging in Bhadrachalam. Contact TRIARC for current station and charger information.",
-  },
-  {
-    question: "Does TRIARC support businesses and fleets?",
-    answer:
-      "Yes. TRIARC EV Hub provides commercial EV charging, fleet charging and EV charger installation solutions for suitable business requirements.",
-  },
-];
+export const metadata: Metadata = {
+  title: { absolute: "TRIARC GROUP | Admin" },
+  robots: { index: false, follow: false },
+};
 
-export default function Home() {
+type Enquiry = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  message: string;
+  status: "New" | "Contacted" | "Closed";
+  created_at: string;
+};
+
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ module?: string | string[] }> }) {
+  const { module } = await searchParams;
+  // proxy.ts has already checked this is an active admin; checked again here in case the
+  // proxy is bypassed or misconfigured, and this adds partner vs investor.
+  const { supabase, user, isPartner, access, modules } = await getAdminClient();
+  if (!user) redirect("/signin");
+  const { data, error } = await supabase
+    .from("enquiries")
+    .select("id, name, email, phone, message, status, created_at")
+    .order("created_at", { ascending: false });
+
   return (
-    <>
-      <main>
-        <Hero />
-
-        <ChargingSolutions />
-
-
-        <ExploreNearby />
-
-        <VisitUs />
-      </main>
-
-      <Footer />
-    </>
+    <AdminApp
+      enquiries={(data ?? []) as Enquiry[]}
+      enquiryError={Boolean(error)}
+      initialModule={parseAdminModule(typeof module === "string" ? module : null)}
+      isPartner={isPartner}
+      access={access}
+      modules={modules}
+    />
   );
 }

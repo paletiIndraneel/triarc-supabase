@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import GlassCard from "@/components/ui/GlassCard";
+import AuthShell from "@/components/admin/AuthShell";
 import SignInForm from "@/components/admin/SignInForm";
 
 export const metadata: Metadata = {
@@ -10,14 +10,10 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#03110d] px-6 py-16">
-      <GlassCard className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-white">Admin Sign In</h1>
-        <p className="mt-2 text-sm text-white/60">Restricted access.</p>
-        <Suspense fallback={null}>
-          <SignInForm />
-        </Suspense>
-      </GlassCard>
-    </main>
+    <AuthShell title="Sign in" subtitle="For Triarc admins only.">
+      <Suspense fallback={null}>
+        <SignInForm />
+      </Suspense>
+    </AuthShell>
   );
 }

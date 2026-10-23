@@ -15,7 +15,7 @@
 export function getSafeCallbackUrl(
   raw: string | null | undefined,
   origin: string,
-  fallback = "/admin"
+  fallback = "/"
 ): string {
   if (!raw) return fallback;
   if (/[\\\u0000-\u001f\u007f]/.test(raw)) return fallback;

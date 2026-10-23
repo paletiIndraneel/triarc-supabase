@@ -14,12 +14,7 @@ const nextConfig: NextConfig = {
       "",
   },
 
-  images: {
-    unoptimized: true,
-    remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
-    ],
-  },
+  images: { unoptimized: true },
 
   // Baseline security headers. The CSP is limited to directives that cannot affect
   // scripts, styles, images, fonts or API calls (so nothing on the site is blocked):
@@ -30,6 +25,8 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
+          // Private admin: keep every page and API out of search engines.
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate, noai, noimageai" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=()" },
@@ -45,15 +42,9 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
-      { source: "/solutions", destination: "/charging-solutions", permanent: true },
-      { source: "/solutions/ev-charging", destination: "/charging-solutions/ev-charging", permanent: true },
-      { source: "/solutions/dc-fast-charging", destination: "/charging-solutions/dc-fast-charging", permanent: true },
-      { source: "/solutions/charger-installation", destination: "/charging-solutions/charger-installation", permanent: true },
-      { source: "/solutions/commercial-charging", destination: "/charging-solutions/commercial-ev-charging", permanent: true },
-      { source: "/solutions/fleet-charging", destination: "/charging-solutions/fleet-charging", permanent: true },
-      { source: "/stations/triarc-ev-hub-bhadrachalam", destination: "/ev-station/triarc-ev-hub-bhadrachalam", permanent: true },
-      // The admin area is a single page; old module URLs (e.g. /admin/billing) land on it.
-      { source: "/admin/:path+", destination: "/admin", permanent: false },
+      // The admin is the whole app, served at the root; old /admin links (and /admin/billing etc.) land there.
+      { source: "/admin", destination: "/", permanent: false },
+      { source: "/admin/:path+", destination: "/", permanent: false },
     ];
   },
 };

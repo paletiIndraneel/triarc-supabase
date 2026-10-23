@@ -1,26 +1,13 @@
 import type { MetadataRoute } from "next";
-import { site } from "@/data/site";
+import { BLOCKED_BOTS } from "@/lib/bots";
 
+// The admin is private: every crawler, search engine and AI agent is told to stay out.
+// (src/proxy.ts also refuses them, for the ones that ignore this file.)
 export default function robots(): MetadataRoute.Robots {
   return {
-   rules: [
-      {
-        userAgent: "*",
-        allow: "/",
-        disallow: ["/admin", "/signin"],
-      },
-      {
-        userAgent: [
-          "GPTBot",
-          "ClaudeBot",
-          "CCBot",
-          "Google-Extended",
-          "Bytespider",
-          "Applebot-Extended",
-        ],
-        disallow: "/",
-      },
+    rules: [
+      { userAgent: "*", disallow: "/" },
+      { userAgent: BLOCKED_BOTS, disallow: "/" },
     ],
-    sitemap: `${site.url}/sitemap.xml`,
   };
 }

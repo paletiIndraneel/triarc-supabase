@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Settings2, Sun, Moon, ChevronDown, LogOut } from "lucide-react";
+import { Settings2, Sun, Moon, ChevronDown, LogOut, MapPin, ShieldCheck } from "lucide-react";
 import AdminUserBadge from "@/components/admin/AdminUserBadge";
 import LogoutButton from "@/components/admin/LogoutButton";
 import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNavigation";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { BUSINESSES, GROUP_NAME, MODULE_BUSINESS, businessName } from "@/components/admin/brand";
+import type { AdminModule } from "@/components/admin/adminNavigation";
+
+// Set-up modules live in the account menu, not the top bar.
+const MENU_MODULES: { key: AdminModule; label: string; Icon: typeof MapPin }[] = [
+  { key: "stations", label: "Stations", Icon: MapPin },
+  { key: "access", label: "Access", Icon: ShieldCheck },
+  { key: "cpo-settings", label: "CPO Settings", Icon: Settings2 },
+];
 
 export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" | "dark"; onToggleTheme: () => void }) {
   const { activeModule, setActiveModule, canOpen } = useAdminModule();
@@ -46,7 +54,7 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
       </div>
       <nav className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto px-1 md:order-none md:mx-0 md:h-full md:w-auto md:flex-1 md:px-0" aria-label="Admin modules">
         <div className="flex shrink-0 items-center gap-1.5">
-        {ADMIN_NAV_ITEMS.filter((item) => canOpen(item.key)).map((item) => (
+        {ADMIN_NAV_ITEMS.filter((item) => canOpen(item.key) && !MENU_MODULES.some((m) => m.key === item.key)).map((item) => (
           <button
             key={item.key}
             type="button"
@@ -58,15 +66,6 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
             {item.label}
           </button>
         ))}
-
-        {canOpen("cpo-settings") && <button
-          type="button"
-          onClick={() => setActiveModule("cpo-settings")}
-          aria-current={activeModule === "cpo-settings" ? "page" : undefined}
-          className={`inline-flex shrink-0 items-center gap-2 rounded-[10px] px-[14px] py-[7px] text-[13px] font-semibold transition ${activeModule === "cpo-settings" ? "bg-[#7157d9] text-white" : "text-[#172033] hover:bg-white"}`}
-        >
-          <Settings2 size={15} /> CPO Settings
-        </button>}
         </div>
       </nav>
       <div className="ml-auto flex items-center text-[#667085]">
@@ -81,6 +80,22 @@ export default function AdminHeader({ theme, onToggleTheme }: { theme: "light" |
               <p className="text-sm font-semibold text-[#172033]">Account settings</p>
               <p className="mt-0.5 text-xs text-[#5d6577]">Appearance and session</p>
             </div>
+            {MENU_MODULES.filter((m) => canOpen(m.key)).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setActiveModule(key);
+                  if (accountMenuRef.current) accountMenuRef.current.open = false;
+                }}
+                aria-current={activeModule === key ? "page" : undefined}
+                className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${activeModule === key ? "bg-[#7157d9] text-white" : "text-[#172033] hover:bg-[#CCDBDB]/60"}`}
+              >
+                <Icon size={17} />
+                <span>{label}</span>
+              </button>
+            ))}
+            {MENU_MODULES.some((m) => canOpen(m.key)) && <div className="my-1 border-t border-[#83999E]/30" />}
             <button type="button" onClick={onToggleTheme} className="mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-[#172033] transition hover:bg-[#CCDBDB]/60">
               {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
               <span>{theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}</span>

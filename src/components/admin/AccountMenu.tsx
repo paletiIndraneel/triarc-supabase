@@ -242,8 +242,16 @@ export default function AccountMenu({ role, theme, onThemeChange, items }: { rol
     const onDown = (event: globalThis.PointerEvent) => {
       if (!wrapperRef.current?.contains(event.target as Node)) closeMenu("pointer", false);
     };
+    // Escape closes from anywhere, not only while focus is inside the panel (as the old menu did).
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu("keyboard", true);
+    };
     document.addEventListener("pointerdown", onDown, true);
-    return () => document.removeEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 

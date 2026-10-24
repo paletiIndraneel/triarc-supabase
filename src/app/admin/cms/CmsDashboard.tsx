@@ -1035,7 +1035,7 @@ export default function CmsOperatorDashboard() {
     <>
       <main className="cms-dashboard min-h-screen bg-page px-4 pb-12 pt-6 text-ink sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
-        <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-line/80 bg-surface p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
+        <section className="relative z-10 mb-6 overflow-visible rounded-xl border border-line/80 bg-surface p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               CMS Dashboard
@@ -1214,7 +1214,7 @@ export default function CmsOperatorDashboard() {
                   Columns
                 </button>
                 {columnEditorOpen && (
-                  <div ref={columnMenuRef} className="absolute right-0 top-full z-[9999] mt-2 w-80 rounded-xl border border-line bg-surface p-4 shadow-xl">
+                  <div ref={columnMenuRef} className="absolute right-0 top-full z-30 mt-2 w-80 rounded-xl border border-line bg-surface p-4 shadow-xl">
                     <div className="mb-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-bold text-ink">Columns & fields</p>

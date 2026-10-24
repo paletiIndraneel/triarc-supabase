@@ -25,7 +25,7 @@ export default function AdminHeader({ themeMode, onThemeChange }: { themeMode: T
 
   return (
     // Below md the nav drops to its own row and scrolls sideways instead of pushing the account menu off-screen.
-    <header className="admin-topbar sticky top-0 z-20 flex w-full flex-wrap items-center gap-x-7 gap-y-2 border-b border-line px-4 py-2.5 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:px-7 md:h-16 md:flex-nowrap md:py-0">
+    <header className="admin-topbar sticky top-0 z-40 flex w-full flex-wrap items-center gap-x-7 gap-y-2 border-b border-line px-4 py-2.5 shadow-[0_1px_3px_rgba(16,24,40,0.04)] sm:px-7 md:h-16 md:flex-nowrap md:py-0">
       <div className="flex shrink-0 items-center gap-[9px] whitespace-nowrap font-bold text-ink">
         <button type="button" onClick={() => setActiveModule("overview")} className="text-[16px] font-bold tracking-tight text-ink">{GROUP_NAME}</button>
         {business && <span className="text-[13px] font-semibold text-muted"><span aria-hidden="true" className="mr-[9px] text-muted">·</span>{business}</span>}

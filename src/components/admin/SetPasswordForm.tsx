@@ -61,12 +61,12 @@ export default function SetPasswordForm() {
     window.location.href = "/";
   }
 
-  if (state === "checking") return <p className="mt-6 text-sm text-[#5d6577]">Checking your invite…</p>;
+  if (state === "checking") return <p className="mt-6 text-sm text-muted">Checking your invite…</p>;
   if (state === "invalid") {
     return (
       <div className="mt-6 grid gap-4">
         <p role="alert" className={authErrorClass}>{message}</p>
-        <a href="/signin" className="text-sm font-semibold text-[#5b45c4] hover:text-[#3f2f9a]">Go to sign in</a>
+        <a href="/signin" className="text-sm font-semibold text-accent hover:text-accent-hover">Go to sign in</a>
       </div>
     );
   }

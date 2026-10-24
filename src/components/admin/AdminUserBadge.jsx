@@ -40,10 +40,10 @@ export default function AdminUserBadge() {
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <UserRound size={18} className="shrink-0 text-slate-600" />
+      <UserRound size={18} className="shrink-0 text-muted" />
       <span className="min-w-0 leading-tight">
-        <b className="block max-w-[150px] truncate text-xs font-bold text-slate-900">{name}</b>
-        <small className="block max-w-[150px] truncate text-[10px] text-slate-500">{roleLabel(access)}</small>
+        <b className="block max-w-[150px] truncate text-xs font-bold text-ink">{name}</b>
+        <small className="block max-w-[150px] truncate text-[10px] text-muted">{roleLabel(access)}</small>
       </span>
     </div>
   );

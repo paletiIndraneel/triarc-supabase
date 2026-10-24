@@ -507,26 +507,26 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
     ["CPO DC", split?.energy.cpoDc, undefined],
   ];
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-      <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500" title={title}>{title}</p>
+    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
+      <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted" title={title}>{title}</p>
       <table className="mt-2 w-full text-xs">
         <thead>
-          <tr className="text-xs text-slate-500">
+          <tr className="text-xs text-muted">
             <th scope="col" className="pb-2 text-left font-medium"><span className="sr-only">Charger</span></th>
             <th scope="col" className="pb-2 text-right font-medium">Energy</th>
             <th scope="col" className="pb-2 text-right font-medium">Revenue</th>
           </tr>
         </thead>
-        <tbody className="font-semibold whitespace-nowrap text-slate-800">
+        <tbody className="font-semibold whitespace-nowrap text-ink">
           {rows.map(([label, kwh, amount]) => (
-            <tr key={label} className={label.startsWith("CPO") ? "text-violet-700" : undefined}>
-              <th scope="row" className={`py-1 text-left text-xs ${label.startsWith("CPO") ? "font-semibold text-violet-600" : "font-medium text-slate-500"}`}>{label}</th>
+            <tr key={label} className={label.startsWith("CPO") ? "text-accent" : undefined}>
+              <th scope="row" className={`py-1 text-left text-xs ${label.startsWith("CPO") ? "font-semibold text-accent" : "font-medium text-muted"}`}>{label}</th>
               <td className="py-1 text-right">{kwh === undefined ? "—" : formatKwh(kwh)}</td>
               <td className="py-1 text-right">{label.startsWith("CPO") ? "" : amount === undefined ? "—" : money(amount)}</td>
             </tr>
           ))}
-          <tr className="border-t border-slate-200 text-sm font-bold text-slate-900">
-            <th scope="row" className="pt-2 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
+          <tr className="border-t border-line text-sm font-bold text-ink">
+            <th scope="row" className="pt-2 text-left text-xs font-semibold uppercase tracking-wider text-muted">Total</th>
             <td className="pt-2 text-right">{split ? formatKwh(split.energy.total) : "—"}</td>
             <td className="pt-2 text-right">{split ? money(split.revenue.total) : "—"}</td>
           </tr>
@@ -1104,25 +1104,25 @@ export default function CmsOperatorDashboard() {
   // Month-to-date includes today, so name the range to set it apart from "This month (1–15)".
   const mtdRange = `1–${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date())}`;
   const filterSelectClass =
-    "rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]";
+    "rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft";
 
   return (
     <>
-      <main className="cms-dashboard min-h-screen bg-[#f8f9ff] px-4 pb-12 pt-6 text-[#0b1c30] sm:px-6 sm:pb-16 lg:px-8">
+      <main className="cms-dashboard min-h-screen bg-page px-4 pb-12 pt-6 text-ink sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
-        <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
+        <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-line/80 bg-surface p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               CMS Dashboard
             </h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
               Operational overview of charging sessions, chargers, locations, energy and revenue from the connected CMS.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {dataTill && (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted">
                 Data till{" "}
                 {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(dataTill))}
               </p>
@@ -1140,7 +1140,7 @@ export default function CmsOperatorDashboard() {
               type="button"
               onClick={() => void load(true)}
               disabled={loading}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-line bg-raised px-3.5 py-2 text-sm font-semibold text-ink hover:bg-soft disabled:cursor-not-allowed disabled:opacity-50"
             >
               <RefreshCw size={16} className={loading ? "motion-safe:animate-spin" : ""} />
               Refresh
@@ -1159,7 +1159,7 @@ export default function CmsOperatorDashboard() {
             <p className="text-sm text-red-700"><span className="font-semibold">Couldn&apos;t load CMS data.</span> {message}</p>
             <button
               onClick={() => void load(true)}
-              className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+              className="rounded-lg border border-red-200 bg-surface px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
             >
               Try again
             </button>
@@ -1174,25 +1174,25 @@ export default function CmsOperatorDashboard() {
         </div>
 
         <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
-          <GlassCard className="@container min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <GlassCard className="@container min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
             <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
               <div className="min-w-0 @[26rem]:flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Consumption Details</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere]">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Consumption Details</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-ink [overflow-wrap:anywhere]">
                   {historicalConsumption?.items[0]
                     ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`
                     : "—"}
                 </p>
-                <p className="mt-1 text-xs font-medium text-slate-500">
+                <p className="mt-1 text-xs font-medium text-muted">
                   {historicalConsumption?.items[0]?.label ?? "Loading consumption"}
                 </p>
               </div>
-              <div className="h-px w-full shrink-0 bg-slate-200 @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
+              <div className="h-px w-full shrink-0 bg-soft @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
               <div className="min-w-0 space-y-3 @[26rem]:flex-1">
                 {(historicalConsumption?.items ?? []).slice(1).map((item) => (
                   <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <p className="min-w-0 text-xs font-medium text-slate-500">{item.label}</p>
-                    <p className="text-sm font-semibold whitespace-nowrap text-slate-800">
+                    <p className="min-w-0 text-xs font-medium text-muted">{item.label}</p>
+                    <p className="text-sm font-semibold whitespace-nowrap text-ink">
                       {item.value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh
                     </p>
                   </div>
@@ -1208,11 +1208,11 @@ export default function CmsOperatorDashboard() {
           <StatusCard count={activeCount} sessions={liveShown} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
         </div>
 
-        <GlassCard className="mt-6 overflow-visible rounded-xl border border-slate-200/80 bg-white p-0 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+        <GlassCard className="mt-6 overflow-visible rounded-xl border border-line/80 bg-surface p-0 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
             <div>
-              <h2 className="text-lg font-bold tracking-tight text-slate-900">Transactions</h2>
-              <p className="text-xs text-slate-500">
+              <h2 className="text-lg font-bold tracking-tight text-ink">Transactions</h2>
+              <p className="text-xs text-muted">
                 {datePresets.find((preset) => preset.value === datePreset)?.label}
                 {filtersActive ? " · filtered" : ""} · {count} matching
               </p>
@@ -1222,22 +1222,22 @@ export default function CmsOperatorDashboard() {
               <button
                 onClick={exportTransactionsCsv}
                 disabled={waiting || transactions.length === 0}
-                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink hover:bg-raised disabled:cursor-not-allowed disabled:opacity-50"
                 title={`Export all ${count} transactions matching the selected filters`}
               >
                 <Download size={14} />
                 Export CSV
               </button>
-              <label className="flex items-center gap-2 text-xs text-slate-500">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span>Date:</span>
                 <select
                   value={datePreset}
                   onChange={(event) => selectDatePreset(event.target.value as DatePreset)} disabled={waiting}
-                  className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                  className="rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft"
                   aria-label="Date range"
                 >
                   {datePresets.map((preset) => (
-                    <option key={preset.value} value={preset.value} className="bg-white">
+                    <option key={preset.value} value={preset.value} className="bg-surface">
                       {preset.label}
                     </option>
                   ))}
@@ -1251,57 +1251,57 @@ export default function CmsOperatorDashboard() {
                     min={customMinDate}
                     max={customMaxDate}
                     onChange={(event) => { if (event.target.value) { setCustomFrom(event.target.value); setPage(1); } }}
-                    className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                    className="rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft"
                     aria-label="From date"
                   />
-                  <span className="text-xs text-slate-500">to</span>
+                  <span className="text-xs text-muted">to</span>
                   <input
                     type="date"
                     value={customTo}
                     min={customMinDate}
                     max={customMaxDate}
                     onChange={(event) => { if (event.target.value) { setCustomTo(event.target.value); setPage(1); } }}
-                    className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                    className="rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft"
                     aria-label="To date"
                   />
                 </>
               )}
-              <label className="flex items-center gap-2 text-xs text-slate-500">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span>Rows:</span>
                 <select
                   value={pageSize}
                   onChange={(event) => selectPageSize(Number(event.target.value))} disabled={Boolean(message)}
-                  className="rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-2 py-2 text-xs text-slate-700 outline-none hover:bg-[#e8e8e8]"
+                  className="rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft"
                   aria-label="Transactions per page"
                 >
-                  <option value={25} className="bg-white">25</option>
-                  <option value={50} className="bg-white">50</option>
-                  <option value={100} className="bg-white">100</option>
+                  <option value={25} className="bg-surface">25</option>
+                  <option value={50} className="bg-surface">50</option>
+                  <option value={100} className="bg-surface">100</option>
                 </select>
               </label>
               <div ref={columnEditorRef} className="relative">
                 <button
                   onClick={openColumnEditor}
                   disabled={!columnsLoaded}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[#F0F0F0] bg-[#F0F0F0] px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-[#e8e8e8] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-soft px-3 py-2 text-xs font-semibold text-ink hover:bg-soft disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Settings2 size={14} />
                   Columns
                 </button>
                 {columnEditorOpen && (
-                  <div ref={columnMenuRef} className="absolute right-0 top-full z-[9999] mt-2 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                  <div ref={columnMenuRef} className="absolute right-0 top-full z-[9999] mt-2 w-80 rounded-xl border border-line bg-surface p-4 shadow-xl">
                     <div className="mb-3 flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">Columns & fields</p>
-                        <p className="text-xs text-slate-500">Add or remove fields from the table, then drag selected fields to set their order.</p>
+                        <p className="text-sm font-bold text-ink">Columns & fields</p>
+                        <p className="text-xs text-muted">Add or remove fields from the table, then drag selected fields to set their order.</p>
                       </div>
-                      <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-700" aria-label="Close columns">×</button>
+                      <button onClick={closeColumnEditor} className="rounded-lg p-1 text-lg leading-none text-muted hover:bg-soft hover:text-ink" aria-label="Close columns">×</button>
                     </div>
                     <div className="mb-3 flex items-center justify-between">
-                      <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900">
+                      <button onClick={() => setDraftColumns(DEFAULT_CMS_COLUMNS)} className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink">
                         <RotateCcw size={13} /> Reset
                       </button>
-                      <span className="text-xs text-slate-500">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
+                      <span className="text-xs text-muted">{draftColumns.length} of {CMS_COLUMNS.length} selected</span>
                     </div>
                     <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
                       <div>
@@ -1311,32 +1311,32 @@ export default function CmsOperatorDashboard() {
                             const column = CMS_COLUMNS.find((item) => item.id === columnId);
                             if (!column) return null;
                             return (
-                              <div key={column.id} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/cms-column", column.id); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId; if (dragged) reorderTableColumn(dragged, column.id); }} className="flex cursor-grab items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 active:cursor-grabbing">
-                                <input type="checkbox" checked onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-indigo-600" />
-                                <span className="font-mono text-xs text-slate-700">{column.label}</span>
+                              <div key={column.id} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/cms-column", column.id); }} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const dragged = event.dataTransfer.getData("text/cms-column") as CmsColumnId; if (dragged) reorderTableColumn(dragged, column.id); }} className="flex cursor-grab items-center gap-2 rounded-lg border border-line bg-raised px-2 py-2 active:cursor-grabbing">
+                                <input type="checkbox" checked onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-primary" />
+                                <span className="font-mono text-xs text-ink">{column.label}</span>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                      <div className="border-t border-slate-200 pt-3">
-                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">Available</p>
+                      <div className="border-t border-line pt-3">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted">Available</p>
                         <div className="space-y-1">
                           {CMS_COLUMN_IDS.filter((columnId) => !draftColumns.includes(columnId)).map((columnId) => {
                             const column = CMS_COLUMNS.find((item) => item.id === columnId);
                             if (!column) return null;
                             return (
-                              <label key={column.id} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100">
-                                <input type="checkbox" checked={false} onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-indigo-600" />
-                                <span className="font-mono text-xs text-slate-700">{column.label}</span>
+                              <label key={column.id} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-soft">
+                                <input type="checkbox" checked={false} onChange={() => toggleColumn(column.id)} className="h-4 w-4 accent-primary" />
+                                <span className="font-mono text-xs text-ink">{column.label}</span>
                               </label>
                             );
                           })}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-end gap-2 border-t border-slate-200 pt-3">
-                      <button onClick={closeColumnEditor} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <div className="mt-3 flex items-center justify-end gap-2 border-t border-line pt-3">
+                      <button onClick={closeColumnEditor} className="rounded-lg border border-line px-3 py-2 text-xs font-semibold text-muted hover:bg-soft">Cancel</button>
                       <button onClick={() => void saveColumnPreferences(draftColumns)} disabled={savingColumns || draftColumns.length === 0} className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-50">
                         <Save size={13} /> {savingColumns ? "Saving…" : "Save"}
                       </button>
@@ -1344,14 +1344,14 @@ export default function CmsOperatorDashboard() {
                   </div>
                 )}
               </div>
-              <div className="ml-1 flex items-center gap-2 text-xs text-slate-500">
+              <div className="ml-1 flex items-center gap-2 text-xs text-muted">
                 <Activity size={14} />
                 Active: {activeCount}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
             <input
               type="search"
               value={filters.search}
@@ -1367,9 +1367,9 @@ export default function CmsOperatorDashboard() {
                 className={filterSelectClass}
                 aria-label="Platform"
               >
-                <option value="" className="bg-white">All platforms</option>
+                <option value="" className="bg-surface">All platforms</option>
                 {providerOptions.map((provider) => (
-                  <option key={provider} value={provider} className="bg-white">{providerLabel(provider)}</option>
+                  <option key={provider} value={provider} className="bg-surface">{providerLabel(provider)}</option>
                 ))}
               </select>
             )}
@@ -1379,9 +1379,9 @@ export default function CmsOperatorDashboard() {
               className={filterSelectClass}
               aria-label="Location"
             >
-              <option value="" className="bg-white">All locations</option>
+              <option value="" className="bg-surface">All locations</option>
               {locationOptions.map((location) => (
-                <option key={location} value={location} className="bg-white">{displayLocation(location)}</option>
+                <option key={location} value={location} className="bg-surface">{displayLocation(location)}</option>
               ))}
             </select>
             <select
@@ -1390,9 +1390,9 @@ export default function CmsOperatorDashboard() {
               className={filterSelectClass}
               aria-label="Charger"
             >
-              <option value="" className="bg-white">All chargers</option>
+              <option value="" className="bg-surface">All chargers</option>
               {chargerOptions.map((charger) => (
-                <option key={charger} value={charger} className="bg-white">{charger}</option>
+                <option key={charger} value={charger} className="bg-surface">{charger}</option>
               ))}
             </select>
             <select
@@ -1401,9 +1401,9 @@ export default function CmsOperatorDashboard() {
               className={filterSelectClass}
               aria-label="AC or DC"
             >
-              <option value="" className="bg-white">AC &amp; DC</option>
-              <option value="ac" className="bg-white">AC only</option>
-              <option value="dc" className="bg-white">DC only</option>
+              <option value="" className="bg-surface">AC &amp; DC</option>
+              <option value="ac" className="bg-surface">AC only</option>
+              <option value="dc" className="bg-surface">DC only</option>
             </select>
             <select
               value={filters.status}
@@ -1411,10 +1411,10 @@ export default function CmsOperatorDashboard() {
               className={filterSelectClass}
               aria-label="Status"
             >
-              <option value="" className="bg-white">All statuses</option>
-              <option value="live" className="bg-white">Live</option>
-              <option value="completed" className="bg-white">Completed</option>
-              <option value="failed" className="bg-white">Failed (0 kWh)</option>
+              <option value="" className="bg-surface">All statuses</option>
+              <option value="live" className="bg-surface">Live</option>
+              <option value="completed" className="bg-surface">Completed</option>
+              <option value="failed" className="bg-surface">Failed (0 kWh)</option>
             </select>
             <select
               value={filters.customer}
@@ -1422,11 +1422,11 @@ export default function CmsOperatorDashboard() {
               className={filterSelectClass}
               aria-label="Customer type"
             >
-              <option value="" className="bg-white">All customers</option>
-              <option value="cpo" className="bg-white">CPO</option>
-              <option value="regular" className="bg-white">Regular</option>
+              <option value="" className="bg-surface">All customers</option>
+              <option value="cpo" className="bg-surface">CPO</option>
+              <option value="regular" className="bg-surface">Regular</option>
             </select>
-            <label className="flex items-center gap-2 text-xs text-slate-500">
+            <label className="flex items-center gap-2 text-xs text-muted">
               <span>Min kWh:</span>
               <input
                 type="number"
@@ -1442,7 +1442,7 @@ export default function CmsOperatorDashboard() {
             {filtersActive && (
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-muted hover:bg-soft hover:text-ink"
               >
                 <RotateCcw size={13} /> Clear filters
               </button>
@@ -1451,7 +1451,7 @@ export default function CmsOperatorDashboard() {
 
           <div className="overflow-x-auto">
             <table className="min-w-[1250px] w-full border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+              <thead className="bg-raised text-xs uppercase tracking-wider text-muted">
                 <tr>
                   {visibleColumns.map((columnId) => {
                     const column = CMS_COLUMNS.find((item) => item.id === columnId);
@@ -1495,7 +1495,7 @@ export default function CmsOperatorDashboard() {
                   })}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {pagedTransactions.map((transaction) => {
                   const isActive =
                     transaction.stoppedAt == null &&
@@ -1504,9 +1504,9 @@ export default function CmsOperatorDashboard() {
                       activeTransactionIds.has(transaction.transactionId));
 
                   return (
-                    <tr key={transaction.id} className="hover:bg-slate-50">
+                    <tr key={transaction.id} className="hover:bg-raised">
                       {visibleColumns.map((columnId) => (
-                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-muted">
                           {columnId === "id" && displaySessionId(transaction.provider, transaction.id)}
                           {columnId === "transactionId" && displaySessionId(transaction.provider, transaction.transactionId)}
                           {columnId === "chargerId" && transaction.chargerId}
@@ -1554,11 +1554,11 @@ export default function CmsOperatorDashboard() {
                   );
                 })}
                 {!loading && transactions.length === 0 && (
-                  <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-slate-500">
+                  <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-muted">
                     {filtersActive ? (
                       <>
                         No transactions match these filters.{" "}
-                        <button onClick={clearFilters} className="font-semibold text-violet-700 hover:text-violet-900">Clear filters</button>
+                        <button onClick={clearFilters} className="font-semibold text-accent hover:text-accent">Clear filters</button>
                       </>
                     ) : (
                       "No transactions in this date range."
@@ -1569,22 +1569,22 @@ export default function CmsOperatorDashboard() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
-            <span className="text-xs text-slate-500">
+          <div className="flex items-center justify-between border-t border-line bg-raised px-5 py-4">
+            <span className="text-xs text-muted">
               Page {page} of {Math.max(1, Math.ceil(count / pageSize))}
             </span>
             <div className="flex gap-2">
               <button
                 disabled={page <= 1 || waiting}
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
+                className="rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-muted disabled:opacity-30"
               >
                 Previous
               </button>
               <button
                 disabled={page >= Math.max(1, Math.ceil(count / pageSize)) || waiting}
                 onClick={() => setPage((value) => value + 1)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-30"
+                className="rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-muted disabled:opacity-30"
               >
                 Next
               </button>
@@ -1615,28 +1615,28 @@ function StatusCard({ count, sessions, showLocation, showProvider, onSelect }: {
   const charging = count > 0;
   const shown = sessions.slice(0, ACTIVE_LIST_LIMIT);
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Status</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">Status</p>
         <div className="flex items-center gap-3">
           <span
             className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-semibold ${
-              charging ? "text-slate-700" : "text-slate-500"
+              charging ? "text-ink" : "text-muted"
             }`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${charging ? "bg-emerald-500 motion-safe:animate-pulse" : "border border-slate-400"}`}
+              className={`h-1.5 w-1.5 rounded-full ${charging ? "bg-emerald-500 motion-safe:animate-pulse" : "border border-line"}`}
               aria-hidden="true"
             />
             {charging ? "Charging" : "Idle"}
           </span>
-          <p className={`text-2xl font-bold tracking-tight ${charging ? "text-emerald-600" : "text-slate-900"}`} aria-label={`${count} charging now`}>
+          <p className={`text-2xl font-bold tracking-tight ${charging ? "text-emerald-600" : "text-ink"}`} aria-label={`${count} charging now`}>
             {count}
           </p>
         </div>
       </div>
       {shown.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-500">{charging ? "Loading sessions…" : "No sessions charging"}</p>
+        <p className="mt-2 text-xs text-muted">{charging ? "Loading sessions…" : "No sessions charging"}</p>
       ) : (
         <ul className="mt-2 space-y-1 text-xs">
           {shown.map((session) => (
@@ -1645,28 +1645,28 @@ function StatusCard({ count, sessions, showLocation, showProvider, onSelect }: {
                 type="button"
                 onClick={() => onSelect(session)}
                 title="Show live details"
-                className="group -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-slate-200 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-violet-600"
+                className="group -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-line hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus-ring"
               >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
+              <span className="min-w-0 flex-1 truncate font-semibold text-ink">
                 {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
                 {showLocation && session.location && (
-                  <span className="font-normal text-slate-400"> · {displayLocation(session.location)}</span>
+                  <span className="font-normal text-muted"> · {displayLocation(session.location)}</span>
                 )}
-                {showProvider && <span className="font-normal text-slate-400"> · {providerLabel(session.provider)}</span>}
+                {showProvider && <span className="font-normal text-muted"> · {providerLabel(session.provider)}</span>}
               </span>
-              <span className="whitespace-nowrap text-slate-500">
+              <span className="whitespace-nowrap text-muted">
                 {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
                 {session.startedAt ? ` · ${started(session.startedAt)}` : ""}
               </span>
-              <span className="text-sm leading-none text-slate-400 group-hover:text-violet-600" aria-hidden="true">›</span>
+              <span className="text-sm leading-none text-muted group-hover:text-accent" aria-hidden="true">›</span>
               </button>
             </li>
           ))}
           {sessions.length > ACTIVE_LIST_LIMIT && (
-            <li className="text-slate-500">+{sessions.length - ACTIVE_LIST_LIMIT} more</li>
+            <li className="text-muted">+{sessions.length - ACTIVE_LIST_LIMIT} more</li>
           )}
-          <li className="pt-1 text-[11px] text-slate-400">Tap a session for live SoC and time left</li>
+          <li className="pt-1 text-[11px] text-muted">Tap a session for live SoC and time left</li>
         </ul>
       )}
     </GlassCard>
@@ -1676,19 +1676,19 @@ function StatusCard({ count, sessions, showLocation, showProvider, onSelect }: {
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.
 function LocationsCard({ count, names, live }: { count: number; names: string[]; live: Set<string> }) {
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Locations</p>
-        <p className="text-sm font-semibold text-slate-500">{count}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">Locations</p>
+        <p className="text-sm font-semibold text-muted">{count}</p>
       </div>
       {names.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-500">—</p>
+        <p className="mt-2 text-xs text-muted">—</p>
       ) : (
         <ul className="mt-2 space-y-1.5">
           {names.map((name) => (
-            <li key={name} className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <li key={name} className="flex items-center gap-2 text-sm font-semibold text-ink">
               <span
-                className={`h-1.5 w-1.5 shrink-0 rounded-full ${live.has(name) ? "bg-emerald-500" : "bg-slate-300"}`}
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${live.has(name) ? "bg-emerald-500" : "bg-soft"}`}
                 aria-label={live.has(name) ? "Charging now" : "Idle"}
               />
               <span className="min-w-0 truncate" title={name}>{displayLocation(name)}</span>
@@ -1702,9 +1702,9 @@ function LocationsCard({ count, names, live }: { count: number; names: string[];
 
 function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-slate-200/80 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-      <p className={`mt-2 text-2xl font-bold tracking-tight [overflow-wrap:anywhere] ${accent ? "text-emerald-600" : "text-slate-900"}`}>{value}</p>
+    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-tight [overflow-wrap:anywhere] ${accent ? "text-emerald-600" : "text-ink"}`}>{value}</p>
     </GlassCard>
   );
 }

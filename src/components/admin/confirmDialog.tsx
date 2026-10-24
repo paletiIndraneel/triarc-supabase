@@ -23,42 +23,42 @@ function DialogView({ options, withInput, onDone }: { options: PromptOptions; wi
 
   const Icon = options.danger ? AlertTriangle : HelpCircle;
   const accent = options.danger
-    ? "bg-red-600 hover:bg-red-700 focus-visible:outline-red-600"
-    : "bg-[#7157d9] hover:bg-[#5f46c7] focus-visible:outline-[#7157d9]";
+    ? "bg-red-600 text-white hover:bg-red-700 focus-visible:outline-red-600"
+    : "bg-primary text-primary-ink hover:bg-primary-hover focus-visible:outline-focus-ring";
 
   return (
     <dialog
       ref={ref}
       onCancel={(event) => { event.preventDefault(); onDone(null); }}
       onClick={(event) => { if (event.target === ref.current) onDone(null); }}
-      className="m-auto w-[min(440px,calc(100vw-32px))] rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-[0_24px_70px_rgba(16,24,40,0.18)] backdrop:bg-slate-900/40 backdrop:backdrop-blur-[2px]"
+      className="m-auto w-[min(440px,calc(100vw-32px))] rounded-2xl border border-line bg-surface p-0 text-ink shadow-[0_24px_70px_rgba(16,24,40,0.18)] backdrop:bg-slate-900/40 backdrop:backdrop-blur-[2px]"
     >
       <form method="dialog" onSubmit={(event) => { event.preventDefault(); onDone(withInput ? value : ""); }} className="p-6">
         <div className="flex gap-4">
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${options.danger ? "bg-red-50" : "bg-violet-50"}`}>
-            <Icon size={20} aria-hidden="true" color={options.danger ? "#dc2626" : "#7157d9"} />
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${options.danger ? "bg-red-50" : "bg-accent-pale"}`}>
+            <Icon size={20} aria-hidden="true" className={options.danger ? "text-red-600" : "text-accent"} />
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold">{options.title ?? (withInput ? "Enter a value" : "Are you sure?")}</h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{options.message}</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">{options.message}</p>
             {withInput && (
               <input
                 ref={inputRef}
                 value={value}
                 inputMode={options.inputMode}
                 onChange={(event) => setValue(event.target.value)}
-                className="mt-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#8b78df] focus:ring-3 focus:ring-[#7157d9]/15"
+                className="mt-4 w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-accent focus:ring-3 focus:ring-focus-ring/15"
               />
             )}
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" autoFocus={options.danger && !withInput} onClick={() => onDone(null)}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-raised">
             {options.cancelLabel ?? "Cancel"}
           </button>
           <button ref={confirmRef} type="submit"
-            className={`rounded-lg px-4 py-2 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 ${accent}`}>
+            className={`rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 ${accent}`}>
             {options.confirmLabel ?? (options.danger ? "Yes, continue" : "Confirm")}
           </button>
         </div>

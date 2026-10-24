@@ -41,6 +41,12 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
     return () => media.removeEventListener("change", onSystemChange);
   }, []);
 
+  // The palette tokens in globals.css switch on <html data-theme>, which also reaches dialogs mounted on <body>.
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    return () => { delete document.documentElement.dataset.theme; };
+  }, [theme]);
+
   const toggleTheme = useCallback(() => {
     const next = theme === "dark" ? "light" : "dark";
     window.localStorage.setItem("triarc-admin-theme", next);
@@ -85,11 +91,11 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
         </div>
       )}
       {activeModule === "enquiries" && (
-        <main className="min-h-screen bg-[#f8f9ff] text-slate-900">
+        <main className="min-h-screen bg-page text-ink">
           <div className="mx-auto max-w-[1440px] px-6 pb-12 pt-8">
             <div className="mb-7">
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">Enquiries</h1>
-              <p className="mt-1 text-sm text-slate-500">View and manage enquiries submitted through the Triarc website.</p>
+              <h1 className="text-3xl font-bold tracking-tight text-ink">Enquiries</h1>
+              <p className="mt-1 text-sm text-muted">View and manage enquiries submitted through the Triarc website.</p>
             </div>
             <EnquiriesTable enquiries={enquiries} error={enquiryError} />
           </div>

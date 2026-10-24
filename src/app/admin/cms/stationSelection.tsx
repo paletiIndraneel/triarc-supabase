@@ -105,7 +105,7 @@ export function StationSelect({ options, stationId, onChange }: { options: Stati
       value={stationId}
       onChange={(event) => onChange(event.target.value)}
       aria-label="Station"
-      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+      className="rounded-lg border border-line bg-raised px-3 py-2 text-sm font-semibold text-ink outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/25"
     >
       <option value={ALL_STATIONS}>All stations</option>
       {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}

@@ -68,6 +68,17 @@ function StationPicker({ stations, value, onChange, disabled }: { stations: Stat
   );
 }
 
+async function readAdmins() {
+  try {
+    const response = await fetch("/api/admin/access", { cache: "no-store" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error ?? (response.status === 403 ? "Only partners and IT admins can manage access." : "Could not load admins."));
+    return { data, error: "" };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : "Could not load admins." };
+  }
+}
+
 export default function Access() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
@@ -82,13 +93,10 @@ export default function Access() {
   const [notice, setNotice] = useState("");
   const stations = useMemo(() => groupStations(stationRows), [stationRows]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/admin/access", { cache: "no-store" });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error ?? (response.status === 403 ? "Only partners and IT admins can manage access." : "Could not load admins."));
+  const show = useCallback(({ data, error }: Awaited<ReturnType<typeof readAdmins>>) => {
+    if (error) {
+      setError(error);
+    } else {
       setAdmins(data.admins);
       setLevels(data.levels);
       setModuleOptions(data.modules);
@@ -98,13 +106,20 @@ export default function Access() {
       setStationRows(data.stations);
       setMe(data.me);
       setDrafts(Object.fromEntries((data.admins as Admin[]).map((a) => [a.user_id, { access: a.access, active: a.active, modules: a.modules, stationIds: a.stationIds }])));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load admins.");
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    show(await readAdmins());
+  }, [show]);
+  // On mount loading is already true and error empty, so the first read only shows its result.
+  useEffect(() => {
+    let current = true;
+    void readAdmins().then((result) => { if (current) show(result); });
+    return () => { current = false; };
+  }, [show]);
 
   async function send(method: "POST" | "PATCH", body: unknown, done: string) {
     setSaving(true);

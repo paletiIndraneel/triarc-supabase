@@ -8,6 +8,17 @@ import { invalidateCpoMobileNumbers } from "@/app/admin/cms/cpoNumbersCache";
 
 type CpoNumber = { id: string; mobileNumber: string; normalizedMobile: string; createdAt: string; updatedAt: string };
 
+async function readNumbers(): Promise<{ numbers: CpoNumber[]; error: string }> {
+  try {
+    const response = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
+    const data = await response.json().catch(() => ({})) as { numbers?: CpoNumber[]; error?: string };
+    if (!response.ok) throw new Error(data.error ?? (response.status === 403 ? "Administrator access is required." : "Could not load CPO settings."));
+    return { numbers: data.numbers ?? [], error: "" };
+  } catch (err) {
+    return { numbers: [], error: err instanceof Error ? err.message : "Could not load CPO settings." };
+  }
+}
+
 export default function CpoSettings() {
   const { setActiveModule } = useAdminModule();
   const [numbers, setNumbers] = useState<CpoNumber[]>([]);
@@ -20,17 +31,20 @@ export default function CpoSettings() {
   const [notice, setNotice] = useState("");
   const [fieldError, setFieldError] = useState("");
 
+  const show = useCallback(({ numbers, error }: Awaited<ReturnType<typeof readNumbers>>) => {
+    if (error) setError(error); else setNumbers(numbers);
+    setLoading(false);
+  }, []);
   const loadNumbers = useCallback(async () => {
     setLoading(true); setError("");
-    try {
-      const response = await fetch("/api/admin/cpo-numbers", { cache: "no-store" });
-      const data = await response.json().catch(() => ({})) as { numbers?: CpoNumber[]; error?: string };
-      if (!response.ok) throw new Error(data.error ?? (response.status === 403 ? "Administrator access is required." : "Could not load CPO settings."));
-      setNumbers(data.numbers ?? []);
-    } catch (err) { setError(err instanceof Error ? err.message : "Could not load CPO settings."); }
-    finally { setLoading(false); }
-  }, []);
-  useEffect(() => { void loadNumbers(); }, [loadNumbers]);
+    show(await readNumbers());
+  }, [show]);
+  // On mount loading is already true and error empty, so the first read only shows its result.
+  useEffect(() => {
+    let current = true;
+    void readNumbers().then((result) => { if (current) show(result); });
+    return () => { current = false; };
+  }, [show]);
 
   async function submitNumber(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setNotice("");

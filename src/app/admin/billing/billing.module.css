@@ -24,9 +24,7 @@
 .billingScope :global(.billing-heading h1){margin:0;font-size:28px;line-height:1.2;font-weight:750;color:var(--text-primary);}
 .billingScope :global(.billing-heading p){margin:7px 0 0;color:var(--text-muted);font-size:14px;}
 .billingScope :global(.heading-actions){display:flex;gap:9px;}
-.billingScope :global(.billing-tabs){display:flex;gap:6px;padding:5px;background:var(--surface-soft);border:1px solid var(--border);border-radius:13px;margin-bottom:24px;width:max-content;max-width:100%;overflow:auto;}
-.billingScope :global(.billing-tabs button){border:0;background:transparent;color:var(--text-muted);padding:9px 16px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:650;white-space:nowrap;}
-.billingScope :global(.billing-tabs button.active){background:var(--button-primary-bg);color:var(--button-primary-text);box-shadow:0 1px 2px #10182814;}
+.billingScope :global(.billing-tabs-row){margin-bottom:24px;max-width:100%;overflow-x:auto;}
 .billingScope :global(.billing-overview){display:flex;flex-direction:column;gap:22px;}
 .billingScope :global(.billing-kpis){display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
 .billingScope :global(.billing-kpi){background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:19px 20px;box-shadow:0 1px 2px #10182808;}
@@ -46,7 +44,7 @@
 .billingScope :global(.billing-app .page-header){margin-bottom:18px;}
 .billingScope :global(.billing-app .card){background:var(--surface);border-color:var(--border);border-radius:14px;box-shadow:0 1px 2px #10182808;}
 @media(max-width:1100px){.billingScope :global(.admin-brand){min-width:auto}.billingScope :global(.portal-search){display:none}.billingScope :global(.billing-kpis){grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:760px){.billingScope :global(.admin-header){padding:0 14px;gap:8px}.billingScope :global(.admin-brand span:not(.admin-brand-mark):not(.admin-badge)),.billingScope :global(.admin-tools .admin-user){display:none}.billingScope :global(.admin-nav){overflow:auto}.billingScope :global(.admin-nav a){padding:8px 9px}.billingScope :global(.billing-main){padding:22px 14px 40px}.billingScope :global(.billing-heading){align-items:flex-start;flex-direction:column}.billingScope :global(.billing-tabs){width:100%}.billingScope :global(.billing-kpis){grid-template-columns:1fr}.billingScope :global(.heading-actions){width:100%}.billingScope :global(.heading-actions .btn){flex:1;justify-content:center;}}
+@media(max-width:760px){.billingScope :global(.admin-header){padding:0 14px;gap:8px}.billingScope :global(.admin-brand span:not(.admin-brand-mark):not(.admin-badge)),.billingScope :global(.admin-tools .admin-user){display:none}.billingScope :global(.admin-nav){overflow:auto}.billingScope :global(.admin-nav a){padding:8px 9px}.billingScope :global(.billing-main){padding:22px 14px 40px}.billingScope :global(.billing-heading){align-items:flex-start;flex-direction:column}.billingScope :global(.billing-kpis){grid-template-columns:1fr}.billingScope :global(.heading-actions){width:100%}.billingScope :global(.heading-actions .btn){flex:1;justify-content:center;}}
 
 /* Approved Billing UI system — presentation only. Existing billing logic remains unchanged. */
 .billingScope :global(.billing-main){background:var(--page-background);}

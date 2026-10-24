@@ -157,8 +157,9 @@ export function toStoredRow(transaction: CmsTransaction, syncedAt: string): CmsT
 }
 
 export function fromStoredRow(row: CmsTransactionRow): CmsTransaction {
-  const { synced_at: _syncedAt, ...rest } = row;
-  return Object.fromEntries(Object.entries(rest).map(([key, value]) => [toCamel(key), value])) as CmsTransaction;
+  // synced_at is bookkeeping for the table, not part of a session.
+  const entries = Object.entries(row).filter(([key]) => key !== "synced_at");
+  return Object.fromEntries(entries.map(([key, value]) => [toCamel(key), value])) as CmsTransaction;
 }
 
 // Where the ChargeMOD fetch starts: the whole window when nothing is stored yet; otherwise

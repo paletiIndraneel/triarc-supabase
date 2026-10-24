@@ -25,8 +25,9 @@ import { fromStoredRow, previousBillingCycle, SESSION_COLUMNS, SESSIONS_TABLE } 
 import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
-import SessionDetails from "./SessionDetails";
-import { useLiveMetrics, withLiveValues } from "./useLiveMetrics";
+import { sessionPage } from "./SessionDetails";
+import { StackPanel, type StackPage } from "@/components/ui/StackPanel";
+import { useLiveMetrics, withLiveValues, type LiveState } from "./useLiveMetrics";
 import { StationSelect, useStationSelection } from "./stationSelection";
 
 // Sessions saved in SESSIONS_TABLE that started in [from, to), oldest first.
@@ -126,7 +127,6 @@ export function mergeTransactionData(existing: Transaction, incoming: Transactio
 
   // Retain useful existing values when the incoming record is incomplete.
   for (const [field, value] of Object.entries(incoming)) {
-    const current = (merged as unknown as Record<string, unknown>)[field];
     const incomingMissing = value == null || value === "" || value === "Unknown";
     const existingValue = (existing as unknown as Record<string, unknown>)[field];
     const existingMissing =
@@ -372,48 +372,6 @@ const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [
   "stopReason",
 ];
 
-function buildLocalDashboard(base: Dashboard | null, transactions: Transaction[]): Dashboard | null {
-  if (!base) return null;
-
-  const chargers = new Set(
-    transactions.map((transaction) => transaction.chargerId).filter(Boolean)
-  );
-  const totalEnergy = transactions.reduce(
-    (sum, transaction) => sum + (transaction.energyKwh ?? 0) * 1000,
-    0
-  );
-  const totalRevenue = transactions.reduce(
-    (sum, transaction) => sum + (transaction.tariffAmount ?? 0),
-    0
-  );
-  const totalTime = transactions.reduce((sum, transaction) => {
-    if (!transaction.startedAt || !transaction.stoppedAt) return sum;
-    const seconds =
-      (new Date(transaction.stoppedAt).getTime() -
-        new Date(transaction.startedAt).getTime()) /
-      1000;
-    return sum + (Number.isFinite(seconds) ? Math.max(0, seconds) : 0);
-  }, 0);
-
-  return {
-    ...base,
-    summary: {
-      ...base.summary,
-      transactionCount: transactions.length,
-      chargerCount: chargers.size,
-      transactionDetails: {
-        ...(base.summary.transactionDetails &&
-        typeof base.summary.transactionDetails === "object"
-          ? (base.summary.transactionDetails as Record<string, unknown>)
-          : {}),
-        totalEnergy,
-        totalRevenue,
-        totalTime,
-      },
-    },
-  };
-}
-
 function collectionLength(value: unknown): number {
   if (Array.isArray(value)) return value.length;
   if (!value || typeof value !== "object") return 0;
@@ -538,13 +496,7 @@ function SplitCard({ title, split }: { title: string; split: PeriodSplit | null 
 
 export default function CmsOperatorDashboard() {
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
-  const [monthToDateEnergy, setMonthToDateEnergy] = useState<number | null>(null);
-  const [monthToDateRevenue, setMonthToDateRevenue] = useState<{ total: number; ac: number; dc: number } | null>(null);
-  const [monthToDateConsumption, setMonthToDateConsumption] = useState<{ total: number; ac: number; dc: number } | null>(null);
   const [historicalConsumption, setHistoricalConsumption] = useState<{ items: Array<{ label: string; value: number }> } | null>(null);
-  const [monthToDateCpoEnergy, setMonthToDateCpoEnergy] = useState<number | null>(null);
-  const [totalEnergyToday, setTotalEnergyToday] = useState<number | null>(null);
-  const [totalRevenueToday, setTotalRevenueToday] = useState<number | null>(null);
   const [todaySplit, setTodaySplit] = useState<PeriodSplit | null>(null);
   const [cycleSplits, setCycleSplits] = useState<Array<{ title: string; split: PeriodSplit }> | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
@@ -571,7 +523,6 @@ export default function CmsOperatorDashboard() {
   const columnEditorRef = useRef<HTMLDivElement>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const [draggedTableColumn, setDraggedTableColumn] = useState<CmsColumnId | null>(null);
-  const [openSessionId, setOpenSessionId] = useState<string | null>(null);
 
 
 
@@ -669,7 +620,8 @@ export default function CmsOperatorDashboard() {
         columnMenuRef.current &&
         !columnMenuRef.current.contains(target)
       ) {
-        closeColumnEditor();
+        setDraftColumns(visibleColumns);
+        setColumnEditorOpen(false);
       }
     }
 
@@ -714,7 +666,6 @@ export default function CmsOperatorDashboard() {
       try {
         const now = new Date();
         const todayRange = getDateRangeIST("today");
-        const currentMonthRange = getDateRangeIST("this-month");
         const istParts = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Kolkata",
           year: "numeric",
@@ -748,23 +699,11 @@ export default function CmsOperatorDashboard() {
         }
         const metricTransactions = Array.from(metricMap.values());
         const todayTransactions = filterTransactionsByRange(metricTransactions, todayRange.startDate, todayRange.endDate);
-        setTotalEnergyToday(todayTransactions.reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0));
-        setTotalRevenueToday(todayTransactions.reduce((sum, transaction) => sum + (transaction.tariffAmount ?? 0), 0));
 
         const cpoMobileNumbers = await matchCpoMobiles(
           metricTransactions.filter((transaction) => !transaction.type?.trim()).map((transaction) => transaction.mobile)
         );
         setCpoMobileNumbers(cpoMobileNumbers);
-        const mtdTransactions = filterTransactionsByRange(
-          metricTransactions,
-          currentMonthRange.startDate,
-          now.toISOString()
-        );
-        const mtd = splitPeriod(mtdTransactions, cpoMobileNumbers);
-        setMonthToDateEnergy(mtd.energy.total);
-        setMonthToDateConsumption({ total: mtd.energy.total, ac: mtd.energy.ac, dc: mtd.energy.dc });
-        setMonthToDateCpoEnergy(mtd.energy.cpo);
-        setMonthToDateRevenue(mtd.revenue);
         setTodaySplit(splitPeriod(todayTransactions, cpoMobileNumbers));
         // Billing cycles run 1–15 and 16–end of month: show the current cycle and the one before.
         const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
@@ -1010,12 +949,6 @@ export default function CmsOperatorDashboard() {
   );
   const filtersActive = Object.values(filters).some((value) => value.trim() !== "");
   const count = transactions.length;
-  // Transaction-derived summary metrics from combined CMS + OCPI rows, including
-  // active sessions so live consumption is represented too.
-  const dashboard = useMemo(
-    () => buildLocalDashboard(baseDashboard, transactions),
-    [baseDashboard, transactions]
-  );
 
   const pagedTransactions = transactions.slice((page - 1) * pageSize, page * pageSize);
 
@@ -1059,12 +992,6 @@ export default function CmsOperatorDashboard() {
 
   // Stored sessions stay usable while the live request runs; only an empty screen waits.
   const waiting = loading && allTransactions.length === 0;
-  const summary = dashboard?.summary ?? {};
-  const details =
-    summary.transactionDetails &&
-    typeof summary.transactionDetails === "object"
-      ? (summary.transactionDetails as Record<string, unknown>)
-      : {};
   // From the location list, not the filtered rows, so a quiet day doesn't show 0.
   const activeCount = activeSessions.length ? liveSessions.length : active;
   const locationCount = Math.max(collectionLength(baseDashboard?.locations), locationOptions.length);
@@ -1101,8 +1028,6 @@ export default function CmsOperatorDashboard() {
   // Match the loaded CMS history window; allow custom filters back to 6 July 2026.
   const customMinDate = "2026-07-06";
   const customMaxDate = istDateString();
-  // Month-to-date includes today, so name the range to set it apart from "This month (1–15)".
-  const mtdRange = `1–${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(new Date())}`;
   const filterSelectClass =
     "rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft";
 
@@ -1110,7 +1035,7 @@ export default function CmsOperatorDashboard() {
     <>
       <main className="cms-dashboard min-h-screen bg-page px-4 pb-12 pt-6 text-ink sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px]">
-        <section className="relative z-[100] mb-6 overflow-visible rounded-xl border border-line/80 bg-surface p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
+        <section className="relative z-10 mb-6 overflow-visible rounded-xl border border-line/80 bg-surface p-5 shadow-sm md:p-6"><div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               CMS Dashboard
@@ -1205,7 +1130,7 @@ export default function CmsOperatorDashboard() {
             names={locationOptions}
             live={new Set(liveSessions.map((session) => session.location))}
           />
-          <StatusCard count={activeCount} sessions={liveShown} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} onSelect={(s) => setOpenSessionId(s.transactionId || s.id)} />
+          <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-line/80 bg-surface p-0 shadow-sm">
@@ -1289,7 +1214,7 @@ export default function CmsOperatorDashboard() {
                   Columns
                 </button>
                 {columnEditorOpen && (
-                  <div ref={columnMenuRef} className="absolute right-0 top-full z-[9999] mt-2 w-80 rounded-xl border border-line bg-surface p-4 shadow-xl">
+                  <div ref={columnMenuRef} className="absolute right-0 top-full z-30 mt-2 w-80 rounded-xl border border-line bg-surface p-4 shadow-xl">
                     <div className="mb-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-bold text-ink">Columns & fields</p>
@@ -1593,19 +1518,14 @@ export default function CmsOperatorDashboard() {
         </GlassCard>
       </div>
     </main>
-    {(() => {
-      const open = openSessionId ? liveSessions.find((s) => (s.transactionId || s.id) === openSessionId) : null;
-      return open ? <SessionDetails session={open} live={liveById[openSessionId!]} onClose={() => setOpenSessionId(null)} /> : null;
-    })()}
     </>
   );
 }
 
-const ACTIVE_LIST_LIMIT = 4;
-
-// Charging state and the sessions charging now. ChargeMOD's stuck sessions (past 7 hours, or
-// an older duplicate on a gun) are already filtered out by splitActiveSessions.
-function StatusCard({ count, sessions, showLocation, showProvider, onSelect }: { count: number; sessions: Transaction[]; showLocation: boolean; showProvider: boolean; onSelect: (session: Transaction) => void }) {
+// Charging state and the sessions charging now, as a Stack Panel: tap a session to drill into
+// its live readings. ChargeMOD's stuck sessions (past 7 hours, or an older duplicate on a gun)
+// are already filtered out by splitActiveSessions.
+function StatusCard({ count, sessions, liveById, showLocation, showProvider }: { count: number; sessions: Transaction[]; liveById: Record<string, LiveState>; showLocation: boolean; showProvider: boolean }) {
   const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
   const dateTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   const today = istDateString();
@@ -1613,64 +1533,46 @@ function StatusCard({ count, sessions, showLocation, showProvider, onSelect }: {
   const started = (value: string) =>
     istDateString(new Date(value)) === today ? time.format(new Date(value)) : dateTime.format(new Date(value));
   const charging = count > 0;
-  const shown = sessions.slice(0, ACTIVE_LIST_LIMIT);
-  return (
-    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">Status</p>
-        <div className="flex items-center gap-3">
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-semibold ${
-              charging ? "text-ink" : "text-muted"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${charging ? "bg-emerald-500 motion-safe:animate-pulse" : "border border-line"}`}
-              aria-hidden="true"
-            />
-            {charging ? "Charging" : "Idle"}
-          </span>
-          <p className={`text-2xl font-bold tracking-tight ${charging ? "text-emerald-600" : "text-ink"}`} aria-label={`${count} charging now`}>
-            {count}
-          </p>
-        </div>
-      </div>
-      {shown.length === 0 ? (
-        <p className="mt-2 text-xs text-muted">{charging ? "Loading sessions…" : "No sessions charging"}</p>
-      ) : (
-        <ul className="mt-2 space-y-1 text-xs">
-          {shown.map((session) => (
-            <li key={session.transactionId || session.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(session)}
-                title="Show live details"
-                className="group -mx-1.5 flex w-[calc(100%+0.75rem)] cursor-pointer items-center gap-2 rounded-md border border-transparent px-1.5 py-1 text-left hover:border-line hover:bg-raised focus-visible:outline-2 focus-visible:outline-focus-ring"
-              >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate font-semibold text-ink">
-                {shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}
-                {showLocation && session.location && (
-                  <span className="font-normal text-muted"> · {displayLocation(session.location)}</span>
-                )}
-                {showProvider && <span className="font-normal text-muted"> · {providerLabel(session.provider)}</span>}
-              </span>
-              <span className="whitespace-nowrap text-muted">
-                {session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}
-                {session.startedAt ? ` · ${started(session.startedAt)}` : ""}
-              </span>
-              <span className="text-sm leading-none text-muted group-hover:text-accent" aria-hidden="true">›</span>
-              </button>
-            </li>
-          ))}
-          {sessions.length > ACTIVE_LIST_LIMIT && (
-            <li className="text-muted">+{sessions.length - ACTIVE_LIST_LIMIT} more</li>
-          )}
-          <li className="pt-1 text-[11px] text-muted">Tap a session for live SoC and time left</li>
-        </ul>
-      )}
-    </GlassCard>
-  );
+  const pageId = (session: Transaction) => `session:${session.transactionId || session.id}`;
+
+  const pages: Record<string, StackPage> = {
+    status: {
+      title: "Status",
+      sections: [
+        {
+          rows: [{
+            id: "state",
+            label: <span className="font-semibold">{charging ? "Charging" : "Idle"}</span>,
+            dot: charging ? "bg-emerald-500 motion-safe:animate-pulse" : "bg-soft",
+            detail: <span className={`text-xl font-bold tracking-tight ${charging ? "text-emerald-600" : "text-ink"}`} aria-label={`${count} charging now`}>{count}</span>,
+          }],
+          footer: charging ? undefined : "No sessions charging",
+        },
+        ...(charging ? [{
+          title: "Charging now",
+          rows: sessions.length === 0
+            ? [{ id: "loading", label: <span className="text-muted">Loading sessions…</span> }]
+            : sessions.map((session) => ({
+                id: session.transactionId || session.id,
+                to: pageId(session),
+                dot: "bg-emerald-500",
+                label: (
+                  <>
+                    <span className="font-semibold">{shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}</span>
+                    {showLocation && session.location && <span className="text-muted"> · {displayLocation(session.location)}</span>}
+                    {showProvider && <span className="text-muted"> · {providerLabel(session.provider)}</span>}
+                  </>
+                ),
+                detail: `${session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}${session.startedAt ? ` · ${started(session.startedAt)}` : ""}`,
+              })),
+          footer: sessions.length ? "Tap a session for live SoC and time left" : undefined,
+        }] : []),
+      ],
+    },
+  };
+  for (const session of sessions) pages[pageId(session)] = sessionPage(session, liveById[session.transactionId || session.id]);
+
+  return <StackPanel className="min-w-0 self-start shadow-sm" pages={pages} root="status" />;
 }
 
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.
@@ -1700,18 +1602,3 @@ function LocationsCard({ count, names, live }: { count: number; names: string[];
   );
 }
 
-function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted">{label}</p>
-      <p className={`mt-2 text-2xl font-bold tracking-tight [overflow-wrap:anywhere] ${accent ? "text-emerald-600" : "text-ink"}`}>{value}</p>
-    </GlassCard>
-  );
-}
-function formatDuration(seconds: number) {
-  const total = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-}

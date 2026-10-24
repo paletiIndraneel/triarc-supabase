@@ -25,6 +25,10 @@ const inputClass = "min-w-0 rounded-lg border border-line bg-raised px-3 py-2 te
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-ink hover:bg-primary-hover disabled:opacity-50";
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
 const stationsTable = () => supabase.from("billing_invoice_stations");
+const readStations = () => Promise.all([
+  stationsTable().select("id, name, place_of_supply, state_code, active, provider, location_id, location_name").order("name"),
+  supabase.from("session_locations").select("provider, location_id, location_name, sessions, last_session_at, station_id"),
+]);
 
 export default function Stations() {
   const [records, setRecords] = useState<Row[]>([]);
@@ -38,13 +42,7 @@ export default function Stations() {
   const [assign, setAssign] = useState<{ [key: string]: string }>({});
   const [manual, setManual] = useState({ provider: PROVIDERS[0]?.id ?? "", location_id: "", location_name: "", station: "" });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const [s, v] = await Promise.all([
-      stationsTable().select("id, name, place_of_supply, state_code, active, provider, location_id, location_name").order("name"),
-      supabase.from("session_locations").select("provider, location_id, location_name, sessions, last_session_at, station_id"),
-    ]);
+  const show = useCallback(([s, v]: Awaited<ReturnType<typeof readStations>>) => {
     const failed = [s, v].find((r) => r.error);
     if (failed?.error) setError(failed.error.message);
     else {
@@ -53,7 +51,17 @@ export default function Stations() {
     }
     setLoading(false);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    show(await readStations());
+  }, [show]);
+  // On mount loading is already true and error empty, so the first read only shows its result.
+  useEffect(() => {
+    let current = true;
+    void readStations().then((result) => { if (current) show(result); });
+    return () => { current = false; };
+  }, [show]);
 
   const key = (provider: string, locationId: string) => `${provider}|${locationId}`;
   const seenByKey = useMemo(() => new Map(seen.map((s) => [key(s.provider, s.location_id), s])), [seen]);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import AdminHeader from "@/components/admin/AdminHeader";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import AdminHeader, { type ThemeMode } from "@/components/admin/AdminHeader";
 import CmsDashboard from "@/app/admin/cms/CmsDashboard";
 import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
 import Overview from "@/app/admin/overview/Overview";
@@ -26,20 +26,39 @@ type Enquiry = {
   created_at: string;
 };
 
+const THEME_EVENT = "triarc-admin-theme-change";
+let sessionTheme: ThemeMode = "system";
+function readThemeMode(): ThemeMode {
+  try {
+    const stored = window.localStorage.getItem("triarc-admin-theme") ?? window.localStorage.getItem("triarc-cms-theme");
+    return stored === "light" || stored === "dark" ? stored : "system";
+  } catch {
+    return sessionTheme;
+  }
+}
+function subscribeThemeMode(onChange: () => void) {
+  window.addEventListener(THEME_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(THEME_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+const darkQuery = () => window.matchMedia("(prefers-color-scheme: dark)");
+const readSystemDark = () => darkQuery().matches;
+function subscribeSystemDark(onChange: () => void) {
+  const media = darkQuery();
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
+}
+
 export default function AdminApp({ enquiries, enquiryError, initialModule, isPartner, access, modules }: { enquiries: Enquiry[]; enquiryError: boolean; initialModule: AdminModule; isPartner: boolean; access: string | null; modules: string[] }) {
   const [moduleState, setModuleState] = useState<AdminModule>(initialModule);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const stored = window.localStorage.getItem("triarc-admin-theme") ?? window.localStorage.getItem("triarc-cms-theme");
-    setTheme(stored === "light" || stored === "dark" ? stored : media.matches ? "dark" : "light");
-    const onSystemChange = (event: MediaQueryListEvent) => {
-      if (window.localStorage.getItem("triarc-admin-theme") == null && window.localStorage.getItem("triarc-cms-theme") == null) setTheme(event.matches ? "dark" : "light");
-    };
-    media.addEventListener("change", onSystemChange);
-    return () => media.removeEventListener("change", onSystemChange);
-  }, []);
+  // The saved choice and the device setting are read as external stores: the server renders light,
+  // and "system" (nothing saved) follows the device. A change in another tab applies here too.
+  const themeMode = useSyncExternalStore(subscribeThemeMode, readThemeMode, () => "system" as ThemeMode);
+  const systemDark = useSyncExternalStore(subscribeSystemDark, readSystemDark, () => false);
+  const theme = themeMode === "system" ? (systemDark ? "dark" : "light") : themeMode;
 
   // The palette tokens in globals.css switch on <html data-theme>, which also reaches dialogs mounted on <body>.
   useEffect(() => {
@@ -47,12 +66,17 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
     return () => { delete document.documentElement.dataset.theme; };
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    const next = theme === "dark" ? "light" : "dark";
-    window.localStorage.setItem("triarc-admin-theme", next);
-    window.localStorage.removeItem("triarc-cms-theme");
-    setTheme(next);
-  }, [theme]);
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    try {
+      window.localStorage.removeItem("triarc-cms-theme");
+      if (mode === "system") window.localStorage.removeItem("triarc-admin-theme");
+      else window.localStorage.setItem("triarc-admin-theme", mode);
+    } catch {
+      // Storage blocked: the choice lasts for this page only.
+      sessionTheme = mode;
+    }
+    window.dispatchEvent(new Event(THEME_EVENT));
+  }, []);
   // A module the user may not open (e.g. an investor following a ?module=billing link) shows the Overview.
   const canOpen = useCallback((module: AdminModule) => canOpenModule(module, isPartner, modules), [isPartner, modules]);
   const activeModule = canOpen(moduleState) ? moduleState : "overview";
@@ -82,7 +106,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
   return (
     <AdminModuleContext.Provider value={{ activeModule, setActiveModule, isPartner, access, canOpen }}>
       <div data-admin-theme={theme} className={adminStyles.adminShell}>
-      <AdminHeader theme={theme} onToggleTheme={toggleTheme} />
+      <AdminHeader themeMode={themeMode} onThemeChange={setThemeMode} />
       {activeModule === "overview" && <Overview enquiries={enquiries} />}
       {activeModule === "cms" && <CmsDashboard />}
       {activeModule === "billing" && (

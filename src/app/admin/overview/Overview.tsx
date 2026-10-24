@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { Activity, AlertCircle, BarChart3, CalendarDays, Inbox, ReceiptText, RefreshCw, Wallet, type LucideIcon } from "lucide-react";
+import SlidingTabs from "@/components/ui/SlidingTabs";
 import { mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/CmsDashboard";
 import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
@@ -41,6 +42,11 @@ function when(iso: string) {
 }
 
 const card = "rounded-2xl border border-line bg-surface p-5";
+// Widget header, after Kokonut UI's Widget Grid: a muted icon and a small title.
+const widgetTitle = "flex items-center gap-2 text-[13px] font-medium text-muted";
+function WidgetTitle({ icon: Icon, children, id }: { icon: LucideIcon; children: React.ReactNode; id?: string }) {
+  return <h2 id={id} className={widgetTitle}><Icon aria-hidden="true" className="size-3.5" />{children}</h2>;
+}
 
 // "16 Oct–31 Oct" -> "16 – 31 Oct"; "16 Sept–30 Sept" -> "16 – 30 Sep".
 function prettyRange(label: string) {
@@ -185,7 +191,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </div>
         ) : (
           <>
-            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 [&:has(>*:hover)>*:not(:hover)]:opacity-55">
               {(() => {
                 const m = cms.status === "ok" ? cms.metrics : null;
                 const sameDays = m ? m.currentCycle.revenue - m.lastMonthSameDaysRevenue : 0;
@@ -196,21 +202,23 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                   { label: "Cycle before", dates: m ? prettyRange(m.olderCycle.label) : "", kwh: m?.olderCycle.kwh, revenue: m?.olderCycle.revenue, sessions: m?.olderCycle.sessions },
                 ];
                 return cards.map((c) => (
-                  <div key={c.label} className={`${card} flex flex-col`}>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{c.label}</p>
-                    <p className="text-xs text-muted">{c.dates || "\u00a0"}</p>
+                  <div key={c.label} className={`${card} flex flex-col transition-opacity duration-200 ease-out`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={widgetTitle}><CalendarDays aria-hidden="true" className="size-3.5" />{c.label}</p>
+                      <p className="text-xs tabular-nums text-muted">{c.dates || "\u00a0"}</p>
+                    </div>
                     {c.kwh === undefined ? (
                       <div className="mt-4 h-8 w-32 rounded-md bg-soft motion-safe:animate-pulse" />
                     ) : (
                       <>
-                        <p className="mt-3 text-[26px] font-bold leading-tight tracking-tight">{kwh(c.kwh)} kWh</p>
-                        <p className="text-lg font-semibold text-ink">{inr(c.revenue ?? 0)}</p>
+                        <p className="mt-3 text-[26px] font-semibold leading-tight tracking-tight tabular-nums">{kwh(c.kwh)} kWh</p>
+                        <p className="text-lg font-semibold tabular-nums text-ink">{inr(c.revenue ?? 0)}</p>
                       </>
                     )}
                     <div className="mt-auto pt-3 text-xs text-muted">
                       {c.sessions !== undefined && <p>{c.sessions} sessions</p>}
                       {"compare" in c && c.compare != null && (
-                        <p className="mt-1.5 font-semibold" style={{ color: c.compare >= 0 ? "#1e7b3c" : "#c92a2a" }}>
+                        <p className={`mt-1.5 font-medium ${c.compare >= 0 ? "text-emerald-700" : "text-red-700"}`}>
                           {c.compare >= 0 ? "▲" : "▼"} {inr(Math.abs(c.compare))} vs same days last month
                         </p>
                       )}
@@ -221,12 +229,13 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             </section>
 
             <section aria-label="Charging now" className={`${card} flex flex-wrap items-center gap-x-6 gap-y-2`}>
+              <p className={widgetTitle}><Activity aria-hidden="true" className="size-3.5" />Charging now</p>
               {cms.status === "ok" && cms.active !== null ? (
                 <>
                   <p className="flex items-center gap-2 text-sm font-semibold">
-                    <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${cms.active ? "bg-[#1e8a4c] shadow-[0_0_0_4px_#dcf3e5] motion-safe:animate-pulse" : "border border-line"}`} />
+                    <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${cms.active ? "bg-emerald-500 ring-4 ring-emerald-500/20 motion-safe:animate-pulse" : "border border-line"}`} />
                     {cms.active ? "Charging" : "Idle"}
-                    <span className="text-[22px] font-bold">{cms.active}</span>
+                    <span className="text-[22px] font-semibold tabular-nums">{cms.active}</span>
                   </p>
                   {cms.active ? (
                     <ul className="flex min-w-0 flex-1 flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
@@ -248,23 +257,23 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
 
             <section aria-labelledby="trend-h" className={card}>
               <div className="flex flex-wrap items-center justify-between gap-2.5">
-                <h2 id="trend-h" className="text-base font-bold">{METRICS.find((m) => m[0] === metric)?.[1]}, last 30 days</h2>
-                <div role="group" aria-label="Chart metric" className="flex gap-1 rounded-[10px] bg-raised p-[3px]">
-                  {METRICS.map(([key, label]) => (
-                    <button key={key} type="button" aria-pressed={metric === key} onClick={() => setMetric(key)}
-                      className={`h-8 rounded-lg px-3 text-xs font-semibold ${metric === key ? "bg-surface text-ink shadow-[0_1px_2px_rgba(16,24,40,.08)]" : "text-muted"}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                <WidgetTitle icon={BarChart3} id="trend-h">{METRICS.find((m) => m[0] === metric)?.[1]}, last 30 days</WidgetTitle>
+                <SlidingTabs
+                  items={METRICS.map(([id, label]) => ({ id, label }))}
+                  label="Chart metric"
+                  onChange={setMetric}
+                  textClassName="text-xs font-semibold leading-5"
+                  itemClassName="px-3 py-1"
+                  value={metric}
+                />
               </div>
               {cms.status === "ok" ? (
                 <figure className="mt-4">
-                  <p aria-live="polite" className="text-sm"><span className="font-semibold">{days[shown]?.label}</span> <span className="text-muted">· {format(values[shown] ?? 0)}</span></p>
+                  <p aria-live="polite" className="text-sm"><span className="font-semibold">{days[shown]?.label}</span> <span className="tabular-nums text-muted">· {format(values[shown] ?? 0)}</span></p>
                   <div className="mt-2 flex h-[200px] items-end gap-[2px] border-b border-line" onMouseLeave={() => setHover(null)} aria-hidden="true">
                     {values.map((v, i) => (
                       <div key={days[i].label} onMouseEnter={() => setHover(i)} className="flex h-full flex-1 items-end">
-                        <div className={`w-full rounded-t ${i === shown ? "bg-primary" : "bg-accent-pale"}`} style={{ height: `${Math.max(v > 0 ? 2 : 0, (v / max) * 100)}%` }} />
+                        <div className={`w-full rounded-[3px] transition-colors duration-150 ${i === shown ? "bg-accent" : "bg-soft"}`} style={{ height: `${Math.max(v > 0 ? 2 : 0, (v / max) * 100)}%` }} />
                       </div>
                     ))}
                   </div>
@@ -283,7 +292,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
         {canBill && (
           <section aria-labelledby="fin-h" className={card}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="fin-h" className="text-base font-bold">Finance{finance && <span className="ml-2 text-xs font-semibold text-muted">{finance.fyLabel}</span>}</h2>
+              <WidgetTitle icon={Wallet} id="fin-h">Finance{finance && <span className="text-xs text-muted">· {finance.fyLabel}</span>}</WidgetTitle>
               <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-accent hover:text-accent-hover">Open Billing</button>
             </div>
             {billingError ? <p role="alert" className="mt-4 text-sm text-[#b42318]">Could not load invoices.</p> : !finance ? (
@@ -297,9 +306,9 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                     ["GST this month", inr(finance.gstMonth.tax), `on ${inr(finance.gstMonth.taxable)} taxable`],
                     ["GST this FY", inr(finance.gstFy.tax), `on ${inr(finance.gstFy.taxable)} taxable`],
                   ].map(([l, v, note]) => (
-                    <div key={l} className="rounded-xl bg-page p-3.5">
+                    <div key={l} className="rounded-xl bg-raised px-3.5 py-3">
                       <p className="text-xs font-semibold text-muted">{l}</p>
-                      <p className={`mt-1 text-xl font-bold ${l === "Receivable" && finance.receivable ? "text-[#b35c00]" : ""}`}>{v}</p>
+                      <p className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${l === "Receivable" && finance.receivable ? "text-[#b35c00]" : ""}`}>{v}</p>
                       <p className="mt-0.5 text-xs text-muted">{note}</p>
                     </div>
                   ))}
@@ -376,8 +385,8 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
                             <tr key={r.key} className="border-t border-line">
                               <td className="py-2 text-muted">{r.label}</td>
                               <td className="py-2 pr-3">
-                                <div className="h-1.5 rounded bg-primary" style={{ width: `${(r.billed / top) * 100}%` }} />
-                                {r.charging !== null && <div className="mt-1 h-1.5 rounded bg-accent-pale" style={{ width: `${(r.charging / top) * 100}%` }} />}
+                                <div className="h-1.5 rounded-full bg-accent" style={{ width: `${(r.billed / top) * 100}%` }} />
+                                {r.charging !== null && <div className="mt-1 h-1.5 rounded-full bg-taupe/50" style={{ width: `${(r.charging / top) * 100}%` }} />}
                               </td>
                               <td className="text-right">{inr(r.billed)}</td>
                               <td className="text-right">{inr(r.gst)}</td>
@@ -398,7 +407,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           {canBill && (
             <section aria-labelledby="bill-h" className={card}>
               <div className="flex items-center justify-between">
-                <h2 id="bill-h" className="text-base font-bold">Billing</h2>
+                <WidgetTitle icon={ReceiptText} id="bill-h">Billing</WidgetTitle>
                 <button type="button" onClick={() => setActiveModule("billing")} className="text-sm font-semibold text-accent hover:text-accent-hover">Open Billing</button>
               </div>
               {billingError ? <p role="alert" className="mt-4 text-sm text-[#b42318]">Could not load invoices.</p> : invoices === null ? (
@@ -406,9 +415,9 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
               ) : (
                 <>
                   <div className="mt-3.5 grid grid-cols-3 gap-2.5">
-                    <div><p className="text-xs text-muted">Billed this FY</p><p className="mt-1 text-xl font-bold">{inr(billedFy)}</p></div>
-                    <div><p className="text-xs text-muted">Invoices this FY</p><p className="mt-1 text-xl font-bold">{fyInvoices.length}</p></div>
-                    <div><p className="text-xs text-muted">Not paid in full</p><p className={`mt-1 text-xl font-bold ${unpaid.length ? "text-[#b35c00]" : ""}`}>{inr(unpaid.reduce((s, i) => s + outstanding(i), 0))}</p></div>
+                    <div><p className="text-xs text-muted">Billed this FY</p><p className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{inr(billedFy)}</p></div>
+                    <div><p className="text-xs text-muted">Invoices this FY</p><p className="mt-1 text-xl font-semibold tracking-tight tabular-nums">{fyInvoices.length}</p></div>
+                    <div><p className="text-xs text-muted">Not paid in full</p><p className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${unpaid.length ? "text-[#b35c00]" : ""}`}>{inr(unpaid.reduce((s, i) => s + outstanding(i), 0))}</p></div>
                   </div>
                   <ul className="mt-4">
                     {liveInvoices.slice(0, 3).map((i) => {
@@ -429,7 +438,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
 
           <section aria-labelledby="enq-h" className={card}>
             <div className="flex items-center justify-between">
-              <h2 id="enq-h" className="text-base font-bold">Enquiries {newEnquiries > 0 && <span className="ml-1.5 rounded-full bg-accent-pale px-2 py-0.5 text-xs font-semibold text-accent">{newEnquiries} new</span>}</h2>
+              <h2 id="enq-h" className={widgetTitle}><Inbox aria-hidden="true" className="size-3.5" />Enquiries {newEnquiries > 0 && <span className="ml-1.5 rounded-full bg-accent-pale px-2 py-0.5 text-xs font-semibold text-accent">{newEnquiries} new</span>}</h2>
               <button type="button" onClick={() => setActiveModule("enquiries")} className="text-sm font-semibold text-accent hover:text-accent-hover">Open Enquiries</button>
             </div>
             <ul className="mt-3.5">

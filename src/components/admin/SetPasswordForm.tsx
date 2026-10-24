@@ -58,7 +58,8 @@ export default function SetPasswordForm() {
       setState("error");
       return;
     }
-    window.location.href = "/";
+    // A full load, so the proxy checks the new session; absolute to say that's intended.
+    window.location.assign(new URL("/", window.location.origin));
   }
 
   if (state === "checking") return <p className="mt-6 text-sm text-muted">Checking your invite…</p>;

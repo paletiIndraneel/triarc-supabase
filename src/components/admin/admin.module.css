@@ -227,3 +227,177 @@
 .adminShell[data-admin-theme="dark"] :global([class*="focus-visible:ring-indigo-"]:focus-visible) {
   --tw-ring-color: var(--admin-accent) !important;
 }
+
+
+/* Forest Green + Lime Green admin palette — scoped to the admin application only. */
+.adminShell {
+  --canvas: #F5F7F3;
+  --surface: #FFFFFF;
+  --surface-soft: #EDF2EB;
+  --ink: #18241E;
+  --muted: #68746B;
+  --forest: #24543B;
+  --forest-deep: #1A432E;
+  --lime: #C7F36B;
+  --lime-soft: #E9F5CF;
+  --line: #E1E8DF;
+  --line-strong: #D2DDD1;
+  --admin-canvas: var(--canvas);
+  --admin-surface: var(--surface);
+  --admin-raised: var(--surface-soft);
+  --admin-input: var(--surface);
+  --admin-border: var(--line);
+  --admin-text: var(--ink);
+  --admin-muted: var(--muted);
+  --admin-accent: var(--forest);
+  --admin-accent-hover: var(--forest-deep);
+  --admin-accent-ink: #FFFFFF;
+  background: var(--canvas) !important;
+  color: var(--ink);
+}
+.adminShell[data-admin-theme="dark"] {
+  --canvas: #101914;
+  --surface: #18231C;
+  --surface-soft: #202D24;
+  --ink: #EEF4EE;
+  --muted: #A3B2A4;
+  --forest: #C7F36B;
+  --forest-deep: #B6E85A;
+  --lime: #C7F36B;
+  --lime-soft: #334327;
+  --line: #2C3A2F;
+  --line-strong: #405044;
+  --admin-canvas: var(--canvas);
+  --admin-surface: var(--surface);
+  --admin-raised: var(--surface-soft);
+  --admin-input: var(--surface-soft);
+  --admin-border: var(--line);
+  --admin-text: var(--ink);
+  --admin-muted: var(--muted);
+  --admin-accent: var(--lime);
+  --admin-accent-hover: var(--forest-deep);
+  --admin-accent-ink: #18241E;
+  background: var(--canvas) !important;
+  color: var(--ink) !important;
+  color-scheme: dark;
+}
+
+/* Theme-aware base surfaces and typography for all admin modules. */
+.adminShell :global(main),
+.adminShell :global(section),
+.adminShell :global(.cms-dashboard) {
+  background-color: var(--canvas);
+  color: var(--ink);
+}
+.adminShell :global(.admin-topbar) {
+  background: var(--surface) !important;
+  color: var(--ink);
+  border-color: var(--line) !important;
+}
+.adminShell :global(input),
+.adminShell :global(select),
+.adminShell :global(textarea) {
+  color: var(--ink);
+  background-color: var(--surface);
+  border-color: var(--line-strong);
+}
+.adminShell :global(option) {
+  color: var(--ink);
+  background: var(--surface);
+}
+.adminShell :global(.bg-white),
+.adminShell :global([class*="bg-[#f8f9ff]"]),
+.adminShell :global([class*="bg-[#f3f4f8]"]),
+.adminShell :global([class*="bg-[#F0F0F0]"]) {
+  background-color: var(--surface) !important;
+}
+.adminShell :global(.bg-slate-50),
+.adminShell :global(.bg-slate-100),
+.adminShell :global([class*="hover:bg-slate-50"]:hover),
+.adminShell :global([class*="hover:bg-slate-100"]:hover) {
+  background-color: var(--surface-soft) !important;
+}
+.adminShell :global(.text-slate-900),
+.adminShell :global(.text-slate-800),
+.adminShell :global(.text-slate-700),
+.adminShell :global([class*="text-[#172033]"]),
+.adminShell :global([class*="text-[#0b1c30]"]) {
+  color: var(--ink) !important;
+}
+.adminShell :global(.text-slate-600),
+.adminShell :global(.text-slate-500),
+.adminShell :global(.text-slate-400),
+.adminShell :global([class*="text-[#5d6577]"]),
+.adminShell :global([class*="text-[#667085]"]) {
+  color: var(--muted) !important;
+}
+.adminShell :global(.border-slate-200),
+.adminShell :global(.border-slate-100),
+.adminShell :global([class*="border-[#e7e4f2]"]),
+.adminShell :global([class*="border-[#e8e9f0]"]),
+.adminShell :global([class*="border-[#eef0f4]"]),
+.adminShell :global([class*="border-[#e3e5ec]"]) {
+  border-color: var(--line) !important;
+}
+
+/* Replace decorative purple/violet/indigo brand accents, while retaining semantic
+   success, warning and error colors used by operational status indicators. */
+.adminShell :global([class*="bg-purple-"]),
+.adminShell :global([class*="bg-violet-"]),
+.adminShell :global([class*="bg-indigo-"]),
+.adminShell :global([class*="bg-[#7157d9]"]),
+.adminShell :global([class*="bg-[#6a4fd6]"]) {
+  background-color: var(--admin-accent) !important;
+  color: var(--admin-accent-ink) !important;
+  border-color: var(--admin-accent) !important;
+}
+.adminShell :global([class*="text-purple-"]),
+.adminShell :global([class*="text-violet-"]),
+.adminShell :global([class*="text-indigo-"]),
+.adminShell :global([class*="text-[#7157d9]"]),
+.adminShell :global([class*="text-[#6a4fd6]"]),
+.adminShell :global([class*="text-[#5b45c4]"]),
+.adminShell :global([class*="text-[#3f2f9a]"]) {
+  color: var(--admin-accent) !important;
+}
+.adminShell :global([class*="border-purple-"]),
+.adminShell :global([class*="border-violet-"]),
+.adminShell :global([class*="border-indigo-"]) {
+  border-color: var(--line-strong) !important;
+}
+.adminShell :global(.admin-topbar button[aria-current="page"]) {
+  background: var(--admin-accent) !important;
+  color: var(--admin-accent-ink) !important;
+}
+.adminShell :global(.admin-topbar button:not([aria-current="page"])) {
+  color: var(--ink) !important;
+}
+.adminShell :global(.admin-topbar button:hover:not([aria-current="page"])) {
+  background: var(--surface-soft) !important;
+}
+.adminShell :global(.admin-topbar .text-\[\#7157d9\]) {
+  color: var(--admin-accent) !important;
+}
+.adminShell :global(dialog) {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
+}
+.adminShell :global(table tbody tr) {
+  border-color: var(--line);
+}
+.adminShell :global(button:focus-visible),
+.adminShell :global(a:focus-visible),
+.adminShell :global(input:focus-visible),
+.adminShell :global(select:focus-visible),
+.adminShell :global(textarea:focus-visible) {
+  outline-color: var(--lime);
+}
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#7157d9"]),
+.adminShell[data-admin-theme="dark"] :global(svg [fill="#6a4fd6"]) {
+  fill: var(--lime) !important;
+}
+.adminShell[data-admin-theme="dark"] :global(svg [stroke="#7157d9"]),
+.adminShell[data-admin-theme="dark"] :global(svg [stroke="#6a4fd6"]) {
+  stroke: var(--lime) !important;
+}

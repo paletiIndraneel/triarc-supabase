@@ -1,71 +1,20 @@
 import type { Metadata } from "next";
-import PublicSiteShell from "@/components/layout/PublicSiteShell";
-import LocalBusinessSchema from "@/components/seo/LocalBusinessSchema";
-import { site } from "@/data/site";
 import "./globals.css";
 
-const SITE_URL = site.url;
+const noIndex = { index: false, follow: false, noarchive: true, nosnippet: true, noimageindex: true, notranslate: true, nocache: true };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-
-  title: {
-    default: "TRIARC EV Hub | EV Charging Station in Bhadrachalam, Telangana",
-    template: "%s | TRIARC EV Hub",
-  },
-
-  description:
-    "TRIARC EV Hub is an EV charging station in Bhadrachalam, Telangana, providing EV charging and charger installation solutions for individuals, businesses and fleets.",
-
-  alternates: {
-    canonical: "/",
-  },
-
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
-  },
-
-  openGraph: {
-    title: "TRIARC EV Hub | EV Charging Station in Bhadrachalam, Telangana",
-    description:
-      "EV charging and charging infrastructure solutions from TRIARC EV Hub in Bhadrachalam, Telangana.",
-    url: SITE_URL,
-    siteName: "TRIARC EV Hub",
-    locale: "en_IN",
-    type: "website",
-    images: [
-      {
-        url: "/images/hero/hero.png",
-        alt: "TRIARC EV Hub EV charging station in Bhadrachalam",
-      },
-    ],
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "TRIARC EV Hub | EV Charging Station in Bhadrachalam, Telangana",
-    description:
-      "EV charging and charging infrastructure solutions from TRIARC EV Hub in Bhadrachalam, Telangana.",
-    images: ["/images/hero/hero.png"],
-  },
+  title: { default: "TRIARC GROUP | Admin", template: "TRIARC GROUP | %s" },
+  description: "Triarc Group admin.",
+  robots: { ...noIndex, googleBot: noIndex },
+  // Ask AI services not to use the page either.
+  other: { "noai": "noai", "noimageai": "noimageai" },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <LocalBusinessSchema />
-        <PublicSiteShell>{children}</PublicSiteShell>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

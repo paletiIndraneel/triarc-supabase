@@ -82,10 +82,10 @@ test("today and yesterday follow the IST calendar day", () => {
 
 test("getSafeCallbackUrl keeps same-origin paths and blocks dot-segment redirects", () => {
   const origin = "https://site.example";
-  assert.equal(getSafeCallbackUrl("/admin?tab=cms#x", origin), "/admin?tab=cms#x");
-  assert.equal(getSafeCallbackUrl("/admin/../signin", origin), "/signin");
-  for (const raw of ["//evil.example", "/..//evil.example", "/.//evil.example", "/admin/..//evil.example", "/admin/%2e%2e//evil.example", "/%2e//evil.example"]) {
-    assert.equal(getSafeCallbackUrl(raw, origin), "/admin", raw);
+  assert.equal(getSafeCallbackUrl("/?module=cms#x", origin), "/?module=cms#x");
+  assert.equal(getSafeCallbackUrl("/x/../signin", origin), "/signin");
+  for (const raw of ["//evil.example", "/..//evil.example", "/.//evil.example", "/x/..//evil.example", "/x/%2e%2e//evil.example", "/%2e//evil.example"]) {
+    assert.equal(getSafeCallbackUrl(raw, origin), "/", raw);
   }
 });
 
@@ -513,4 +513,20 @@ test("access roles come from the picklist; partners and IT admins have full acce
   assert.match(accessChangeError(admins, "p", "i", { access: "owner" }, levels), /Unknown/);
   assert.equal(isEmail("a@b.in"), true);
   assert.equal(isEmail("not an email"), false);
+});
+
+test("isBot refuses crawlers, AI agents and previews, and lets real browsers through", async () => {
+  const { isBot } = await import("../src/lib/bots.ts");
+  const chrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+  const iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+  assert.equal(isBot(chrome), false);
+  assert.equal(isBot(iphone), false);
+  for (const ua of [
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)",
+    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)",
+    "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
+    "facebookexternalhit/1.1", "WhatsApp/2.23.20.0", "Mozilla/5.0 (compatible; SomeNewCrawler/0.1)",
+    "curl/8.4.0", "", null,
+  ]) assert.equal(isBot(ua), true, String(ua));
 });

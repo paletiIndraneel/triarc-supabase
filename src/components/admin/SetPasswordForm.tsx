@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { authButtonClass, authErrorClass, authInputClass as inputClass, authLabelClass } from "@/components/admin/AuthShell";
 
 const MIN_LENGTH = 8;
-const inputClass =
-  "rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white placeholder:text-white/35 outline-none transition focus:border-emerald-400/70 focus:bg-white/10";
 
 // An invite link arrives with the session in the URL fragment (#access_token=…&refresh_token=…).
 // It is turned into a signed-in session, removed from the address bar, and then the person sets
@@ -59,34 +58,34 @@ export default function SetPasswordForm() {
       setState("error");
       return;
     }
-    window.location.href = "/admin";
+    window.location.href = "/";
   }
 
-  if (state === "checking") return <p className="mt-6 text-sm text-white/60">Checking your invite…</p>;
+  if (state === "checking") return <p className="mt-6 text-sm text-muted">Checking your invite…</p>;
   if (state === "invalid") {
     return (
       <div className="mt-6 grid gap-4">
-        <p className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">{message}</p>
-        <a href="/signin" className="text-sm font-semibold text-emerald-300 hover:text-emerald-200">Go to sign in</a>
+        <p role="alert" className={authErrorClass}>{message}</p>
+        <a href="/signin" className="text-sm font-semibold text-accent hover:text-accent-hover">Go to sign in</a>
       </div>
     );
   }
 
   return (
     <form method="post" onSubmit={handleSubmit} className="mt-6 grid gap-4" noValidate>
-      <label className="grid gap-2 text-sm font-medium text-white/85">
+      <label className={authLabelClass}>
         New password
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={MIN_LENGTH} required className={inputClass} />
       </label>
-      <label className="grid gap-2 text-sm font-medium text-white/85">
+      <label className={authLabelClass}>
         Repeat password
         <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={MIN_LENGTH} required className={inputClass} />
       </label>
-      {state === "error" && <p role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-300">{message}</p>}
+      {state === "error" && <p role="alert" className={authErrorClass}>{message}</p>}
       <button
         type="submit"
         disabled={state === "saving"}
-        className="mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+        className={authButtonClass}
       >
         {state === "saving" ? "Saving…" : "Save password and open admin"}
       </button>

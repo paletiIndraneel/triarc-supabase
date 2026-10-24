@@ -1,12 +1,81 @@
-@import "../styles/colors.css";
-
-@import "../styles/typography.css";
-
-@import "../styles/animations.css";
-
-@import "../styles/utilities.css";
-
 @import "tailwindcss";
+
+/* Site palette. Dark values apply under <html data-theme="dark"> (set by the admin's theme toggle). */
+:root {
+  --page-background: #E4E1DB;
+  --header: #EFEEEA;
+  --surface: #EFEEEA;
+  --surface-raised: #F7F5F1;
+  --surface-soft: #DCD7CF;
+  --border: #D0CCC4;
+
+  --accent: #454F56;
+  --accent-pale: #DCD7CF;
+  --accent-hover: #75695D;
+  --taupe: #8A7E71;
+
+  --text-primary: #2C343A;
+  --text-muted: #687177;
+
+  --button-primary-bg: #454F56;
+  --button-primary-text: #FFFFFF;
+  --button-primary-hover: #343D43;
+
+  --button-secondary-bg: #DCD7CF;
+  --button-secondary-text: #454F56;
+
+  --focus-ring: #6E6257;
+}
+
+[data-theme="dark"] {
+  --page-background: #141516;
+  --header: #1E2021;
+  --surface: #1E2021;
+  --surface-raised: #292B2C;
+  --surface-soft: #39342E;
+  --border: #414244;
+
+  --accent: #B8A88F;
+  --accent-pale: #39342E;
+  --accent-hover: #CEBFA7;
+  --taupe: #B8A88F;
+
+  --text-primary: #F1EFEB;
+  --text-muted: #C0BAB1;
+
+  --button-primary-bg: #B8A88F;
+  --button-primary-text: #171819;
+  --button-primary-hover: #CEBFA7;
+
+  --button-secondary-bg: #292B2C;
+  --button-secondary-text: #F1EFEB;
+
+  --focus-ring: #CEBFA7;
+
+  color-scheme: dark;
+}
+
+/* Tailwind names for the palette: bg-surface, text-ink, text-muted, border-line, bg-primary, ring-focus-ring, … */
+@theme inline {
+  --color-page: var(--page-background);
+  --color-header: var(--header);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-raised);
+  --color-soft: var(--surface-soft);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-pale: var(--accent-pale);
+  --color-accent-hover: var(--accent-hover);
+  --color-taupe: var(--taupe);
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-primary: var(--button-primary-bg);
+  --color-primary-ink: var(--button-primary-text);
+  --color-primary-hover: var(--button-primary-hover);
+  --color-secondary: var(--button-secondary-bg);
+  --color-secondary-ink: var(--button-secondary-text);
+  --color-focus-ring: var(--focus-ring);
+}
 
 @layer base {
   * {
@@ -22,38 +91,9 @@
   }
 }
 
-body{
-
-background:#03110d;
-
-color:#f8fffb;
-
-font-family:var(--font-body);
-
-overflow-x:hidden;
-
-line-height:1.6;
-
-}
-
-main {
-  position: relative;
-  z-index: 0;
-}
-
-section {
-  position: relative;
-  z-index: 0;
-}
-
-h1, h2, h3, h4, p, span, a {
-  color: inherit;
-}
-
-h1, h2, h3, h4 {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-p, span, a {
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+body {
+  background: var(--page-background);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
 }

@@ -17,16 +17,16 @@ type Draft = { access: AccessLevel; active: boolean; modules: string[]; stationI
 type Station = { name: string; ids: string[]; active: boolean };
 
 const DEFAULT_MODULES = ["overview", "cms", "enquiries"];
-const inputClass = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100";
-const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg bg-violet-700 px-3.5 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50";
+const inputClass = "rounded-lg border border-line bg-raised px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/25";
+const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-ink hover:bg-primary-hover disabled:opacity-50";
 const sameSet = (a: string[], b: string[]) => a.slice().sort().join() === b.slice().sort().join();
 
 function ModulePicker({ options, value, onChange, disabled }: { options: ModuleOption[]; value: string[]; onChange: (keys: string[]) => void; disabled?: boolean }) {
   return (
     <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
       <legend className="sr-only">Modules</legend>
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Modules</span>
-      <span className="text-slate-400">Overview</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted">Modules</span>
+      <span className="text-muted">Overview</span>
       {options.map((m) => (
         <label key={m.key} className="inline-flex items-center gap-1.5">
           <input type="checkbox" checked={value.includes(m.key)} disabled={disabled}
@@ -45,17 +45,17 @@ function StationPicker({ stations, value, onChange, disabled }: { stations: Stat
   const summary = picked.length ? picked.map((s) => displayLocation(s.name)).join(", ") : "All stations";
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Stations</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted">Stations</span>
       <details className="group relative">
         <summary className={`${inputClass} flex min-w-[220px] cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden ${disabled ? "pointer-events-none opacity-50" : ""}`}>
-          <span className="truncate">{summary}</span><ChevronDown size={15} className="shrink-0 text-slate-500 transition group-open:rotate-180"/>
+          <span className="truncate">{summary}</span><ChevronDown size={15} className="shrink-0 text-muted transition group-open:rotate-180"/>
         </summary>
-        <div className="absolute z-10 mt-1 grid min-w-[220px] gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
-          <label className="inline-flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50"><input type="checkbox" checked={picked.length === 0} onChange={() => onChange([])}/> All stations</label>
+        <div className="absolute z-10 mt-1 grid min-w-[220px] gap-1 rounded-lg border border-line bg-surface p-2 shadow-lg">
+          <label className="inline-flex items-center gap-2 rounded px-2 py-1 hover:bg-raised"><input type="checkbox" checked={picked.length === 0} onChange={() => onChange([])}/> All stations</label>
           {stations.map((s) => {
             const on = s.ids.some((id) => value.includes(id));
             return (
-              <label key={s.name} className={`inline-flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50 ${s.active ? "" : "text-slate-400"}`}>
+              <label key={s.name} className={`inline-flex items-center gap-2 rounded px-2 py-1 hover:bg-raised ${s.active ? "" : "text-muted"}`}>
                 <input type="checkbox" checked={on}
                   onChange={() => onChange(on ? value.filter((id) => !s.ids.includes(id)) : [...value, ...s.ids])}/>
                 {displayLocation(s.name)}{s.active ? "" : " (off)"}
@@ -137,29 +137,29 @@ export default function Access() {
     return d && (d.access !== a.access || d.active !== a.active || !sameSet(d.modules, a.modules) || !sameSet(d.stationIds, a.stationIds));
   };
 
-  return <main className="min-h-screen bg-[#f8f9ff] px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
+  return <main className="min-h-screen bg-page px-4 py-8 text-ink sm:px-6 lg:px-8">
     <div className="mx-auto max-w-[1100px] space-y-6">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-7">
+      <section className="rounded-2xl border border-line/80 bg-surface p-5 shadow-sm sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3"><div className="rounded-xl bg-violet-50 p-3 text-violet-700"><ShieldCheck size={23}/></div><div>
+          <div className="flex items-start gap-3"><div className="rounded-xl bg-accent-pale p-3 text-accent"><ShieldCheck size={23}/></div><div>
             <h1 className="text-2xl font-bold tracking-tight">Access</h1>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Partners and IT admins see and manage everything. Other admins open the modules ticked for them, for all stations or only the ones picked.</p>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Partners and IT admins see and manage everything. Other admins open the modules ticked for them, for all stations or only the ones picked.</p>
           </div></div>
-          <button type="button" onClick={() => void load()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""}/> Refresh</button>
+          <button type="button" onClick={() => void load()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-raised disabled:opacity-50"><RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""}/> Refresh</button>
         </div>
         {error && <div role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}
 
         <div className="mt-6 space-y-3">
-          {loading ? <p className="py-8 text-center text-sm text-slate-500">Loading admins…</p> : admins.map((a) => {
+          {loading ? <p className="py-8 text-center text-sm text-muted">Loading admins…</p> : admins.map((a) => {
             const d = drafts[a.user_id] ?? { access: a.access, active: a.active, modules: a.modules, stationIds: a.stationIds };
             const setDraft = (patch: Partial<Draft>) => setDrafts((all) => ({ ...all, [a.user_id]: { ...d, ...patch } }));
             const self = a.user_id === me;
-            return <article key={a.user_id} className={`rounded-xl border p-4 ${a.active ? "border-slate-200" : "border-slate-200 bg-slate-50"}`}>
+            return <article key={a.user_id} className={`rounded-xl border p-4 ${a.active ? "border-line" : "border-line bg-raised"}`}>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{a.email || a.user_id}{self && <span className="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">You</span>}</p>
-                  <p className="text-xs text-slate-500">Admin since {new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  <p className="truncate font-semibold">{a.email || a.user_id}{self && <span className="ml-2 rounded-full bg-accent-pale px-2 py-0.5 text-xs font-semibold text-accent">You</span>}</p>
+                  <p className="text-xs text-muted">Admin since {new Date(a.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
                 <select value={d.access} disabled={saving} onChange={(e) => setDraft({ access: e.target.value as AccessLevel })} aria-label={`Access level for ${a.email}`} className={inputClass}>
                   {levels.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
@@ -167,9 +167,9 @@ export default function Access() {
                 <label className="inline-flex items-center gap-1.5 text-sm"><input type="checkbox" checked={d.active} disabled={saving} onChange={(e) => setDraft({ active: e.target.checked })}/> Active</label>
                 <button type="button" disabled={saving || !changed(a)} onClick={() => void send("PATCH", { userId: a.user_id, ...d }, `${a.email || "Admin"} updated.`)} className={buttonClass}>Save</button>
               </div>
-              <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3">
+              <div className="mt-3 grid gap-3 border-t border-line pt-3">
                 {hasFullAccess(d.access)
-                  ? <p className="text-sm text-slate-500">Sees every module and every station.</p>
+                  ? <p className="text-sm text-muted">Sees every module and every station.</p>
                   : <>
                     <ModulePicker options={moduleOptions} value={d.modules} disabled={saving} onChange={(modules) => setDraft({ modules })}/>
                     <StationPicker stations={stations} value={d.stationIds} disabled={saving} onChange={(ids) => setDraft({ stationIds: ids })}/>
@@ -180,9 +180,9 @@ export default function Access() {
         </div>
       </section>
 
-      <form onSubmit={sendInvite} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-7">
+      <form onSubmit={sendInvite} className="rounded-2xl border border-line/80 bg-surface p-5 shadow-sm sm:p-7">
         <h2 className="text-base font-bold">Invite an admin</h2>
-        <p className="mt-1 text-xs text-slate-500">They get an email from Supabase with a link to set their password. The link signs them in once.</p>
+        <p className="mt-1 text-xs text-muted">They get an email from Supabase with a link to set their password. The link signs them in once.</p>
         <div className="mt-3 flex flex-wrap gap-3">
           <input type="email" value={invite.email} onChange={(e) => setInvite((i) => ({ ...i, email: e.target.value }))} placeholder="name@example.com" aria-label="Email to invite" autoComplete="off" className={`${inputClass} min-w-[240px] flex-1`}/>
           <select value={invite.access} onChange={(e) => setInvite((i) => ({ ...i, access: e.target.value as AccessLevel }))} aria-label="Access level for the invite" className={inputClass}>

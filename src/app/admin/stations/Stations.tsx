@@ -21,8 +21,8 @@ type DbResult = { error: { message: string; code?: string } | null };
 
 const EMPTY_STATION = { name: "", place_of_supply: "", state_code: "" };
 const EMPTY_LINK = { provider: null, location_id: null, location_name: null };
-const inputClass = "min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100";
-const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg bg-violet-700 px-3.5 py-2 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-50";
+const inputClass = "min-w-0 rounded-lg border border-line bg-raised px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-focus-ring/25";
+const buttonClass = "inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-ink hover:bg-primary-hover disabled:opacity-50";
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
 const stationsTable = () => supabase.from("billing_invoice_stations");
 
@@ -133,15 +133,15 @@ export default function Stations() {
     }, `Location moved to ${displayLocation(stationName)}.`);
   }
 
-  return <main className="min-h-screen bg-[#f8f9ff] px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
+  return <main className="min-h-screen bg-page px-4 py-8 text-ink sm:px-6 lg:px-8">
     <div className="mx-auto max-w-[1100px] space-y-6">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-7">
+      <section className="rounded-2xl border border-line/80 bg-surface p-5 shadow-sm sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex items-start gap-3"><div className="rounded-xl bg-violet-50 p-3 text-violet-700"><MapPin size={23}/></div><div>
+          <div className="flex items-start gap-3"><div className="rounded-xl bg-accent-pale p-3 text-accent"><MapPin size={23}/></div><div>
             <h1 className="text-2xl font-bold tracking-tight">Stations</h1>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Each station lists the charging-platform locations that feed it. New Bill counts only the chosen station&apos;s sessions, so link every new location here.</p>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Each station lists the charging-platform locations that feed it. New Bill counts only the chosen station&apos;s sessions, so link every new location here.</p>
           </div></div>
-          <button type="button" onClick={() => void load()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""}/> Refresh</button>
+          <button type="button" onClick={() => void load()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-raised disabled:opacity-50"><RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""}/> Refresh</button>
         </div>
         {error && <div role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}
@@ -151,8 +151,8 @@ export default function Stations() {
           <p className="mt-1 text-xs text-amber-800">Found in the charging sessions but not linked to a station. New Bill counts none of their sessions until they are.</p>
           <ul className="mt-3 space-y-2">{unassigned.map((loc) => {
             const k = key(loc.provider, loc.location_id);
-            return <li key={k} className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm">
-              <span className="min-w-0 flex-1"><b>{providerLabel(loc.provider)}</b> · {loc.location_name ? displayLocation(loc.location_name) : "Unnamed"} <span className="font-mono text-xs text-slate-500">({loc.location_id})</span> · {loc.sessions} sessions</span>
+            return <li key={k} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface px-3 py-2 text-sm">
+              <span className="min-w-0 flex-1"><b>{providerLabel(loc.provider)}</b> · {loc.location_name ? displayLocation(loc.location_name) : "Unnamed"} <span className="font-mono text-xs text-muted">({loc.location_id})</span> · {loc.sessions} sessions</span>
               <select value={assign[k] ?? ""} onChange={(e) => setAssign((a) => ({ ...a, [k]: e.target.value }))} aria-label={`Station for ${loc.location_name ?? loc.location_id}`} className={inputClass}>
                 <option value="">Pick station…</option>
                 {activeStations.map((s) => <option key={s.name} value={s.name}>{displayLocation(s.name)}</option>)}
@@ -163,25 +163,25 @@ export default function Stations() {
         </div>}
 
         <div className="mt-7 space-y-4">
-          {loading ? <p className="py-8 text-center text-sm text-slate-500">Loading stations…</p> : stations.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No stations yet. Add the first one below.</p> : stations.map((station) => {
+          {loading ? <p className="py-8 text-center text-sm text-muted">Loading stations…</p> : stations.length === 0 ? <p className="py-8 text-center text-sm text-muted">No stations yet. Add the first one below.</p> : stations.map((station) => {
             const stationLinks = station.records.filter((r): r is Linked => Boolean(r.provider && r.location_id));
             const first = station.records[0];
-            return <article key={station.name} className={`rounded-xl border p-4 ${station.active ? "border-slate-200" : "border-slate-200 bg-slate-50 opacity-75"}`}>
+            return <article key={station.name} className={`rounded-xl border p-4 ${station.active ? "border-line" : "border-line bg-raised opacity-75"}`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold">{displayLocation(station.name)}{!station.active && <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-600">Inactive</span>}</h2>
-                  <p className="text-xs text-slate-500">Place of supply {first.place_of_supply ?? "—"} · state code {first.state_code ?? "—"}</p>
+                  <h2 className="text-base font-bold">{displayLocation(station.name)}{!station.active && <span className="ml-2 rounded-full bg-soft px-2 py-0.5 text-xs font-semibold text-muted">Inactive</span>}</h2>
+                  <p className="text-xs text-muted">Place of supply {first.place_of_supply ?? "—"} · state code {first.state_code ?? "—"}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button type="button" disabled={saving} onClick={() => { setEditingName(station.name); setForm({ name: station.name, place_of_supply: first.place_of_supply ?? "", state_code: first.state_code ?? "" }); }} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Pencil size={13}/> Edit</button>
-                  <button type="button" disabled={saving} onClick={() => void run(() => stationsTable().update({ active: !station.active }).in("id", station.ids), `${displayLocation(station.name)} ${station.active ? "turned off" : "turned on"}.`)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">{station.active ? "Turn off" : "Turn on"}</button>
+                  <button type="button" disabled={saving} onClick={() => { setEditingName(station.name); setForm({ name: station.name, place_of_supply: first.place_of_supply ?? "", state_code: first.state_code ?? "" }); }} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-raised disabled:opacity-50"><Pencil size={13}/> Edit</button>
+                  <button type="button" disabled={saving} onClick={() => void run(() => stationsTable().update({ active: !station.active }).in("id", station.ids), `${displayLocation(station.name)} ${station.active ? "turned off" : "turned on"}.`)} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-raised disabled:opacity-50">{station.active ? "Turn off" : "Turn on"}</button>
                 </div>
               </div>
-              {stationLinks.length === 0 ? <p className="mt-3 text-sm text-amber-700">No platform location linked: New Bill finds no sessions for this station.</p> : <ul className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-100">{stationLinks.map((link) => {
+              {stationLinks.length === 0 ? <p className="mt-3 text-sm text-amber-700">No platform location linked: New Bill finds no sessions for this station.</p> : <ul className="mt-3 divide-y divide-line rounded-lg border border-line">{stationLinks.map((link) => {
                 const stats = seenByKey.get(key(link.provider, link.location_id));
                 return <li key={link.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1"><b>{providerLabel(link.provider)}</b> · {link.location_name ? displayLocation(link.location_name) : "Unnamed"} <span className="font-mono text-xs text-slate-500">({link.location_id})</span>
-                    <span className="text-slate-500"> · {stats ? `${stats.sessions} sessions, last ${stats.last_session_at ? dateFmt.format(new Date(stats.last_session_at)) : "—"}` : "no sessions yet"}</span></span>
+                  <span className="min-w-0 flex-1"><b>{providerLabel(link.provider)}</b> · {link.location_name ? displayLocation(link.location_name) : "Unnamed"} <span className="font-mono text-xs text-muted">({link.location_id})</span>
+                    <span className="text-muted"> · {stats ? `${stats.sessions} sessions, last ${stats.last_session_at ? dateFmt.format(new Date(stats.last_session_at)) : "—"}` : "no sessions yet"}</span></span>
                   <select value="" disabled={saving} onChange={(e) => e.target.value && void move(link, e.target.value)} aria-label={`Move ${link.location_name ?? link.location_id} to another station`} className={inputClass}>
                     <option value="">Move to…</option>
                     {activeStations.filter((s) => s.name !== station.name).map((s) => <option key={s.name} value={s.name}>{displayLocation(s.name)}</option>)}
@@ -195,10 +195,10 @@ export default function Stations() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
-        <form onSubmit={saveStation} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <form onSubmit={saveStation} className="rounded-2xl border border-line/80 bg-surface p-5 shadow-sm">
           <div className="flex items-center justify-between"><h2 className="text-base font-bold">{editingName ? "Edit station" : "Add station"}</h2>
-            {editingName && <button type="button" onClick={() => { setEditingName(null); setForm(EMPTY_STATION); }} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800"><X size={14}/> Cancel</button>}</div>
-          <p className="mt-1 text-xs text-slate-500">The name, place of supply and state code are printed on the station&apos;s invoices as written (CGST+SGST for 36 Telangana customers, else IGST). The admin shows the name without &quot;Triarc EV hub |&quot;.</p>
+            {editingName && <button type="button" onClick={() => { setEditingName(null); setForm(EMPTY_STATION); }} className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink"><X size={14}/> Cancel</button>}</div>
+          <p className="mt-1 text-xs text-muted">The name, place of supply and state code are printed on the station&apos;s invoices as written (CGST+SGST for 36 Telangana customers, else IGST). The admin shows the name without &quot;Triarc EV hub |&quot;.</p>
           <div className="mt-3 grid gap-3">
             <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Name as printed on invoices, e.g. Triarc EV hub | Bhadrachalam" aria-label="Station name" className={inputClass}/>
             <input value={form.place_of_supply} onChange={(e) => setForm((f) => ({ ...f, place_of_supply: e.target.value }))} placeholder="Place of supply, e.g. Bhadrachalam-Telangana" aria-label="Place of supply" className={inputClass}/>
@@ -207,9 +207,9 @@ export default function Stations() {
           </div>
         </form>
 
-        <form onSubmit={addManual} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+        <form onSubmit={addManual} className="rounded-2xl border border-line/80 bg-surface p-5 shadow-sm">
           <h2 className="text-base font-bold">Link a location by id</h2>
-          <p className="mt-1 text-xs text-slate-500">For a location that has no sessions yet (a new charger, or a test). Locations with sessions appear under Unassigned by themselves.</p>
+          <p className="mt-1 text-xs text-muted">For a location that has no sessions yet (a new charger, or a test). Locations with sessions appear under Unassigned by themselves.</p>
           <div className="mt-3 grid gap-3">
             <select value={manual.provider} onChange={(e) => setManual((m) => ({ ...m, provider: e.target.value }))} aria-label="Platform" className={inputClass}>
               {PROVIDERS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}

@@ -1,11 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isBot, NO_INDEX } from "@/lib/bots";
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  // Every route except built assets: bots are refused everywhere. Only the admin itself (/,
+  // modules are ?module=…) needs a signed-in admin; /signin, /unauthorized and /api check their own.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  // Crawlers, AI agents and preview fetchers get nothing (robots.txt stays readable so polite ones see the "no").
+  if (pathname !== "/robots.txt" && isBot(request.headers.get("user-agent"))) {
+    return new NextResponse("Not available.", { status: 403, headers: { "X-Robots-Tag": NO_INDEX } });
+  }
+  if (pathname !== "/") return NextResponse.next();
+
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import GlassCard from "@/components/ui/GlassCard";
+import AuthShell from "@/components/admin/AuthShell";
 import SetPasswordForm from "@/components/admin/SetPasswordForm";
 
 export const metadata: Metadata = {
@@ -11,12 +11,8 @@ export const metadata: Metadata = {
 // they choose a password before opening the admin.
 export default function SetPasswordPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#03110d] px-6 py-16">
-      <GlassCard className="w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-white">Set your password</h1>
-        <p className="mt-2 text-sm text-white/60">You were invited to the Triarc admin. Choose a password to finish.</p>
-        <SetPasswordForm />
-      </GlassCard>
-    </main>
+    <AuthShell title="Set your password" subtitle="You were invited to the Triarc admin. Choose a password to finish.">
+      <SetPasswordForm />
+    </AuthShell>
   );
 }

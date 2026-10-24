@@ -2,7 +2,7 @@ const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "stations", "a
 
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
-// The active module lives in `/admin?module=...` so refresh and Back keep the user's place.
+// The active module lives in `/?module=...` so refresh and Back keep the user's place.
 export function parseAdminModule(value: string | null | undefined): AdminModule {
   return ADMIN_MODULES.find((module) => module === value) ?? "overview";
 }

@@ -256,7 +256,7 @@ async function pdf(inv,items,cfg){const { jsPDF } = await import('jspdf');
   return d;
 }
 export const INVOICE_STATUSES=[['draft','Draft'],['issued','Generated'],['sent','Sent'],['partially_paid','Partially Paid'],['paid','Paid'],['cancelled','Cancelled']];
-export const STATUS_COLORS={draft:['#f1f3f5','#495057'],issued:['#e7f0ff','#1c5bd8'],sent:['#efe9ff','#6741d9'],partially_paid:['#fff4e0','#b35c00'],paid:['#e6f7ec','#1e7b3c'],cancelled:['#fdecec','#c92a2a']};
+export const STATUS_COLORS={draft:['var(--surface-soft)','var(--text-muted)'],issued:['#e7f0ff','#1c5bd8'],sent:['var(--accent-pale)','var(--accent)'],partially_paid:['#fff4e0','#b35c00'],paid:['#e6f7ec','#1e7b3c'],cancelled:['#fdecec','#c92a2a']};
 const statusLabel=v=>(INVOICE_STATUSES.find(x=>x[0]===v)||[,v||'-'])[1];
 // Native <dialog>: Escape, focus kept inside, background inert and announced as a dialog.
 function Modal({title,children,onClose}){

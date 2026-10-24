@@ -281,3 +281,158 @@
 :global([data-admin-theme="dark"]) .billingScope :global([class*="border-indigo-"]) {
   border-color: var(--admin-accent-hover) !important;
 }
+
+
+/* Slate-blue neutral palette for Billing. Presentation-only; billing logic is unchanged. */
+.billingScope {
+  color: var(--text, #243444);
+  background: var(--canvas, #DCE2E7);
+}
+.billingScope :global(.billing-app),
+.billingScope :global(.billing-main) {
+  color: var(--text, #243444);
+  background: var(--canvas, #DCE2E7) !important;
+}
+.billingScope :global(.billing-app .card),
+.billingScope :global(.billing-card),
+.billingScope :global(.billing-kpi),
+.billingScope :global(.modal-card),
+.billingScope :global(.auth-card),
+.billingScope :global(.table-container) {
+  background: var(--surface, #E9EEF1) !important;
+  color: var(--text, #243444);
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app .card > .page-header),
+.billingScope :global(.section-head),
+.billingScope :global(.admin-header),
+.billingScope :global(.billing-app .form-actions) {
+  background: var(--surface, #E9EEF1) !important;
+  color: var(--text, #243444);
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app th) {
+  background: var(--surface-soft, #D3DBE1) !important;
+  color: var(--text-muted, #586A78);
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app td) {
+  background: var(--surface, #E9EEF1) !important;
+  color: var(--text, #243444);
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app tbody tr:hover td) {
+  background: var(--surface-soft, #D3DBE1) !important;
+}
+.billingScope :global(.billing-app input),
+.billingScope :global(.billing-app select),
+.billingScope :global(.billing-app textarea),
+.billingScope :global(.form-input),
+.billingScope :global(.table-container input),
+.billingScope :global(.table-container select) {
+  background: var(--surface-raised, #F2F5F7) !important;
+  color: var(--text, #243444) !important;
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app input:focus),
+.billingScope :global(.billing-app select:focus),
+.billingScope :global(.billing-app textarea:focus),
+.billingScope :global(.form-input:focus) {
+  outline-color: var(--accent, #6F899F);
+  border-color: var(--accent, #6F899F) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #6F899F) 18%, transparent);
+}
+.billingScope :global(.billing-app .btn-primary),
+.billingScope :global(.billing-tabs .active),
+.billingScope :global(.link-button) {
+  background-color: var(--brand, #29455F) !important;
+  color: #FFFFFF !important;
+  border-color: var(--brand, #29455F) !important;
+}
+.billingScope :global(.billing-app .btn-primary:hover) {
+  background-color: #20384D !important;
+}
+.billingScope :global(.billing-app .btn-secondary) {
+  background: var(--surface-raised, #F2F5F7) !important;
+  color: var(--text, #243444) !important;
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app .btn-secondary:hover) {
+  background: var(--surface-soft, #D3DBE1) !important;
+}
+.billingScope :global(.billing-app .admin-brand-mark),
+.billingScope :global(.billing-app .admin-badge),
+.billingScope :global(.billing-app .customer-master-note),
+.billingScope :global(.billing-app .session-suggestion) {
+  background: var(--surface-soft, #D3DBE1) !important;
+  color: var(--brand, #29455F) !important;
+  border-color: var(--border, #BFCAD3) !important;
+}
+.billingScope :global(.billing-app .muted),
+.billingScope :global(.billing-app .page-header p),
+.billingScope :global(.billing-app .form-section h3),
+.billingScope :global(.billing-app .field-hint) {
+  color: var(--text-muted, #586A78);
+}
+:global([data-admin-theme="dark"]) .billingScope {
+  color-scheme: dark;
+  color: var(--text, #E8EEF2);
+  background: var(--canvas, #18232D) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-main) {
+  color: var(--text, #E8EEF2) !important;
+  background: var(--canvas, #18232D) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .card),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-card),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-kpi),
+:global([data-admin-theme="dark"]) .billingScope :global(.modal-card),
+:global([data-admin-theme="dark"]) .billingScope :global(.auth-card),
+:global([data-admin-theme="dark"]) .billingScope :global(.table-container),
+:global([data-admin-theme="dark"]) .billingScope :global(.admin-header),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .card > .page-header),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .form-actions) {
+  background: var(--surface, #202E3A) !important;
+  color: var(--text, #E8EEF2) !important;
+  border-color: var(--border, #405261) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app th),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app td),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app tbody tr:hover td) {
+  background: var(--surface, #202E3A) !important;
+  color: var(--text, #E8EEF2) !important;
+  border-color: var(--border, #405261) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app th) {
+  background: var(--surface-soft, #344655) !important;
+  color: var(--text-muted, #B4C1CA) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app input),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app select),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app textarea),
+:global([data-admin-theme="dark"]) .billingScope :global(.form-input),
+:global([data-admin-theme="dark"]) .billingScope :global(.table-container input),
+:global([data-admin-theme="dark"]) .billingScope :global(.table-container select) {
+  background: var(--surface, #202E3A) !important;
+  color: var(--text, #E8EEF2) !important;
+  border-color: var(--border, #405261) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .btn-primary),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-tabs .active),
+:global([data-admin-theme="dark"]) .billingScope :global(.link-button) {
+  background: var(--accent, #8FA7BA) !important;
+  color: #18232D !important;
+  border-color: var(--accent, #8FA7BA) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .btn-secondary) {
+  background: var(--surface-soft, #344655) !important;
+  color: var(--text, #E8EEF2) !important;
+  border-color: var(--border, #405261) !important;
+}
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .muted),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .page-header p),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .form-section h3),
+:global([data-admin-theme="dark"]) .billingScope :global(.billing-app .field-hint) {
+  color: var(--text-muted, #B4C1CA) !important;
+}

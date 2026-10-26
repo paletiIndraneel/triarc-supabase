@@ -82,3 +82,5 @@ b) Restore the pre-multi-platform data (ids without prefix):
 
    To remove a platform: delete it from PROVIDERS and CONNECTORS (or just remove its env
    vars to switch it off). Its stored sessions stay in the table.
+
+

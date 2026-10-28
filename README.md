@@ -48,13 +48,13 @@ npm run dev                  # http://localhost:3000
 
 ## Releasing
 
-Work on a branch off `development`, not on `development` itself.
+Work on a branch off `main`, not on `main` itself.
 
 1. **Push the branch.** Cloudflare Workers Builds builds it and uploads a *preview version* with its
    own URL, which takes no live traffic.
 2. **Check that preview.** It is the real Worker with the real bindings, so it catches what
    `npm run dev` hides.
-3. **Promote by merging into `development`.** That build deploys to the live Worker, so the merge
+3. **Promote by merging into `main`.** That build deploys to the live Worker, so the merge
    is the release. Run `npm run lint`, `npm test` and `npm run opennext-build` first.
 
 ---

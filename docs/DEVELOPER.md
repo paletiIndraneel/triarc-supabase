@@ -146,14 +146,14 @@ Add new API routes to `ROUTES` in `api.test.mjs`.
 
 ## 11. Release flow
 
-Work on a branch off `development`. Nothing is committed straight to `development`.
+Work on a branch off `main`. Nothing is committed straight to `main`.
 
 1. **Push the branch.** Workers Builds builds it and runs `opennextjs-cloudflare upload`, which
    publishes a preview *version* of the `admin` Worker with its own URL. It takes no live traffic.
 2. **Check the preview URL.** It is the real Worker with the real bindings and secrets, so it is the
    last place to catch what `npm run dev` and `npm run preview` hide.
-3. **Promote by merging into `development`.** That build runs `opennextjs-cloudflare deploy`, which
-   points live traffic at the new version — so the merge into `development` *is* the release.
+3. **Promote by merging into `main`.** That build runs `opennextjs-cloudflare deploy`, which
+   points live traffic at the new version — so the merge into `main` *is* the release.
 4. Run `npm run lint`, `npm test` and `npm run opennext-build` before merging. The production build
    is not the place to discover a type error.
 
@@ -161,7 +161,7 @@ Workers Builds settings (dashboard → the `admin` Worker → **Settings** > **B
 
 | Setting | Value |
 |---|---|
-| Branch control → production branch | `development` |
+| Branch control → production branch | `main` |
 | Branch control → Enable Preview Builds | on, so pushes to other branches build |
 | Build command | `npm run opennext-build` |
 | Deploy command (production branch only) | `npx opennextjs-cloudflare deploy` |

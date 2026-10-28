@@ -482,18 +482,18 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
     { label: "CPO DC", energy: (split) => split.energy.cpoDc, revenue: null },
   ];
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
+    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th scope="col" className="pb-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">Charger</th>
+              <th scope="col" className="pb-2 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">Charger</th>
               {periods.map((period) => (
                 <th
                   key={period.title}
                   scope="col"
                   title={period.title}
-                  className="whitespace-nowrap pb-3 pl-6 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
+                  className="whitespace-nowrap pb-2 pl-5 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
                 >
                   {period.short}
                   {period.current && <span className="ml-1.5 rounded-full bg-accent-pale px-1.5 py-px text-[9px] tracking-[0.08em] text-accent">Now</span>}
@@ -504,30 +504,30 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.label}>
-                <th scope="row" className={`whitespace-nowrap border-t border-line/50 py-3 text-left text-sm font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
+                <th scope="row" className={`whitespace-nowrap border-t border-line/50 py-2 text-left text-xs font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
                   {row.label}
                 </th>
                 {periods.map((period) => (
-                  <td key={period.title} className="border-t border-line/50 py-3 pl-6 text-right align-baseline">
-                    <span className="block text-[15px] tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
-                    <span className="mt-0.5 block text-xs tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : "—"}</span>
+                  <td key={period.title} className="border-t border-line/50 py-2 pl-5 text-right align-baseline">
+                    <span className="block text-[13px] tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
+                    <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : "—"}</span>
                   </td>
                 ))}
               </tr>
             ))}
             <tr>
-              <th scope="row" className="whitespace-nowrap border-t border-line pt-4 text-left text-sm font-bold text-ink">Total</th>
+              <th scope="row" className="whitespace-nowrap border-t border-line pt-3 text-left text-xs font-bold text-ink">Total</th>
               {periods.map((period) => (
-                <td key={period.title} className="border-t border-line pt-4 pl-6 text-right align-baseline">
-                  <span className="block text-[17px] font-bold tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
-                  <span className="mt-0.5 block text-xs tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : "—"}</span>
+                <td key={period.title} className="border-t border-line pt-3 pl-5 text-right align-baseline">
+                  <span className="block text-[15px] font-bold tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
+                  <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : "—"}</span>
                 </td>
               ))}
             </tr>
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
+      <p className="mt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
     </GlassCard>
   );
 }
@@ -1144,39 +1144,57 @@ export default function CmsOperatorDashboard() {
           <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
         </div>
 
-        <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
-          <GlassCard className="@container min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
-            <div className="flex flex-col gap-4 @[26rem]:flex-row @[26rem]:items-center">
-              <div className="min-w-0 @[26rem]:flex-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Consumption Details</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-ink [overflow-wrap:anywhere]">
-                  {historicalConsumption?.items[0]
-                    ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`
-                    : "—"}
-                </p>
-                <p className="mt-1 text-xs font-medium text-muted">
-                  {historicalConsumption?.items[0]?.label ?? "Loading consumption"}
-                </p>
-              </div>
-              <div className="h-px w-full shrink-0 bg-soft @[26rem]:h-16 @[26rem]:w-px" aria-hidden="true" />
-              <div className="min-w-0 space-y-3 @[26rem]:flex-1">
-                {(historicalConsumption?.items ?? []).slice(1).map((item) => (
-                  <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                    <p className="min-w-0 text-xs font-medium text-muted">{item.label}</p>
-                    <p className="text-sm font-semibold whitespace-nowrap text-ink">
-                      {item.value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh
-                    </p>
-                  </div>
-                ))}
-              </div>
+        <GlassCard className="@container relative z-0 min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
+          <div className="flex flex-col gap-4 @[44rem]:flex-row @[44rem]:items-center">
+            <div className="min-w-0 @[44rem]:flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">Consumption Details</p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-ink [overflow-wrap:anywhere]">
+                {historicalConsumption?.items[0]
+                  ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`
+                  : "—"}
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted">
+                {historicalConsumption?.items[0]?.label ?? "Loading consumption"}
+              </p>
             </div>
-          </GlassCard>
-          <LocationsCard
-            count={locationCount}
-            names={locationOptions}
-            live={new Set(liveSessions.map((session) => session.location))}
-          />
-        </div>
+            <div className="h-px w-full shrink-0 bg-soft @[44rem]:h-16 @[44rem]:w-px" aria-hidden="true" />
+            <div className="min-w-0 space-y-3 @[44rem]:flex-1">
+              {(historicalConsumption?.items ?? []).slice(1).map((item) => (
+                <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <p className="min-w-0 text-xs font-medium text-muted">{item.label}</p>
+                  <p className="text-sm font-semibold whitespace-nowrap text-ink">
+                    {item.value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="h-px w-full shrink-0 bg-soft @[44rem]:h-16 @[44rem]:w-px" aria-hidden="true" />
+            <div className="min-w-0 @[44rem]:flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Locations</p>
+                <p className="text-sm font-semibold text-muted">{locationCount}</p>
+              </div>
+              {locationOptions.length === 0 ? (
+                <p className="mt-2 text-xs text-muted">—</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {locationOptions.map((name) => {
+                    const charging = liveSessions.some((session) => session.location === name);
+                    return (
+                      <li key={name} className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <span
+                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${charging ? "bg-emerald-500" : "bg-soft"}`}
+                          aria-label={charging ? "Charging now" : "Idle"}
+                        />
+                        <span className="min-w-0 truncate" title={name}>{displayLocation(name)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </GlassCard>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-line/80 bg-surface p-0 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
@@ -1628,29 +1646,3 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
 }
 
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.
-function LocationsCard({ count, names, live }: { count: number; names: string[]; live: Set<string> }) {
-  return (
-    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">Locations</p>
-        <p className="text-sm font-semibold text-muted">{count}</p>
-      </div>
-      {names.length === 0 ? (
-        <p className="mt-2 text-xs text-muted">—</p>
-      ) : (
-        <ul className="mt-2 space-y-1.5">
-          {names.map((name) => (
-            <li key={name} className="flex items-center gap-2 text-sm font-semibold text-ink">
-              <span
-                className={`h-1.5 w-1.5 shrink-0 rounded-full ${live.has(name) ? "bg-emerald-500" : "bg-soft"}`}
-                aria-label={live.has(name) ? "Charging now" : "Idle"}
-              />
-              <span className="min-w-0 truncate" title={name}>{displayLocation(name)}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </GlassCard>
-  );
-}
-

@@ -508,22 +508,22 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.label}>
-                <th scope="row" className={`truncate border-t border-line/40 py-2.5 text-left text-[13px] font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
+                <th scope="row" className={`truncate border-t border-line/40 py-2 text-left text-xs font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
                   {row.label}
                 </th>
                 {periods.map((period) => (
-                  <td key={period.title} className="border-t border-line/40 py-2.5 pl-3 text-right align-baseline leading-tight">
-                    <span className="block text-[15px] font-semibold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
+                  <td key={period.title} className="border-t border-line/40 py-2 pl-3 text-right align-baseline leading-tight">
+                    <span className="block text-[14px] font-semibold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
                     <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : " "}</span>
                   </td>
                 ))}
               </tr>
             ))}
             <tr>
-              <th scope="row" className="truncate border-t border-line pt-3 text-left text-[13px] font-bold text-ink">Total</th>
+              <th scope="row" className="truncate border-t border-line pt-2.5 text-left text-xs font-bold text-ink">Total</th>
               {periods.map((period) => (
-                <td key={period.title} className="border-t border-line pt-3 pl-3 text-right align-baseline leading-tight">
-                  <span className="block text-[17px] font-bold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
+                <td key={period.title} className="border-t border-line pt-2.5 pl-3 text-right align-baseline leading-tight">
+                  <span className="block text-[15px] font-bold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
                   <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : " "}</span>
                 </td>
               ))}
@@ -1133,7 +1133,7 @@ export default function CmsOperatorDashboard() {
           </div>
         )}
 
-        <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,33rem)_minmax(0,1fr)]">
           <PeriodMatrixCard
             periods={[
               { title: "Today", short: "Today", split: todaySplit },

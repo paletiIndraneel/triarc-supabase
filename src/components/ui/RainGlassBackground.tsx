@@ -440,7 +440,7 @@ function paintWater(
 
 export default function RainGlassBackground({
   src = DEFAULT_SRC,
-  title = "Stay in when it rains.",
+  title,
   children,
   rain = 0.6,
   interactive = true,

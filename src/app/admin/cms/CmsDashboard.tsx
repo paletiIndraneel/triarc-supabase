@@ -482,7 +482,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
     { label: "CPO DC", energy: (split) => split.energy.cpoDc, revenue: null },
   ];
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
+    <GlassCard className="min-w-0 self-start rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
@@ -1644,9 +1644,9 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
   };
   for (const session of sessions) pages[pageId(session)] = sessionPage(session, liveById[session.transactionId || session.id]);
 
-  // No self-start: the grid makes the card as tall as the period matrix beside it, so an idle
-  // panel has no empty floor to fill and opening a session barely moves the row.
-  return <StackPanel className="min-w-0 shadow-sm" pages={pages} root="status" />;
+  // Both cards in the row keep their own height (self-start), so opening a session makes this
+  // panel taller without leaving an empty box in the period matrix beside it.
+  return <StackPanel className="min-w-0 self-start shadow-sm" pages={pages} root="status" />;
 }
 
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.

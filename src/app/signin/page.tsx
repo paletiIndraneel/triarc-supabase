@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function SignInPage() {
   return (
-    <AuthShell title="Sign in" subtitle="For Triarc admins only.">
+    <AuthShell background title="Sign in" subtitle="For Triarc admins only.">
       <Suspense fallback={null}>
         <SignInForm />
       </Suspense>

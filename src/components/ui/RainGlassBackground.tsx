@@ -18,7 +18,7 @@
  *
  * The canvas only fades in once the image has loaded into WebGL, so a missing image or a
  * browser without WebGL2 leaves the plain themed background showing. Drop a photo at
- * public/signin-glass.jpg to turn the effect on.
+ * public/signin-glass.png to replace the placeholder.
  */
 
 
@@ -38,7 +38,7 @@ export interface RainGlassBackgroundProps {
   className?: string;
 }
 
-const DEFAULT_SRC = "/signin-glass.jpg";
+const DEFAULT_SRC = "/signin-glass.png";
 
 // The drop map is drawn at three quarter size, the fog map at half.
 const WATER_SCALE = 0.75;

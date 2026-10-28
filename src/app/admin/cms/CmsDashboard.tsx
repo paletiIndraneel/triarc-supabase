@@ -484,7 +484,11 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
   return (
     <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col className="w-[28%]" />
+            {periods.map((period) => <col key={period.title} className="w-[24%]" />)}
+          </colgroup>
           <thead>
             <tr>
               <th scope="col" className="pb-2 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">Charger</th>
@@ -493,7 +497,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
                   key={period.title}
                   scope="col"
                   title={period.title}
-                  className="whitespace-nowrap pb-2 pl-5 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
+                  className="whitespace-nowrap pb-2 pl-3 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
                 >
                   {period.short}
                   {period.current && <span className="ml-1.5 rounded-full bg-accent-pale px-1.5 py-px text-[9px] tracking-[0.08em] text-accent">Now</span>}
@@ -504,30 +508,30 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.label}>
-                <th scope="row" className={`whitespace-nowrap border-t border-line/50 py-2 text-left text-xs font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
+                <th scope="row" className={`truncate border-t border-line/40 py-2.5 text-left text-[13px] font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
                   {row.label}
                 </th>
                 {periods.map((period) => (
-                  <td key={period.title} className="border-t border-line/50 py-2 pl-5 text-right align-baseline">
-                    <span className="block text-[13px] tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
-                    <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : "—"}</span>
+                  <td key={period.title} className="border-t border-line/40 py-2.5 pl-3 text-right align-baseline leading-tight">
+                    <span className="block text-[15px] font-semibold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
+                    <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : " "}</span>
                   </td>
                 ))}
               </tr>
             ))}
             <tr>
-              <th scope="row" className="whitespace-nowrap border-t border-line pt-3 text-left text-xs font-bold text-ink">Total</th>
+              <th scope="row" className="truncate border-t border-line pt-3 text-left text-[13px] font-bold text-ink">Total</th>
               {periods.map((period) => (
-                <td key={period.title} className="border-t border-line pt-3 pl-5 text-right align-baseline">
-                  <span className="block text-[15px] font-bold tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
-                  <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : "—"}</span>
+                <td key={period.title} className="border-t border-line pt-3 pl-3 text-right align-baseline leading-tight">
+                  <span className="block text-[17px] font-bold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
+                  <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : " "}</span>
                 </td>
               ))}
             </tr>
           </tbody>
         </table>
       </div>
-      <p className="mt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
+      <p className="mt-3 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
     </GlassCard>
   );
 }
@@ -1640,9 +1644,9 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
   };
   for (const session of sessions) pages[pageId(session)] = sessionPage(session, liveById[session.transactionId || session.id]);
 
-  // A floor on the height so opening a session grows the panel inside its own card instead of
-  // stretching the row it shares with the period matrix.
-  return <StackPanel className="min-h-[24rem] min-w-0 self-start shadow-sm" pages={pages} root="status" />;
+  // No self-start: the grid makes the card as tall as the period matrix beside it, so an idle
+  // panel has no empty floor to fill and opening a session barely moves the row.
+  return <StackPanel className="min-w-0 shadow-sm" pages={pages} root="status" />;
 }
 
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.

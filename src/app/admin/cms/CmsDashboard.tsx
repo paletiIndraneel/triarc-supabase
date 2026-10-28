@@ -467,7 +467,7 @@ function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>)
 
 const formatKwh = (value: number) => `${value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`;
 
-type MatrixPeriod = { title: string; short: string; current?: boolean; split: PeriodSplit | null };
+type MatrixPeriod = { title: string; short: string; split: PeriodSplit | null };
 
 const matrixKwh = (value: number) => value.toLocaleString("en-IN", { maximumFractionDigits: 4 });
 
@@ -500,7 +500,6 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
                   className="whitespace-nowrap pb-2 pl-3 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
                 >
                   {period.short}
-                  {period.current && <span className="ml-1.5 rounded-full bg-accent-pale px-1.5 py-px text-[9px] tracking-[0.08em] text-accent">Now</span>}
                 </th>
               ))}
             </tr>
@@ -1137,10 +1136,11 @@ export default function CmsOperatorDashboard() {
           <PeriodMatrixCard
             periods={[
               { title: "Today", short: "Today", split: todaySplit },
-              ...(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle, index) => ({
+              ...(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => ({
                 title: cycle.title,
-                short: cycle.title.match(/\(([^)]+)\)/)?.[1] ?? cycle.title,
-                current: index === 0,
+                // "Current cycle (16 Oct – 31 Oct)" heads the column as "Current cycle"; the dates
+                // stay in the title attribute.
+                short: cycle.title.replace(/\s*\([^)]*\)\s*$/, ""),
                 split: cycle.split,
               })),
             ]}

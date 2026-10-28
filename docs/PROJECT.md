@@ -1,6 +1,6 @@
 # Triarc Admin — Project Document
 
-As of 28 Oct 2026 · Owner: Triarc Group
+As of 29 Oct 2026 · Owner: Triarc Group
 
 The Triarc admin is a single private web page (`/admin`) where Triarc's partners, IT admins and
 investors watch the EV Hub's charging business, bill customers and manage who can see what. It
@@ -64,7 +64,7 @@ at the same site, and a second station is planned. The admin has to:
 | Supabase project `kgfxlqgbzvtqfrqbblfo` ("Website", org TRIARC GROUP) | Sign-in, database, enquiry function |
 | ChargeMOD | Source of charging sessions and live meter readings |
 
-## 6. Status (28 Oct 2026)
+## 6. Status (29 Oct 2026)
 
 Done and tested:
 - Multi-platform sessions, multi-station stations, station selector, Access page with roles,
@@ -72,12 +72,21 @@ Done and tested:
 - Database access rules: automated test of 67 checks, all passing.
 - Full browser pass of every module as partner and as a station-limited investor.
 
+- Live on Cloudflare at `admin.triarcgroup.in`, deployed from `TriarcGroup/ADMIN` `main`.
+- Dependencies brought to their latest supported versions on 28 Oct 2026 (Next 16.4.3,
+  TypeScript 6, ESLint 10, Motion 14).
+- CMS dashboard reworked on 29 Oct 2026: the three period cards became one matrix with the Status
+  card beside it, consumption and locations merged into one card, customer columns put behind a
+  click-to-reveal spoiler, and the charger column now shows the gun number. Sign-in sits on a
+  rain-on-glass background.
+
 Open:
-- Cloudflare release: needs the Supabase settings (incl. the secret key) as Worker
-  variables/secrets and the `/signin/set-password` redirect URL for the live address.
-- Dependencies were brought to their latest supported versions on 28 Oct 2026 (Next 16.4.3,
-  TypeScript 6, ESLint 10, Motion 14). Build, type-check, lint and unit tests pass; the admin has
-  not been opened in a browser since, so the Motion 14 animations are unverified.
+- The sign-in background is a generated placeholder; replace `public/signin-glass.png` with a real
+  photograph (change `DEFAULT_SRC` in `RainGlassBackground.tsx` if the extension differs).
+- Opening a live charging session on production has not been seen since the dashboard rework —
+  there were no active sessions at release time.
+- Cloudflare build caching and preview builds are both off; turning them on is a dashboard switch
+  (Settings → Build).
 - Ather connector: waits for Ather's API.
 - ESP32 / Raspberry Pi device integration: not built; device writes are limited to partners and IT
   admins until then.

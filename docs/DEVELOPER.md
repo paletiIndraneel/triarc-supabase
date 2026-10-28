@@ -1,6 +1,6 @@
 # Triarc Admin — Developer Document
 
-As of 28 Oct 2026. For the business view see [PROJECT.md](PROJECT.md); for short agent-facing rules
+As of 29 Oct 2026. For the business view see [PROJECT.md](PROJECT.md); for short agent-facing rules
 see [CLAUDE.md](../CLAUDE.md).
 
 ## 1. Stack
@@ -45,16 +45,19 @@ that fallback. Build-time values are inlined by `next.config.ts` `env`, so chang
 
 ```text
 src/
-  app/admin/page.tsx          the only admin route; loads enquiries, renders AdminApp
+  app/page.tsx                the only admin route; loads enquiries, renders AdminApp
   app/admin/<module>/         module components (never named page.tsx)
   app/api/admin/*             access, cpo-numbers, preferences
   app/api/cms/*               operator (sync), live/[id] (meter readings), live/backfill
   components/admin/           AdminApp shell, header, navigation, dialogs, sign-in forms
+  components/ui/              shared animated pieces, adapted from Kokonut UI (see 5)
   lib/supabase/               server.ts (cookie client + getAdminClient), client.ts, billing.ts, service.ts
   lib/cms/                    providers, ChargeMOD connector, session store helpers, types
   lib/adminAccess.ts          roles, full-access set, lock-out guard
   lib/security.ts             safe redirect, CSV, mailto/tel helpers
-  proxy.ts                    Next 16 middleware: guards /admin
+  proxy.ts                    Next 16 middleware: guards the admin page /
+public/
+  signin-glass.png            the view behind the sign-in card (placeholder, see 5)
 supabase/
   migrations/                 timestamped SQL (see 8)
   functions/submit-enquiry/   public contact-form endpoint
@@ -64,11 +67,28 @@ tests/                        unit, API and RLS test runners
 
 ## 5. Admin shell
 
-`/admin` is one client component (`AdminApp.tsx`) that switches modules by state, mirrored in
-`/admin?module=…` (pushState/popstate). Any `/admin/*` URL redirects to `/admin`. Modules:
+`/` is one client component (`AdminApp.tsx`) that switches modules by state, mirrored in
+`/?module=…` (pushState/popstate). Any `/admin/*` URL redirects to `/`. Modules:
 `overview`, `cms`, `billing`, `enquiries`, `stations`, `access`, `cpo-settings`
 (`adminNavigation.ts`). `canOpenModule(module, isPartner, modules)` decides what shows; a blocked
 `?module=` falls back to Overview.
+
+**Shared UI** in `components/ui/`, adapted from Kokonut UI (MIT, `motion` package); each file keeps
+its attribution header, and all of them use the palette tokens only:
+
+| Component | Where it is used |
+| --------- | ---------------- |
+| `SlidingTabs` | header modules, Billing tabs, the Overview metric switch |
+| `StackPanel` | the CMS Status card; a session page comes from `sessionPage()` in `cms/SessionDetails.tsx` |
+| `Loader` | the CMS transactions table while sessions are being fetched |
+| `Spoiler` | customer data: name, mobile and vehicle number in the CMS table, GSTIN in billing |
+| `RainGlassBackground` | the sign-in page, through `AuthShell`'s `background` prop |
+
+`AuthShell` frames sign-in, set-password, unauthorized and 404. Only sign-in passes `background`,
+which puts the card on the rain-on-glass window and frosts it; the others keep the solid card.
+The image is `public/signin-glass.png` — a generated placeholder, replaced by changing
+`DEFAULT_SRC` in `RainGlassBackground.tsx`. It needs WebGL2; the canvas only fades in once the
+image decodes, so a missing image or an old browser simply leaves the plain background.
 
 ## 6. Access control (keep all three layers)
 
@@ -115,6 +135,16 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
 - **Station filter**: `stationSelection.tsx` (choice in `localStorage` `triarc-admin-station`);
   `billing_invoice_stations` holds one record per station per platform (`provider`, `location_id`);
   records with the same name are one station (`groupStations`).
+- **Dashboard layout** (`CmsDashboard.tsx`): the top row is `PeriodMatrixCard` — Today, the current
+  cycle and the previous cycle as one fixed-layout table, kWh above and revenue below in each cell —
+  beside `StatusCard`, whose state (Charging/Idle and the count) sits in the `StackPanel` header so
+  the body holds only sessions. Both cards are `self-start`, so opening a session grows the panel
+  without leaving an empty box in the matrix. The second row is one card: consumption, the other
+  periods, and locations as three segments.
+- **Transactions table**: `displayChargerWithGun` puts the connector id where ChargeMOD's name
+  carries the connector standard, because both guns of a DC charger are named `CCS-2` and would
+  otherwise read alike. Customer name, mobile and vehicle number are wrapped in `Spoiler`; the gun
+  number is not, and CSV export is unaffected.
 
 ## 8. Billing
 
@@ -199,6 +229,7 @@ variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth
 - Shared helpers in `lib/security.ts` for redirects, CSV and mailto/tel; never reimplement.
 - Dialogs: `confirmDialog` / `promptDialog`, not `window.confirm`.
 - Locations shown with `displayLocation()`; invoices print the stored name.
+- Customer data on screen (name, mobile, vehicle number, GSTIN) goes behind `Spoiler`.
 - Dark mode: `data-admin-theme`; overrides in `admin.module.css` / `billing.module.css` (add at the end).
 - Files use CRLF line endings.
 - Never store ChargeMOD `employeeDetails` (customer tokens).

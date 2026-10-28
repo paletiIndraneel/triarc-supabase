@@ -424,6 +424,14 @@ function displayCharger(value: string) {
   return cleanDisplayValue(value, ["Triarc EV hub |", "Triarc |"]);
 }
 
+// ChargeMOD names both guns of a DC charger after the connector standard ("CCS-2"), so the table
+// showed the same label for gun 1 and gun 2. Put the gun number in its place.
+function displayChargerWithGun(value: string, connectorId: number | null) {
+  const name = displayCharger(value);
+  if (connectorId == null || connectorId <= 0) return name;
+  return name.replace(/CCS[-\s]*\d+/i, `CCS-${connectorId}`);
+}
+
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 type PeriodSplit = {
   energy: { total: number; ac: number; dc: number; cpo: number; cpoAc: number; cpoDc: number };
@@ -459,39 +467,67 @@ function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>)
 
 const formatKwh = (value: number) => `${value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`;
 
-function SplitCard({ title, split }: { title: string; split: PeriodSplit | null }) {
-  const rows: Array<[string, number | undefined, number | undefined]> = [
-    ["AC Charger", split?.energy.ac, split?.revenue.ac],
-    ["DC Charger", split?.energy.dc, split?.revenue.dc],
-    ["CPO AC", split?.energy.cpoAc, undefined],
-    ["CPO DC", split?.energy.cpoDc, undefined],
+type MatrixPeriod = { title: string; short: string; current?: boolean; split: PeriodSplit | null };
+
+const matrixKwh = (value: number) => value.toLocaleString("en-IN", { maximumFractionDigits: 4 });
+
+// The three billing periods in one card. Every cell leads with kWh and carries the revenue
+// underneath, so four columns do the work the three separate cards needed seven for, and the
+// periods are told apart by space rather than by ruling every column.
+function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
+  const rows: Array<{ label: string; energy: (split: PeriodSplit) => number; revenue: ((split: PeriodSplit) => number) | null }> = [
+    { label: "AC Charger", energy: (split) => split.energy.ac, revenue: (split) => split.revenue.ac },
+    { label: "DC Charger", energy: (split) => split.energy.dc, revenue: (split) => split.revenue.dc },
+    { label: "CPO AC", energy: (split) => split.energy.cpoAc, revenue: null },
+    { label: "CPO DC", energy: (split) => split.energy.cpoDc, revenue: null },
   ];
   return (
-    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
-      <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-muted" title={title}>{title}</p>
-      <table className="mt-2 w-full text-xs">
-        <thead>
-          <tr className="text-xs text-muted">
-            <th scope="col" className="pb-2 text-left font-medium"><span className="sr-only">Charger</span></th>
-            <th scope="col" className="pb-2 text-right font-medium">Energy</th>
-            <th scope="col" className="pb-2 text-right font-medium">Revenue</th>
-          </tr>
-        </thead>
-        <tbody className="font-semibold whitespace-nowrap text-ink">
-          {rows.map(([label, kwh, amount]) => (
-            <tr key={label} className={label.startsWith("CPO") ? "text-accent" : undefined}>
-              <th scope="row" className={`py-1 text-left text-xs ${label.startsWith("CPO") ? "font-semibold text-accent" : "font-medium text-muted"}`}>{label}</th>
-              <td className="py-1 text-right">{kwh === undefined ? "—" : formatKwh(kwh)}</td>
-              <td className="py-1 text-right">{label.startsWith("CPO") ? "" : amount === undefined ? "—" : money(amount)}</td>
+    <GlassCard className="min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th scope="col" className="pb-3 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-muted">Charger</th>
+              {periods.map((period) => (
+                <th
+                  key={period.title}
+                  scope="col"
+                  title={period.title}
+                  className="whitespace-nowrap pb-3 pl-6 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
+                >
+                  {period.short}
+                  {period.current && <span className="ml-1.5 rounded-full bg-accent-pale px-1.5 py-px text-[9px] tracking-[0.08em] text-accent">Now</span>}
+                </th>
+              ))}
             </tr>
-          ))}
-          <tr className="border-t border-line text-sm font-bold text-ink">
-            <th scope="row" className="pt-2 text-left text-xs font-semibold uppercase tracking-wider text-muted">Total</th>
-            <td className="pt-2 text-right">{split ? formatKwh(split.energy.total) : "—"}</td>
-            <td className="pt-2 text-right">{split ? money(split.revenue.total) : "—"}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label}>
+                <th scope="row" className={`whitespace-nowrap border-t border-line/50 py-3 text-left text-sm font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
+                  {row.label}
+                </th>
+                {periods.map((period) => (
+                  <td key={period.title} className="border-t border-line/50 py-3 pl-6 text-right align-baseline">
+                    <span className="block text-[15px] tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
+                    <span className="mt-0.5 block text-xs tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : "—"}</span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <th scope="row" className="whitespace-nowrap border-t border-line pt-4 text-left text-sm font-bold text-ink">Total</th>
+              {periods.map((period) => (
+                <td key={period.title} className="border-t border-line pt-4 pl-6 text-right align-baseline">
+                  <span className="block text-[17px] font-bold tabular-nums tracking-[-0.01em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
+                  <span className="mt-0.5 block text-xs tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : "—"}</span>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
     </GlassCard>
   );
 }
@@ -1093,11 +1129,19 @@ export default function CmsOperatorDashboard() {
           </div>
         )}
 
-        <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <SplitCard title="Today" split={todaySplit} />
-          {(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => (
-            <SplitCard key={cycle.title} title={cycle.title} split={cycle.split} />
-          ))}
+        <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+          <PeriodMatrixCard
+            periods={[
+              { title: "Today", short: "Today", split: todaySplit },
+              ...(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle, index) => ({
+                title: cycle.title,
+                short: cycle.title.match(/\(([^)]+)\)/)?.[1] ?? cycle.title,
+                current: index === 0,
+                split: cycle.split,
+              })),
+            ]}
+          />
+          <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
         </div>
 
         <div className="relative z-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4">
@@ -1132,7 +1176,6 @@ export default function CmsOperatorDashboard() {
             names={locationOptions}
             live={new Set(liveSessions.map((session) => session.location))}
           />
-          <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
         </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-line/80 bg-surface p-0 shadow-sm">
@@ -1440,20 +1483,20 @@ export default function CmsOperatorDashboard() {
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
                           {columnId === "startedAt" && formatDate(transaction.startedAt)}
                           {columnId === "stoppedAt" && formatDate(transaction.stoppedAt)}
-                          {columnId === "userName" && displayUserName(transaction.userName)}
+                          {columnId === "userName" && <Spoiler>{displayUserName(transaction.userName)}</Spoiler>}
                           {columnId === "mobile" && (transaction.mobile ? <Spoiler>{transaction.mobile}</Spoiler> : "—")}
                           {columnId === "userType" && (transaction.userType ?? "—")}
                           {columnId === "tagReference" && (transaction.tagReference ?? "—")}
                           {columnId === "location" && displayLocation(transaction.location)}
                           {columnId === "locationId" && (transaction.locationId ?? "—")}
-                          {columnId === "chargerName" && displayCharger(transaction.chargerName)}
+                          {columnId === "chargerName" && displayChargerWithGun(transaction.chargerName, transaction.connectorId)}
                           {columnId === "stationType" && (transaction.stationType ?? "—")}
                           {columnId === "stopReason" && (transaction.stopReason ?? "—")}
                           {columnId === "energyKwh" && (transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh))}
                           {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
-                          {columnId === "vehicleNumber" && <span className="font-mono text-emerald-700">{transaction.vehicleNumber || "—"}</span>}
+                          {columnId === "vehicleNumber" && (transaction.vehicleNumber ? <Spoiler className="font-mono text-emerald-700">{transaction.vehicleNumber}</Spoiler> : "—")}
                           {columnId === "tariffAmount" && (transaction.tariffAmount == null ? "—" : money(transaction.tariffAmount))}
                           {columnId === "vat" && (transaction.vat ?? "—")}
                           {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}
@@ -1579,7 +1622,9 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
   };
   for (const session of sessions) pages[pageId(session)] = sessionPage(session, liveById[session.transactionId || session.id]);
 
-  return <StackPanel className="min-w-0 self-start shadow-sm" pages={pages} root="status" />;
+  // A floor on the height so opening a session grows the panel inside its own card instead of
+  // stretching the row it shares with the period matrix.
+  return <StackPanel className="min-h-[24rem] min-w-0 self-start shadow-sm" pages={pages} root="status" />;
 }
 
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.

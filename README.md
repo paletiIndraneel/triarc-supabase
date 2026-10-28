@@ -48,7 +48,12 @@ npm run dev                  # http://localhost:3000
 
 ## Releasing
 
-Work on a branch off `main`, not on `main` itself.
+Production is deployed from **`TriarcGroup/ADMIN`**, not from this repository: Cloudflare Workers
+Builds builds the `admin` Worker from that repo's `main`. This copy is for development and is not
+watched by Cloudflare, so a push here deploys nothing to production. Both repos use the same
+Supabase project, so anything run from here reads and writes production data.
+
+In the company repo, work on a branch off `main`, not on `main` itself.
 
 1. **Push the branch.** Cloudflare Workers Builds builds it and uploads a *preview version* with its
    own URL, which takes no live traffic.

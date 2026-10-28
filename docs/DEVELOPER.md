@@ -146,7 +146,17 @@ Add new API routes to `ROUTES` in `api.test.mjs`.
 
 ## 11. Release flow
 
-Work on a branch off `main`. Nothing is committed straight to `main`.
+Production is deployed from the **`TriarcGroup/ADMIN`** repo, not from this one. That repo holds the
+code only, with no agent tooling, and Cloudflare Workers Builds deploys the `admin` Worker from its
+`main`. This repo (`paletiIndraneel/triarc-supabase`) keeps the full history and is not watched by
+Cloudflare: pushing here deploys nothing. The two have unrelated histories, so a change reaches
+production by landing in the company repo.
+
+Both use the **same Supabase project**. There is no sandbox: a page load from either one writes
+sessions to `cms_transactions`, the live poller writes Energy/SoC, and saving an invoice consumes a
+real number from `next_billing_invoice_number`. A true sandbox would need its own Supabase project.
+
+In the company repo, work on a branch off `main`. Nothing is committed straight to `main`.
 
 1. **Push the branch.** Workers Builds builds it and runs `opennextjs-cloudflare upload`, which
    publishes a preview *version* of the `admin` Worker with its own URL. It takes no live traffic.

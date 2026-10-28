@@ -60,7 +60,7 @@ at the same site, and a second station is planned. The admin has to:
 
 | Environment | Purpose |
 |---|---|
-| Cloudflare Workers (via OpenNext) | The live admin. Branch pushes become preview versions; merging into `main` promotes one to live |
+| Cloudflare Workers (via OpenNext) | The live admin, deployed from the `TriarcGroup/ADMIN` repo. Branch pushes there become preview versions; merging into its `main` promotes one to live |
 | Supabase project `kgfxlqgbzvtqfrqbblfo` ("Website", org TRIARC GROUP) | Sign-in, database, enquiry function |
 | ChargeMOD | Source of charging sessions and live meter readings |
 

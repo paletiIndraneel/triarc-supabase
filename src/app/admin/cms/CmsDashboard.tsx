@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
+import { Loader } from "@/components/ui/Loader";
+import { Spoiler } from "@/components/ui/Spoiler";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "./cmsWindowStore";
 import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } from "./dateRanges";
 import {
@@ -1439,7 +1441,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "startedAt" && formatDate(transaction.startedAt)}
                           {columnId === "stoppedAt" && formatDate(transaction.stoppedAt)}
                           {columnId === "userName" && displayUserName(transaction.userName)}
-                          {columnId === "mobile" && (transaction.mobile ?? "—")}
+                          {columnId === "mobile" && (transaction.mobile ? <Spoiler>{transaction.mobile}</Spoiler> : "—")}
                           {columnId === "userType" && (transaction.userType ?? "—")}
                           {columnId === "tagReference" && (transaction.tagReference ?? "—")}
                           {columnId === "location" && displayLocation(transaction.location)}
@@ -1478,6 +1480,11 @@ export default function CmsOperatorDashboard() {
                     </tr>
                   );
                 })}
+                {waiting && (
+                  <tr><td colSpan={visibleColumns.length} className="px-4 py-10">
+                    <Loader size="sm" title="Loading sessions…" />
+                  </td></tr>
+                )}
                 {!loading && transactions.length === 0 && (
                   <tr><td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-muted">
                     {filtersActive ? (

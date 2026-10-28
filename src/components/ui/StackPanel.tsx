@@ -48,6 +48,8 @@ export interface StackSection {
 
 export interface StackPage {
   title: string;
+  /** Shown at the right of the header: the page's state at a glance, without opening a row. */
+  trailing?: ReactNode;
   sections: StackSection[];
 }
 
@@ -307,6 +309,9 @@ export function StackPanel({ pages, root, className }: StackPanelProps) {
           <AnimatePresence initial={false}>
             <Title direction={direction} key={`${top}-${stack.length}`} origin={origin} panelRef={panelRef} text={pages[top]?.title ?? ""} />
           </AnimatePresence>
+          {pages[top]?.trailing && (
+            <div className="relative z-10 ml-auto flex items-center gap-2 pr-1 text-xs text-muted">{pages[top].trailing}</div>
+          )}
         </div>
 
         <motion.div animate={{ height }} className="relative" ref={bodyRef} transition={HEIGHT}>

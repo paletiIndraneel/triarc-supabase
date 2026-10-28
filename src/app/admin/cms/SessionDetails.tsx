@@ -1,7 +1,6 @@
 import type { CmsTransaction } from "@/lib/cms/types";
 import type { StackPage, StackRow } from "@/components/ui/StackPanel";
 import { shortChargerLabel } from "./transactionFilters";
-import { displaySessionId } from "@/lib/cms/providerIds";
 import type { LiveState } from "./useLiveMetrics";
 
 const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -17,7 +16,6 @@ function duration(minutes: number) {
 export function sessionPage(session: CmsTransaction, live: LiveState | undefined): StackPage {
   const metrics = live?.metrics ?? null;
   const error = live?.error ?? "";
-  const id = session.transactionId || session.id;
 
   // Start SoC comes from the transaction record; Current SoC comes only from the latest live meter reading.
   const startSoc = session.startSoc ?? metrics?.startSoc ?? null;
@@ -71,24 +69,39 @@ export function sessionPage(session: CmsTransaction, live: LiveState | undefined
     );
   }
 
-  const who: StackRow[] = [{ id: "customer", label: "Customer", detail: session.userName || "—" }];
-  if (session.vehicleNumber || session.vehicleName) who.push({ id: "vehicle", label: "Vehicle", detail: session.vehicleNumber || session.vehicleName });
-  who.push({ id: "session", label: "Session ID", detail: <span className="font-mono text-xs">{displaySessionId(session.provider, id)}</span> });
+  // Whether the car is still drawing power, and which car: the two things worth seeing at a
+  // glance, so they sit in the header instead of a row. The customer's name and the session id
+  // are not shown here — they are in the table.
+  const charging = !session.stoppedAt;
+  const plate = session.vehicleNumber || session.vehicleName || "";
+  const updated = `${metrics?.lastReadingAt ? `Updated ${time.format(new Date(metrics.lastReadingAt))} · ` : ""}refreshes every 30 s`;
+  const note = error ? (
+    <span role="alert" className="text-amber-800">Live readings: {error}</span>
+  ) : hasSoc ? null : (
+    "This charger doesn't report the vehicle's battery level."
+  );
 
   return {
     title: shortChargerLabel(session.chargerName, session.stationType, session.connectorId),
+    trailing: (
+      <>
+        <span className={charging ? "flex items-center gap-1 text-emerald-600" : "text-muted"}>
+          {charging && <span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-500" />}
+          {charging ? "Charging" : "Stopped"}
+        </span>
+        {plate && <span className="font-mono text-ink">{plate}</span>}
+      </>
+    ),
     sections: [
       {
         title: "Live readings",
         rows: readings,
-        footer: error ? (
-          <span role="alert" className="text-amber-800">Live readings: {error}</span>
-        ) : hasSoc ? undefined : "This charger doesn't report the vehicle's battery level.",
-      },
-      {
-        title: "Session",
-        rows: who,
-        footer: `${metrics?.lastReadingAt ? `Updated ${time.format(new Date(metrics.lastReadingAt))} · ` : ""}refreshes every 30 s`,
+        footer: (
+          <>
+            {note && <span className="block">{note}</span>}
+            <span className="block">{updated}</span>
+          </>
+        ),
       },
     ],
   };

@@ -1,6 +1,11 @@
-# Triarc Group
+# Triarc Admin
 
-Triarc Group's website. Triarc runs **TRIARC EV Hub**, an EV charging station in Bhadrachalam, Telangana.
+Internal admin for **TRIARC EV Hub**, Triarc Group's EV charging business in Bhadrachalam,
+Telangana. It is a private tool: nothing in it is meant to be public, and every route refuses
+crawlers, search engines, AI agents and link-preview fetchers.
+
+The public website is not in this repo. Both share one Supabase project, which is how the admin
+reads the enquiries that site's contact form writes.
 
 ---
 
@@ -11,7 +16,7 @@ Triarc Group's website. Triarc runs **TRIARC EV Hub**, an EV charging station in
 | Framework | Next.js 16 (App Router), React 19 |
 | Language | TypeScript |
 | Styling | Tailwind CSS 4 |
-| Backend | Supabase |
+| Backend | Supabase (Auth, Postgres with RLS, one Edge Function) |
 | Hosting | Cloudflare Workers via OpenNext |
 
 ---
@@ -32,8 +37,14 @@ npm run dev                  # http://localhost:3000
 |---|---|
 | `npm run dev` | Dev server |
 | `npm run build` | Production build; also type-checks |
-| `npm test` | Unit tests |
-| `npm run preview` | Run the Cloudflare build locally (needs the OpenNext/wrangler tooling restored) |
+| `npm run lint` | ESLint; keep it at zero warnings |
+| `npm test` | Unit tests for the admin helpers |
+| `npm run opennext-build` | Build the Cloudflare Worker bundle |
+| `npm run preview` | Run that Worker bundle locally |
+| `npm run deploy` | Deploy from a workstation; normally unnecessary, see below |
+
+**Pushing `development` releases production.** Cloudflare Workers Builds builds that branch and
+puts it live, so run the checks before pushing rather than after.
 
 ---
 
@@ -41,15 +52,15 @@ npm run dev                  # http://localhost:3000
 
 ```text
 src/
-├── app/          # pages (charging-solutions, ev-station, locations, explore-bhadrachalam, about, contact)
-├── components/   # UI components
-├── data/         # page content
-└── lib/          # shared helpers
+├── app/          # the admin page (/), /signin, /unauthorized, and src/app/api/
+├── components/   # UI; components/admin/AdminApp.tsx is the module shell
+├── lib/          # Supabase clients, the ChargeMOD/CMS integration, billing and access helpers
+└── proxy.ts      # session + admin check and crawler blocking, on every route
 
-supabase/         # database migrations and the enquiry function
-public/           # images and logos
+supabase/         # migrations, the RLS audit, and the submit-enquiry Edge Function
+docs/             # PROJECT.md (what it does) and DEVELOPER.md (how to work on it)
+tests/            # unit, API and RLS suites
 ```
 
-Edit page text in `src/data/`. The components only handle layout.
-
-
+The admin is a single page: modules are switched inside `AdminApp.tsx` and mirrored in
+`/?module=…` rather than routed. Start with `docs/DEVELOPER.md`.

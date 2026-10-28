@@ -30,3 +30,12 @@ tsconfig.tsbuildinfo
 /.devin/
 /.grok/
 __pycache__/
+
+# Local clutter: agent tool output and scratch data
+/graphify-out/
+/agent-transcripts/
+/.cmem-projects/
+/.remember/
+/claude-all-skills.txt
+# A stray nested clone lived here once; never commit one
+/triarc-supabase/

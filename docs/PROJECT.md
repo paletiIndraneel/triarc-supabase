@@ -1,6 +1,6 @@
 # Triarc Admin — Project Document
 
-As of 23 Oct 2026 · Owner: Triarc Group
+As of 28 Oct 2026 · Owner: Triarc Group
 
 The Triarc admin is a single private web page (`/admin`) where Triarc's partners, IT admins and
 investors watch the EV Hub's charging business, bill customers and manage who can see what. It
@@ -64,7 +64,7 @@ at the same site, and a second station is planned. The admin has to:
 | Supabase project `kgfxlqgbzvtqfrqbblfo` ("Website", org TRIARC GROUP) | Sign-in, database, enquiry function |
 | ChargeMOD | Source of charging sessions and live meter readings |
 
-## 6. Status (23 Oct 2026)
+## 6. Status (28 Oct 2026)
 
 Done and tested:
 - Multi-platform sessions, multi-station stations, station selector, Access page with roles,

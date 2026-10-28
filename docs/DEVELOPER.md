@@ -146,13 +146,43 @@ Add new API routes to `ROUTES` in `api.test.mjs`.
 
 ## 11. Release flow
 
-1. **Pushing `development` deploys production.** Cloudflare Workers Builds builds that branch and
-   releases it to the live Worker, so testing happens before the push, not after: `npm run dev`,
-   `npm test`, `npm run lint` and `npm run opennext-build` (the same build Cloudflare runs).
-2. `npm run preview` runs the Worker bundle locally beforehand. `npm run deploy` releases from a
-   workstation and is only for a release outside the git flow.
-3. Before the first admin release: set the Supabase variables and `SUPABASE_SECRET_KEY` as Worker
-   variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth redirect URLs.
+Work on a branch off `development`. Nothing is committed straight to `development`.
+
+1. **Push the branch.** Workers Builds builds it and runs `opennextjs-cloudflare upload`, which
+   publishes a preview *version* of the `admin` Worker with its own URL. It takes no live traffic.
+2. **Check the preview URL.** It is the real Worker with the real bindings and secrets, so it is the
+   last place to catch what `npm run dev` and `npm run preview` hide.
+3. **Promote by merging into `development`.** That build runs `opennextjs-cloudflare deploy`, which
+   points live traffic at the new version — so the merge into `development` *is* the release.
+4. Run `npm run lint`, `npm test` and `npm run opennext-build` before merging. The production build
+   is not the place to discover a type error.
+
+Workers Builds settings (dashboard → the `admin` Worker → **Settings** > **Build**):
+
+| Setting | Value |
+|---|---|
+| Branch control → production branch | `development` |
+| Branch control → Enable Preview Builds | on, so pushes to other branches build |
+| Build command | `npm run opennext-build` |
+| Deploy command (production branch only) | `npx opennextjs-cloudflare deploy` |
+| Preview command (every other branch) | `npx opennextjs-cloudflare upload` |
+
+A bare `opennextjs-cloudflare` is not on `PATH` in the build container, hence `npx` (or `npm run`):
+that is what made the first deploy fail with `opennextjs-cloudflare: not found`.
+
+The Preview command defaults to `npx wrangler preview`, which creates an isolated Worker Preview
+with **its own** variables, secrets and bindings — nothing is inherited from production, so the
+admin would come up with no Supabase keys until they are configured separately for Previews. We use
+`opennextjs-cloudflare upload` (`wrangler versions upload`) instead: it publishes a *version* that
+reuses the Worker's own settings and gets a Version URL. Version URLs are not generated for Workers
+that implement Durable Objects; this one binds only `WORKER_SELF_REFERENCE`, `IMAGES` and `ASSETS`,
+so they work. Keep it that way, or switch to Worker Previews deliberately.
+
+A version can also be promoted without a merge, from the dashboard's Deployments tab or with
+`npx wrangler versions deploy <version-id>`.
+
+Before the first admin release: set the Supabase variables and `SUPABASE_SECRET_KEY` as Worker
+variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth redirect URLs.
 
 ## 12. Conventions
 

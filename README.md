@@ -41,10 +41,21 @@ npm run dev                  # http://localhost:3000
 | `npm test` | Unit tests for the admin helpers |
 | `npm run opennext-build` | Build the Cloudflare Worker bundle |
 | `npm run preview` | Run that Worker bundle locally |
+| `npm run upload` | Upload a preview version to Cloudflare; takes no live traffic |
 | `npm run deploy` | Deploy from a workstation; normally unnecessary, see below |
 
-**Pushing `development` releases production.** Cloudflare Workers Builds builds that branch and
-puts it live, so run the checks before pushing rather than after.
+---
+
+## Releasing
+
+Work on a branch off `development`, not on `development` itself.
+
+1. **Push the branch.** Cloudflare Workers Builds builds it and uploads a *preview version* with its
+   own URL, which takes no live traffic.
+2. **Check that preview.** It is the real Worker with the real bindings, so it catches what
+   `npm run dev` hides.
+3. **Promote by merging into `development`.** That build deploys to the live Worker, so the merge
+   is the release. Run `npm run lint`, `npm test` and `npm run opennext-build` first.
 
 ---
 

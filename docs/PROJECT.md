@@ -60,7 +60,7 @@ at the same site, and a second station is planned. The admin has to:
 
 | Environment | Purpose |
 |---|---|
-| Cloudflare Workers (via OpenNext) | The live admin. Cloudflare Workers Builds deploys it from `development`: every push to that branch goes live |
+| Cloudflare Workers (via OpenNext) | The live admin. Branch pushes become preview versions; merging into `development` promotes one to live |
 | Supabase project `kgfxlqgbzvtqfrqbblfo` ("Website", org TRIARC GROUP) | Sign-in, database, enquiry function |
 | ChargeMOD | Source of charging sessions and live meter readings |
 

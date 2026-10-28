@@ -146,13 +146,31 @@ Add new API routes to `ROUTES` in `api.test.mjs`.
 
 ## 11. Release flow
 
-1. **Pushing `development` deploys production.** Cloudflare Workers Builds builds that branch and
-   releases it to the live Worker, so testing happens before the push, not after: `npm run dev`,
-   `npm test`, `npm run lint` and `npm run opennext-build` (the same build Cloudflare runs).
-2. `npm run preview` runs the Worker bundle locally beforehand. `npm run deploy` releases from a
-   workstation and is only for a release outside the git flow.
-3. Before the first admin release: set the Supabase variables and `SUPABASE_SECRET_KEY` as Worker
-   variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth redirect URLs.
+Work on a branch off `development`. Nothing is committed straight to `development`.
+
+1. **Push the branch.** Workers Builds builds it and runs `opennextjs-cloudflare upload`, which
+   publishes a preview *version* of the `admin` Worker with its own URL. It takes no live traffic.
+2. **Check the preview URL.** It is the real Worker with the real bindings and secrets, so it is the
+   last place to catch what `npm run dev` and `npm run preview` hide.
+3. **Promote by merging into `development`.** That build runs `opennextjs-cloudflare deploy`, which
+   points live traffic at the new version — so the merge into `development` *is* the release.
+4. Run `npm run lint`, `npm test` and `npm run opennext-build` before merging. The production build
+   is not the place to discover a type error.
+
+Workers Builds needs this configured per branch kind (dashboard → the `admin` Worker → Settings →
+Build). Both use the same build command; only the deploy command differs:
+
+| | Production branch (`development`) | Other branches |
+|---|---|---|
+| Build command | `npm run opennext-build` | `npm run opennext-build` |
+| Deploy command | `npx opennextjs-cloudflare deploy` | `npx opennextjs-cloudflare upload` |
+
+A bare `opennextjs-cloudflare` is not on `PATH` in the build container, hence `npx` (or `npm run`).
+A version can also be promoted from the dashboard's Deployments tab, or with
+`npx wrangler versions deploy <version-id>`, without a merge.
+
+Before the first admin release: set the Supabase variables and `SUPABASE_SECRET_KEY` as Worker
+variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth redirect URLs.
 
 ## 12. Conventions
 

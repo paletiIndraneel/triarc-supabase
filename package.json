@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "opennext-build": "opennextjs-cloudflare build",
     "preview": "opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare deploy"
+    "deploy": "opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare upload"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

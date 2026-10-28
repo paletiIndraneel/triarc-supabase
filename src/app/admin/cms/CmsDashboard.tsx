@@ -1610,35 +1610,42 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
   const pages: Record<string, StackPage> = {
     status: {
       title: "Status",
+      // The state and the count live in the header, so the body is only the sessions themselves.
+      trailing: (
+        <>
+          <span className={`flex items-center gap-1.5 font-semibold ${charging ? "text-emerald-600" : "text-muted"}`}>
+            <span aria-hidden="true" className={`size-1.5 rounded-full ${charging ? "bg-emerald-500 motion-safe:animate-pulse" : "bg-soft"}`} />
+            {charging ? "Charging" : "Idle"}
+          </span>
+          <span
+            aria-label={`${count} charging now`}
+            className={`text-sm font-bold tabular-nums ${charging ? "text-emerald-600" : "text-ink"}`}
+          >
+            {count}
+          </span>
+        </>
+      ),
       sections: [
         {
-          rows: [{
-            id: "state",
-            label: <span className="font-semibold">{charging ? "Charging" : "Idle"}</span>,
-            dot: charging ? "bg-emerald-500 motion-safe:animate-pulse" : "bg-soft",
-            detail: <span className={`text-xl font-bold tracking-tight ${charging ? "text-emerald-600" : "text-ink"}`} aria-label={`${count} charging now`}>{count}</span>,
-          }],
-          footer: charging ? undefined : "No sessions charging",
+          rows: !charging
+            ? [{ id: "idle", label: <span className="text-muted">No sessions charging</span> }]
+            : sessions.length === 0
+              ? [{ id: "loading", label: <span className="text-muted">Loading sessions…</span> }]
+              : sessions.map((session) => ({
+                  id: session.transactionId || session.id,
+                  to: pageId(session),
+                  dot: "bg-emerald-500",
+                  label: (
+                    <>
+                      <span className="font-semibold">{shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}</span>
+                      {showLocation && session.location && <span className="text-muted"> · {displayLocation(session.location)}</span>}
+                      {showProvider && <span className="text-muted"> · {providerLabel(session.provider)}</span>}
+                    </>
+                  ),
+                  detail: `${session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}${session.startedAt ? ` · ${started(session.startedAt)}` : ""}`,
+                })),
+          footer: charging && sessions.length ? "Tap a session for live SoC and time left" : undefined,
         },
-        ...(charging ? [{
-          title: "Charging now",
-          rows: sessions.length === 0
-            ? [{ id: "loading", label: <span className="text-muted">Loading sessions…</span> }]
-            : sessions.map((session) => ({
-                id: session.transactionId || session.id,
-                to: pageId(session),
-                dot: "bg-emerald-500",
-                label: (
-                  <>
-                    <span className="font-semibold">{shortChargerLabel(session.chargerName, session.stationType, session.connectorId)}</span>
-                    {showLocation && session.location && <span className="text-muted"> · {displayLocation(session.location)}</span>}
-                    {showProvider && <span className="text-muted"> · {providerLabel(session.provider)}</span>}
-                  </>
-                ),
-                detail: `${session.energyKwh == null ? "—" : formatKwh(session.energyKwh)}${session.startedAt ? ` · ${started(session.startedAt)}` : ""}`,
-              })),
-          footer: sessions.length ? "Tap a session for live SoC and time left" : undefined,
-        }] : []),
       ],
     },
   };

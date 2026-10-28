@@ -79,7 +79,7 @@ interface Origin {
 }
 
 /** The header title. Pushed in from a row, it flies from that row's label up into the header. */
-function Title({ text, origin, direction, panelRef }: { text: string; origin: Origin | null; direction: 1 | -1; panelRef: RefObject<HTMLDivElement | null> }) {
+function Title({ text, origin, direction, panelRef, align }: { text: string; origin: Origin | null; direction: 1 | -1; panelRef: RefObject<HTMLDivElement | null>; align: "left" | "center" }) {
   const [scope, run] = useAnimate<HTMLSpanElement>();
   const reduced = useReducedMotion();
 
@@ -104,7 +104,10 @@ function Title({ text, origin, direction, panelRef }: { text: string; origin: Or
 
   return (
     <motion.span
-      className="absolute inset-x-0 top-1/2 mx-auto w-fit max-w-[55%] -translate-y-1/2 truncate text-[15px] font-semibold text-ink"
+      className={cn(
+        "absolute top-1/2 max-w-[55%] -translate-y-1/2 truncate text-[15px] font-semibold text-ink",
+        align === "left" ? "left-3" : "inset-x-0 mx-auto w-fit",
+      )}
       exit={{ opacity: 0, x: direction * -40, transition: { duration: 0.18, ease: EASE_OUT } }}
       ref={scope}
       style={{ transformOrigin: "left center" }}
@@ -307,7 +310,9 @@ export function StackPanel({ pages, root, className }: StackPanelProps) {
             )}
           </AnimatePresence>
           <AnimatePresence initial={false}>
-            <Title direction={direction} key={`${top}-${stack.length}`} origin={origin} panelRef={panelRef} text={pages[top]?.title ?? ""} />
+            {/* The root page has no Back button, so its title sits at the left edge; a pushed
+                page centres between Back and whatever the page puts on the right. */}
+            <Title align={parent ? "center" : "left"} direction={direction} key={`${top}-${stack.length}`} origin={origin} panelRef={panelRef} text={pages[top]?.title ?? ""} />
           </AnimatePresence>
           {pages[top]?.trailing && (
             <div className="relative z-10 ml-auto flex items-center gap-2 pr-1 text-xs text-muted">{pages[top].trailing}</div>

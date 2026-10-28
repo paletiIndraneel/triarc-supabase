@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 import { GROUP_NAME } from "@/components/admin/brand";
 import RainGlassBackground from "@/components/ui/RainGlassBackground";
 
-// The frame for sign-in, set-password and access-denied pages, in the admin's own style
-// (lavender ground, white card, violet accent) so they match the admin they lead to.
-// `background` puts the card on the rain-on-glass window; only sign-in asks for it.
+// The frame for sign-in, set-password and access-denied pages, on the admin's own palette so
+// they match the admin they lead to. `background` puts the card on the rain-on-glass window;
+// only sign-in asks for it, and there the card is frosted so the window reads through it.
 export default function AuthShell({
   title,
   subtitle,
@@ -13,13 +13,19 @@ export default function AuthShell({
 }: { title: string; subtitle?: string; background?: boolean; children: ReactNode }) {
   const card = (
     <div className="w-full max-w-md">
-      <p className="mb-6 flex items-center justify-center gap-2 font-bold">
-        <span className="text-[16px] tracking-tight">{GROUP_NAME}</span>
-        <span className="rounded-md bg-accent-pale px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-accent">ADMIN</span>
+      <p className="mb-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+        <span className="text-3xl font-bold tracking-[-0.03em] sm:text-4xl">{GROUP_NAME}</span>
+        <span className="rounded-md bg-accent-pale px-2 py-1 text-[10px] font-bold tracking-[0.16em] text-accent">ADMIN</span>
       </p>
-      <section className="rounded-2xl border border-line/80 bg-surface p-6 shadow-sm sm:p-8">
+      <section
+        className={
+          background
+            ? "rounded-2xl border border-line/50 bg-surface/80 p-6 shadow-xl backdrop-blur-xl sm:p-8"
+            : "rounded-2xl border border-line/80 bg-surface p-6 shadow-sm sm:p-8"
+        }
+      >
         <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        {subtitle && <p className="mt-1.5 text-sm text-muted">{subtitle}</p>}
         {children}
       </section>
     </div>

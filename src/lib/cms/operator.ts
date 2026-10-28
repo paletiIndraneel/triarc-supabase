@@ -1,3 +1,4 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ChargeModTransaction, CmsTransaction } from "./types";
 import { cleanUserName } from "./transactionStore";
@@ -34,9 +35,15 @@ const MAX_COLLECTED_PAGES = 450;
 const TOKEN_TTL_MS = 45 * 60 * 1000;
 const TOKEN_REFRESH_SKEW_MS = 2 * 60 * 1000;
 
-// Runtime settings (secrets, CMS_*) come from the host's environment variables (Vercel).
+// Runtime settings (secrets, CMS_*) come from the Cloudflare Worker's variables and secrets,
+// falling back to process.env for `next dev` and the test runners.
 export async function getRuntimeEnv(): Promise<Record<string, unknown>> {
-  return process.env as unknown as Record<string, unknown>;
+  try {
+    const context = await getCloudflareContext({ async: true });
+    return context.env as unknown as Record<string, unknown>;
+  } catch {
+    return process.env as unknown as Record<string, unknown>;
+  }
 }
 
 export async function getCmsConfig(): Promise<CmsConfig> {
@@ -318,7 +325,7 @@ type SharedSession = {
   wait?: boolean;
 };
 
-// Every instance (Cloudflare isolate or Vercel function) gets its token from the
+// Every instance (Cloudflare isolate) gets its token from the
 // cms_session table. Only the instance holding the login lease signs in to ChargeMOD;
 // the rest wait for the token it stores, so concurrent requests share one session.
 async function acquireSharedToken(config: CmsConfig): Promise<string> {

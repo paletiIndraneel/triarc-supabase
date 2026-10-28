@@ -33,7 +33,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` | Dev server |
 | `npm run build` | Production build; also type-checks |
 | `npm test` | Unit tests |
-| `npm run preview` | Run the Cloudflare build locally |
+| `npm run preview` | Run the Cloudflare build locally (needs the OpenNext/wrangler tooling restored) |
 
 ---
 

@@ -1,14 +1,17 @@
 # Triarc Admin — Developer Document
 
-As of 23 Oct 2026. For the business view see [PROJECT.md](PROJECT.md); for short agent-facing rules
+As of 28 Oct 2026. For the business view see [PROJECT.md](PROJECT.md); for short agent-facing rules
 see [CLAUDE.md](../CLAUDE.md).
 
 ## 1. Stack
 
 Next.js 16 App Router, React 19, TypeScript, Tailwind 4. Built with webpack (`next build --webpack`).
-Served to users from Cloudflare Workers via OpenNext; Vercel builds every push to `development` for
-testing. Supabase: Auth, Postgres (RLS), one Deno Edge Function. jsPDF for invoice PDFs (loaded on
-demand).
+Served to users from Cloudflare Workers via OpenNext. Supabase: Auth, Postgres (RLS), one Deno
+Edge Function. jsPDF for invoice PDFs (loaded on demand).
+
+Version ceilings when upgrading: `@opennextjs/cloudflare` needs Next >= 16.4.1, and
+`typescript-eslint` (pulled in by `eslint-config-next`) caps TypeScript below 6.1, so TypeScript 7
+cannot be used yet.
 
 ## 2. Getting started
 
@@ -24,9 +27,9 @@ npm run dev                     # http://localhost:3000/admin
 | `SUPABASE_SECRET_KEY` | runtime, server only | `sb_secret_…`, bypasses RLS. Never in `next.config.ts` `env`. Needed for the ChargeMOD login, session writes, Access page |
 | `CMS_OPERATOR_DASHBOARD_ENABLED`, `CMS_API_URL`, `CMS_API_USERNAME`, `CMS_API_PASSWORD`, `CMS_OCPI_AUTH_KEY` | runtime | ChargeMOD; dashboard APIs return 404 when disabled |
 
-Runtime env is read through `getRuntimeEnv()` (`getCloudflareContext` with a `process.env` fallback);
-keep that so code works on Workers and Vercel. On Vercel these come from the Supabase integration;
-after moving the Supabase project between organizations, reconnect it or the build loses them.
+Runtime env is read through `getRuntimeEnv()` (`lib/cms/operator.ts`): `getCloudflareContext()` for the
+Worker's variables and secrets, falling back to `process.env` for `next dev` and the test runners. Keep
+that fallback. Build-time values are inlined by `next.config.ts` `env`, so changing them needs a rebuild.
 
 ## 3. Commands
 
@@ -143,10 +146,13 @@ Add new API routes to `ROUTES` in `api.test.mjs`.
 
 ## 11. Release flow
 
-1. Commit, push `development` → Vercel builds Production; test there.
-2. When everything is tested: `npm run opennext-build` and `npm run deploy` to Cloudflare (explicit
-   step). Before the first admin release: set the Supabase variables and `SUPABASE_SECRET_KEY` as
-   Worker variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth redirect URLs.
+1. **Pushing `development` deploys production.** Cloudflare Workers Builds builds that branch and
+   releases it to the live Worker, so testing happens before the push, not after: `npm run dev`,
+   `npm test`, `npm run lint` and `npm run opennext-build` (the same build Cloudflare runs).
+2. `npm run preview` runs the Worker bundle locally beforehand. `npm run deploy` releases from a
+   workstation and is only for a release outside the git flow.
+3. Before the first admin release: set the Supabase variables and `SUPABASE_SECRET_KEY` as Worker
+   variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth redirect URLs.
 
 ## 12. Conventions
 

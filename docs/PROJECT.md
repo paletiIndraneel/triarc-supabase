@@ -60,8 +60,7 @@ at the same site, and a second station is planned. The admin has to:
 
 | Environment | Purpose |
 |---|---|
-| Vercel (`triarc-supabase-lcrq`) | Testing; deploys automatically when `development` is pushed to GitHub |
-| Cloudflare Workers | The live user-facing site; released separately after testing. Not yet carrying the admin |
+| Cloudflare Workers (via OpenNext) | The live admin. Cloudflare Workers Builds deploys it from `development`: every push to that branch goes live |
 | Supabase project `kgfxlqgbzvtqfrqbblfo` ("Website", org TRIARC GROUP) | Sign-in, database, enquiry function |
 | ChargeMOD | Source of charging sessions and live meter readings |
 
@@ -74,9 +73,11 @@ Done and tested:
 - Full browser pass of every module as partner and as a station-limited investor.
 
 Open:
-- Cloudflare release: needs the Supabase settings (incl. the secret key) and the
-  `/signin/set-password` redirect URL for the live address.
-- Vercel Preview deployments lack the Supabase settings (Production only).
+- Cloudflare release: needs the Supabase settings (incl. the secret key) as Worker
+  variables/secrets and the `/signin/set-password` redirect URL for the live address.
+- Dependencies were brought to their latest supported versions on 28 Oct 2026 (Next 16.4.3,
+  TypeScript 6, ESLint 10, Motion 14). Build, type-check, lint and unit tests pass; the admin has
+  not been opened in a browser since, so the Motion 14 animations are unverified.
 - Ather connector: waits for Ather's API.
 - ESP32 / Raspberry Pi device integration: not built; device writes are limited to partners and IT
   admins until then.
@@ -88,5 +89,4 @@ Open:
 
 ## 7. Ownership
 
-The admin area, its server routes and the Supabase database belong to this project. The public
-marketing website (pages, content in `src/data/`, its components) is maintained by another team.
+The admin area, its server routes and the Supabase database belong to this project.

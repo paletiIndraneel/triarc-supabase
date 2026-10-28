@@ -6,5 +6,5 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", ".open-next/**", "out/**", "next-env.d.ts", "supabase/functions/**", ".claude/**", ".agents/**", ".taste-skill/**", "graphify-out/**"]),
+  globalIgnores([".next/**", ".open-next/**", "out/**", "next-env.d.ts", "supabase/functions/**", ".claude/**", ".agents/**", ".remember/**", ".taste-skill/**", "graphify-out/**"]),
 ]);

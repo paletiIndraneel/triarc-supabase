@@ -73,7 +73,7 @@ b) Restore the pre-multi-platform data (ids without prefix):
 
    3. src/lib/cms/provider.ts: add it to CONNECTORS:  { chargemod, ather }
 
-   4. Env vars: add them in Vercel and as Cloudflare Worker variables/secrets.
+   4. Env vars: add them as Cloudflare Worker variables/secrets.
 
    5. Billing: customers can then pick it under "Charging sessions from". The database
       only allows the values in the billing_customers_session_source_check constraint

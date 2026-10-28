@@ -1,5 +1,5 @@
-// HTTP tests for the admin API's access checks, against a running site (`npm run dev`, a
-// Vercel preview or `npm run preview`). Skipped unless API_BASE_URL is set, e.g.
+// HTTP tests for the admin API's access checks, against a running site (`npm run dev` or
+// `npm run preview`). Skipped unless API_BASE_URL is set, e.g.
 //   API_BASE_URL=http://localhost:3000 npm test
 // Signed-in checks also need SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY and a test login:
 // TEST_INVESTOR_EMAIL/_PASSWORD (any role without full access) and TEST_PARTNER_EMAIL/_PASSWORD

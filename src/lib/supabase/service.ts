@@ -4,8 +4,8 @@ import { getRuntimeEnv } from "@/lib/cms/operator";
 // Server-only Supabase client with the project's secret key (sb_secret_..., the replacement for
 // the legacy service-role key). It bypasses RLS, so only server code may import this file, and
 // SUPABASE_SECRET_KEY must stay out of next.config.ts `env` (that list is built into the
-// browser bundle). The key is read at request time: a Cloudflare Worker secret in production,
-// a Vercel env var on Vercel. Null when it is not set.
+// browser bundle). The key is read at request time from the Cloudflare Worker's secrets.
+// Null when it is not set.
 let cached: { key: string; client: SupabaseClient } | null = null;
 
 export async function getServiceClient(): Promise<SupabaseClient | null> {

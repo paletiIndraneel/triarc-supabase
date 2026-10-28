@@ -7,34 +7,46 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.mjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "opennext-build": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.1",
+    "@supabase/supabase-js": "^2.118.0",
     "clsx": "^2.1.1",
     "jspdf": "^4.2.1",
-    "lucide-react": "^1.28.0",
-    "motion": "12.23.12",
-    "next": "16.3.8",
-    "postcss": "8.5.28",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "lucide-react": "^1.63.0",
+    "motion": "^14.7.1",
+    "next": "16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.13",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint": "^10.13.0",
+    "eslint-config-next": "16.4.3",
+    "postcss": "^8.5.32",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.148.0"
   },
   "allowScripts": {
     "sharp@0.34.5": true,
     "unrs-resolver@1.12.2": true,
-    "core-js": true
+    "esbuild@0.28.1": true,
+    "workerd@1.20260915.1": true,
+    "core-js": true,
+    "esbuild": true,
+    "workerd": true
+  },
+  "overrides": {
+    "node-domexception": "npm:@nolyfill/domexception@^1.0.28"
   }
 }

@@ -8,17 +8,18 @@ import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
-import { comparisonCycle, cyclesBack } from "@/lib/billingCycle";
+import { comparisonCycle, cyclesBack, type CycleRule } from "@/lib/billingCycle";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "@/app/admin/cms/cmsWindowStore";
 import { shortChargerLabel, splitActiveSessions } from "@/app/admin/cms/transactionFilters";
 import { StationSelect, useStationSelection } from "@/app/admin/cms/stationSelection";
+import { PlatformSelect, usePlatformSelection } from "@/app/admin/cms/platformSelection";
 import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
 
 // The three cycles the cards cover plus what the current one is compared against, all from the
 // one cycle definition in @/lib/billingCycle, so a change of billing rule moves these together.
-function overviewCycles(now = new Date()) {
-  const [older, previous, current] = cyclesBack(now, 3);
-  return { current, previous, older, comparison: comparisonCycle(now) };
+function overviewCycles(rule: CycleRule, now = new Date()) {
+  const [older, previous, current] = cyclesBack(now, 3, rule);
+  return { current, previous, older, comparison: comparisonCycle(now, rule) };
 }
 
 type Enquiry = { id: string; name: string; message: string; status: "New" | "Contacted" | "Closed"; created_at: string };
@@ -79,12 +80,17 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   // The station selector (shared with the CMS dashboard) narrows the charging figures; invoices
   // stay all stations (older ones have no station). A new choice re-applies the loaded window.
   const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
+  // The cards follow one platform and its billing cycle; see cms/platformSelection.
+  const [livePlatforms, setLivePlatforms] = useState<string[]>([]);
+  const { options: platformOptions, providerId, rule, setPlatform } = usePlatformSelection(livePlatforms);
   const windowRequested = useRef(false);
   useEffect(() => {
     let shownCache: CmsCache | null = null;
     const sync = ({ cache: fullCache, refreshing, error }: CmsWindowSnapshot) => {
       if (fullCache && fullCache !== shownCache) {
         shownCache = fullCache;
+        // From the unfiltered cache, so choosing a platform never narrows what is on offer.
+        setLivePlatforms([...new Set(fullCache.transactions.map((t) => t.provider).filter((id): id is string => !!id))].sort());
         const cache = filterCache(fullCache);
         const merged = new Map<string, Transaction>();
         for (const t of [...cache.transactions, ...(cache.active?.transactions ?? [])]) {
@@ -99,7 +105,11 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
         const active = live ? live.length : cache.active?.count ?? null;
         setCms((current) => ({
           status: "ok",
-          metrics: overviewMetrics([...merged.values()], new Date(), overviewCycles()),
+          metrics: overviewMetrics(
+            providerId ? [...merged.values()].filter((t) => t.provider === providerId) : [...merged.values()],
+            new Date(),
+            overviewCycles(rule)
+          ),
           sessions: [...merged.values()],
           // The stored copy has no live count; keep the last one rather than flash 0.
           active: active ?? (current.status === "ok" ? current.active : null),
@@ -124,7 +134,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
       void requestCmsWindow();
     }
     return unsubscribe;
-  }, [filterCache]);
+  }, [filterCache, rule, providerId]);
   const loadInvoices = useCallback(() => {
     if (!canBill) return;
     void supabase.from("billing_invoices")
@@ -170,6 +180,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <PlatformSelect options={platformOptions} providerId={providerId} onChange={setPlatform} />
             <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {cms.status === "ok" && cms.updatedAt && (
               <p className="text-xs text-muted">Data till {dataTill.format(new Date(cms.updatedAt))}</p>

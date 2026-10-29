@@ -24,7 +24,7 @@ import {
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 import { fromStoredRow, SESSION_COLUMNS, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
-import { cycleLabel, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
+import { cycleLabel, cyclesBack, previousBillingCycle, type CycleRule } from "@/lib/billingCycle";
 import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
@@ -32,6 +32,7 @@ import { sessionPage } from "./SessionDetails";
 import { StackPanel, type StackPage } from "@/components/ui/StackPanel";
 import { useLiveMetrics, withLiveValues, type LiveState } from "./useLiveMetrics";
 import { StationSelect, useStationSelection } from "./stationSelection";
+import { PlatformSelect, usePlatformSelection } from "./platformSelection";
 
 // Sessions saved in SESSIONS_TABLE that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
@@ -694,7 +695,8 @@ export default function CmsOperatorDashboard() {
 
   // The CMS window is loaded through cmsWindowStore, shared with Overview: a Refresh
   // started on either page is one request, and both pages follow it.
-  const applyCache = useCallback(async (cache: CmsCache) => {
+  // The cards belong to one platform and its billing cycle; see ./platformSelection.
+  const applyCache = useCallback(async (cache: CmsCache, rule: CycleRule, providerId: string | null) => {
     try {
       // Fetch one consistent transaction window for all dashboard metrics and the
       // table; the table's date filter is applied client-side and never refetches. It covers the previous
@@ -738,7 +740,12 @@ export default function CmsOperatorDashboard() {
             metricMap.set(key, mergeTransactionData(existing, transaction));
           }
         }
-        const metricTransactions = Array.from(metricMap.values());
+        // Cards follow the chosen platform: two platforms bill on different cycles, so a
+        // total summed across both would match no bill.
+        const allMetricTransactions = Array.from(metricMap.values());
+        const metricTransactions = providerId
+          ? allMetricTransactions.filter((transaction) => transaction.provider === providerId)
+          : allMetricTransactions;
         const todayTransactions = filterTransactionsByRange(metricTransactions, todayRange.startDate, todayRange.endDate);
 
         const cpoMobileNumbers = await matchCpoMobiles(
@@ -751,7 +758,7 @@ export default function CmsOperatorDashboard() {
         const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
         // `end` is exclusive, so the cycle's last day is the day before it.
         const lastDay = (end: number) => dayFmt.format(new Date(end - 24 * 60 * 60 * 1000));
-        const cycleWindow = cyclesBack(now, 7);
+        const cycleWindow = cyclesBack(now, 7, rule);
         const iso = (ms: number) => new Date(ms).toISOString();
         setCycleSplits(
           cycleWindow.slice(-2).reverse().map((cycle, index) => ({
@@ -768,7 +775,7 @@ export default function CmsOperatorDashboard() {
         setEarlierCycles(
           cycleWindow.slice(0, 5).reverse().map((cycle) => {
             const split = splitPeriod(filterTransactionsByRange(metricTransactions, iso(cycle.start), iso(cycle.end)), cpoMobileNumbers);
-            return { label: cycleLabel(cycle), energy: split.energy.total, revenue: split.revenue.total };
+            return { label: cycleLabel(cycle, rule), energy: split.energy.total, revenue: split.revenue.total };
           })
         );
       } catch {
@@ -785,6 +792,9 @@ export default function CmsOperatorDashboard() {
   // The station selector narrows every card and the table; a new choice re-applies the loaded
   // window (this effect re-runs) without fetching again.
   const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
+  // Derived from the unfiltered cache, so choosing a platform never narrows what is on offer.
+  const [livePlatforms, setLivePlatforms] = useState<string[]>([]);
+  const { options: platformOptions, providerId, rule, setPlatform } = usePlatformSelection(livePlatforms);
   const windowRequested = useRef(false);
   useEffect(() => {
     let shownCache: CmsCache | null = null;
@@ -797,7 +807,8 @@ export default function CmsOperatorDashboard() {
       if (cache && cache !== shownCache) {
         shownCache = cache;
         setDataTill(cache.coverage.at(-1)?.endDate ?? null);
-        void applyCache(filterCache(cache));
+        setLivePlatforms([...new Set(cache.transactions.map((t) => t.provider).filter((id): id is string => !!id))].sort());
+        void applyCache(filterCache(cache), rule, providerId);
       }
     };
     sync(getCmsWindowSnapshot());
@@ -807,7 +818,7 @@ export default function CmsOperatorDashboard() {
       void requestCmsWindow();
     }
     return unsubscribe;
-  }, [applyCache, filterCache]);
+  }, [applyCache, filterCache, rule, providerId]);
 
   const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 
@@ -1069,6 +1080,7 @@ export default function CmsOperatorDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <PlatformSelect options={platformOptions} providerId={providerId} onChange={setPlatform} />
             <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {dataTill && (
               <p className="text-xs text-muted">

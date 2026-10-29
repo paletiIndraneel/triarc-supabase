@@ -23,7 +23,8 @@ declare
   tbl text; who text; n bigint; denied boolean;
   total int := 0; fails text[] := '{}'; gaps text[] := '{}';
   sensitive text[] := array['enquiries', 'billing_invoices', 'billing_customers', 'billing_items',
-    'cms_transactions', 'cpo_mobile_numbers', 'admin_users', 'cms_session', 'devices', 'device_commands'];
+    'cms_transactions', 'cpo_mobile_numbers', 'admin_users', 'cms_session', 'devices', 'device_commands',
+    'provider_settings'];
 begin
   -- Fixtures, as the database owner.
   insert into auth.users (id, email, aud, role)
@@ -46,6 +47,9 @@ begin
   insert into public.enquiries (name, email, message) values ('RLS test', 'rls@test.invalid', 'test') returning id into enq;
   insert into public.cms_transactions (transaction_id, provider, location_id, started_at) values
     (tx_a, 'rlstest', 900000001, now()), (tx_b, 'rlstest', 900000002, now());
+  -- Its own platform row, so the test never changes a real one.
+  insert into public.provider_settings (provider, enabled) values ('rlstest', true)
+    on conflict (provider) do update set enabled = true;
   insert into public.cpo_mobile_numbers (mobile_number, normalized_mobile)
     values ('0000000001', '0000000001') on conflict (normalized_mobile) do nothing;
 
@@ -85,6 +89,12 @@ begin
   if not denied then fails := fails || array['investor adds a billing customer']; end if;
   total := total + 1;
   if (select count(*) from public.cpo_mobile_numbers) <> 0 then fails := fails || array['investor reads the CPO number list']; end if;
+  total := total + 1;
+  -- Platforms: every active admin reads, only full access switches one on or off.
+  if (select count(*) from public.provider_settings where provider = 'rlstest') <> 1 then fails := fails || array['investor cannot read platforms']; end if;
+  total := total + 1;
+  update public.provider_settings set enabled = false where provider = 'rlstest'; get diagnostics n = row_count;
+  if n <> 0 then fails := fails || array['investor switches a platform off']; end if;
   total := total + 1;
   if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || array['investor cannot match a CPO number']; end if;
   total := total + 1;
@@ -169,6 +179,9 @@ begin
     if (select count(*) from public.cpo_mobile_numbers where normalized_mobile = '0000000001') <> 1 then fails := fails || array[format('%s cannot read CPO numbers', who)]; end if;
     total := total + 1;
     if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || array[format('%s misses sessions', who)]; end if;
+    total := total + 1;
+    update public.provider_settings set enabled = not enabled where provider = 'rlstest'; get diagnostics n = row_count;
+    if n <> 1 then fails := fails || array[format('%s cannot switch a platform', who)]; end if;
     total := total + 1;
     begin update public.admin_users set access = 'investor' where user_id = u_i; denied := false;
     exception when insufficient_privilege then denied := true; end;

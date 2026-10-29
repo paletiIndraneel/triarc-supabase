@@ -42,6 +42,16 @@ export type Connector = {
 
 const CONNECTORS: Record<string, Connector> = { chargemod };
 
+// The platforms switched on in the Platforms page (provider_settings). Null when that cannot be
+// read — the table is missing mid-rollout, or RLS refused it — and then every platform is left
+// as its env vars say, rather than stopping the dashboard: this gate only governs reading from
+// a platform, so failing open keeps today's behaviour and failing shut would show nothing.
+async function enabledPlatforms(supabase: SupabaseClient): Promise<Set<string> | null> {
+  const { data, error } = await supabase.from("provider_settings").select("provider, enabled");
+  if (error || !data) return null;
+  return new Set(data.filter((row) => row.enabled).map((row) => row.provider as string));
+}
+
 export type MeterResult = {
   payload: unknown; // the platform's raw response, stored as-is in meter_values_response
   readings: MeterReading[];
@@ -60,11 +70,15 @@ const stamp = (info: ProviderInfo, t: CmsTransaction): CmsTransaction => ({
   transactionId: storedSessionId(info, t.transactionId),
 });
 
-// The platforms that are switched on, in PROVIDERS order. Empty when none is configured.
+// The platforms that are switched on, in PROVIDERS order: enabled in provider_settings and
+// holding credentials. Empty when none is.
 // `supabase` is the signed-in admin's client (ChargeMOD shares its login token through it).
 export async function getChargingProviders(supabase: SupabaseClient): Promise<ChargingProvider[]> {
+  // Both have to agree: enabled here and credentials on the Worker.
+  const enabled = await enabledPlatforms(supabase);
   const providers = await Promise.all(
     PROVIDERS.map(async (info): Promise<ChargingProvider | null> => {
+      if (enabled && !enabled.has(info.id)) return null;
       const connection = await CONNECTORS[info.id]?.connect(supabase);
       if (!connection) return null;
       const meters = connection.fetchMeterReadings?.bind(connection);

@@ -27,6 +27,8 @@ const ROUTES = [
   ["POST", "/api/admin/cpo-numbers", { mobileNumber: "9876543210" }],
   ["PUT", "/api/admin/cpo-numbers", { id: "x", mobileNumber: "9876543210" }],
   ["DELETE", "/api/admin/cpo-numbers", { id: "x" }],
+  ["GET", "/api/admin/platforms"],
+  ["PUT", "/api/admin/platforms", { provider: "chargemod", enabled: true }],
   ["GET", "/api/admin/preferences"],
   ["PUT", "/api/admin/preferences", { columns: ["id"] }],
   ["GET", "/api/cms/operator"],

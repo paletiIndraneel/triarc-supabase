@@ -12,10 +12,18 @@ export type ProviderInfo = {
   // platform's API or shows the id strips it again (platformSessionId), so the platform
   // always gets its own id back. ChargeMOD's meter-values API fails on any other id.
   idPrefix: string;
+  // The Worker variables the platform's connector needs, by name only. The Platforms page says
+  // which of these are missing; the values stay on the Worker and never reach the browser.
+  credentialEnv: string[];
 };
 
 export const PROVIDERS: ProviderInfo[] = [
-  { id: "chargemod", label: "ChargeMOD", idPrefix: "chrgmod_" },
+  {
+    id: "chargemod",
+    label: "ChargeMOD",
+    idPrefix: "chrgmod_",
+    credentialEnv: ["CMS_OPERATOR_DASHBOARD_ENABLED", "CMS_API_URL", "CMS_API_USERNAME", "CMS_API_PASSWORD"],
+  },
 ];
 
 export function providerLabel(id: string | null | undefined) {

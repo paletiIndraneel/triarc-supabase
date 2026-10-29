@@ -1,4 +1,4 @@
-const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "stations", "access", "cpo-settings"] as const;
+const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "stations", "access", "cpo-settings", "platforms"] as const;
 
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
@@ -7,9 +7,15 @@ export function parseAdminModule(value: string | null | undefined): AdminModule 
   return ADMIN_MODULES.find((module) => module === value) ?? "overview";
 }
 
+// Modules only full-access admins (partners and IT admins, see @/lib/adminAccess) ever open.
+// They are left out of GRANTABLE_MODULES, and listed here as well so a value written straight
+// into admin_users.modules still cannot open them. Platforms switches a charging platform off
+// for everyone, so it belongs with Access.
+const FULL_ACCESS_ONLY: readonly AdminModule[] = ["access", "platforms"];
+
 // The modules the Access page can tick for an admin without full access (admin_users.modules;
-// RLS and the API check the same list). Overview is always open; Access stays with full-access
-// admins (partners and IT admins, see @/lib/adminAccess), who open everything.
+// RLS and the API check the same list). Overview is always open; full-access admins open
+// everything.
 export const GRANTABLE_MODULES: { key: AdminModule; label: string }[] = [
   { key: "cms", label: "CMS Dashboard" },
   { key: "billing", label: "Billing" },
@@ -19,7 +25,7 @@ export const GRANTABLE_MODULES: { key: AdminModule; label: string }[] = [
 ];
 
 export function canOpenModule(module: AdminModule, isPartner: boolean, modules: readonly string[] = []) {
-  return isPartner || module === "overview" || (module !== "access" && modules.includes(module));
+  return isPartner || module === "overview" || (!FULL_ACCESS_ONLY.includes(module) && modules.includes(module));
 }
 
 export type AdminNavItem = {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import AdminHeader, { type ThemeMode } from "@/components/admin/AdminHeader";
 import CmsDashboard from "@/app/admin/cms/CmsDashboard";
 import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
+import Platforms from "@/app/admin/platforms/Platforms";
 import Overview from "@/app/admin/overview/Overview";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
@@ -12,6 +13,9 @@ import Access from "@/app/admin/access/Access";
 import { ToastProvider } from "@/components/BillingToast";
 import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
 import { ADMIN_NAV_ITEMS, canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
+
+// Set-up modules sit in the account menu, not ADMIN_NAV_ITEMS, so their tab titles are named here.
+const SETUP_TITLES: Partial<Record<AdminModule, string>> = { "cpo-settings": "CPO Settings", platforms: "Platforms" };
 import { adminTabTitle } from "@/components/admin/brand";
 import styles from "@/app/admin/billing/billing.module.css";
 import adminStyles from "@/components/admin/admin.module.css";
@@ -92,7 +96,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
 
   // Tab title follows the module, e.g. "TRIARC GROUP | Billing · EV Hub".
   useEffect(() => {
-    const label = activeModule === "cpo-settings" ? "CPO Settings" : ADMIN_NAV_ITEMS.find((item) => item.key === activeModule)?.label ?? "Admin";
+    const label = SETUP_TITLES[activeModule] ?? ADMIN_NAV_ITEMS.find((item) => item.key === activeModule)?.label ?? "Admin";
     document.title = adminTabTitle(label, activeModule);
   }, [activeModule]);
 
@@ -128,6 +132,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
       {activeModule === "stations" && <Stations />}
       {activeModule === "access" && <Access />}
       {activeModule === "cpo-settings" && <CpoSettings />}
+      {activeModule === "platforms" && <Platforms />}
       </div>
     </AdminModuleContext.Provider>
   );

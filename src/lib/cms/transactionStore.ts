@@ -19,22 +19,9 @@ export function cleanUserName(value: unknown) {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// A billing cycle is at most 16 days (16th to the 31st).
+// An upper bound on a backfill window, not the cycle itself — that lives in @/lib/billingCycle.
+// It only has to be at least as long as the longest cycle (a half-month runs to 16 days).
 const MAX_BACKFILL_DAYS = 16;
-
-// The history backfill button covers the previous billing cycle (IST): pressed on the
-// 16th–month end it is the 1st–15th of this month; on the 1st–15th, the 16th–end of last month.
-// `to` is exclusive.
-export function previousBillingCycle(now = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "numeric", day: "numeric" })
-    .formatToParts(now);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  const [year, month, day] = [get("year"), get("month"), get("day")];
-  const istMidnight = (y: number, m: number, d: number) => new Date(Date.UTC(y, m - 1, d) - 330 * 60 * 1000).toISOString();
-  return day >= 16
-    ? { from: istMidnight(year, month, 1), to: istMidnight(year, month, 16) }
-    : { from: istMidnight(year, month - 1, 16), to: istMidnight(year, month, 1) };
-}
 
 // Checks a backfill window sent by the browser: valid ISO times, from < to, not in the
 // future and no longer than a billing cycle. Null when invalid.

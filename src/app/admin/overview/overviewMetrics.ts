@@ -1,12 +1,20 @@
 type Row = { startedAt: string | null; energyKwh: number | null; tariffAmount: number | null };
 export type DayTotal = { label: string; kwh: number; revenue: number; sessions: number };
 
+// A billing cycle's half-open range in epoch ms, as @/lib/billingCycle builds it.
+type Cycle = { start: number; end: number };
+// The cycles the cards cover: the current one, the two before it, and what the current one is
+// compared against. The caller works them out with @/lib/billingCycle, so this file never decides
+// what a cycle is — it only sums rows over the ranges it is handed.
+export type OverviewCycles = { current: Cycle; previous: Cycle; older: Cycle; comparison: Cycle };
+
 const MINUTE = 60 * 1000;
 
 // Overview figures from CMS transactions, by session start in IST. Sums match the CMS
 // dashboard: energy ignores non-positive readings, revenue counts every finite amount.
-export function overviewMetrics(rows: Row[], now = new Date()) {
-  // No import of dateRanges.ts: Node's test runner needs the .ts extension, Next's TS config rejects it.
+export function overviewMetrics(rows: Row[], now: Date, cycles: OverviewCycles) {
+  // No import of dateRanges.ts or billingCycle.ts: Node's test runner needs the .ts extension,
+  // Next's TS config rejects it. Only type imports here.
   const [year, month, day] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(now).split("-").map(Number);
   const istMidnight = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) - 330 * MINUTE;
   const sum = (start: number, end: number) => {
@@ -23,17 +31,9 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
   };
 
   const nowMs = now.getTime();
-  // Billing runs in half-month cycles: 1st–15th and 16th–month end (28–31, whatever the month has).
-  // The Overview shows the current one and the two before it (45 days).
-  const secondHalf = day > 15;
-  const currentStart = istMidnight(year, month, secondHalf ? 16 : 1);
-  const currentEnd = secondHalf ? istMidnight(year, month + 1, 1) : istMidnight(year, month, 16);
-  const previousStart = secondHalf ? istMidnight(year, month, 1) : istMidnight(year, month - 1, 16);
-  const olderStart = secondHalf ? istMidnight(year, month - 1, 16) : istMidnight(year, month - 1, 1);
-  // Same cycle last month, up to the same point into it (capped at that cycle's end).
-  const lastMonthStart = istMidnight(year, month - 1, secondHalf ? 16 : 1);
-  const lastMonthEnd = secondHalf ? istMidnight(year, month, 1) : istMidnight(year, month - 1, 16);
-  const lastMonthSameDays = sum(lastMonthStart, Math.min(lastMonthStart + (nowMs - currentStart) + 1, lastMonthEnd));
+  const { current, previous, older, comparison } = cycles;
+  // The cycle it is compared against, up to the same point into it (capped at that cycle's end).
+  const comparisonSameDays = sum(comparison.start, Math.min(comparison.start + (nowMs - current.start) + 1, comparison.end));
 
   const label = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
   const days: DayTotal[] = [];
@@ -49,10 +49,10 @@ export function overviewMetrics(rows: Row[], now = new Date()) {
 
   return {
     today: days[days.length - 1],
-    currentCycle: { label: range(currentStart, currentEnd), ...span(currentStart, currentEnd), ...sum(currentStart, nowMs + 1) },
-    previousCycle: { label: range(previousStart, currentStart), ...span(previousStart, currentStart), ...sum(previousStart, currentStart) },
-    olderCycle: { label: range(olderStart, previousStart), ...span(olderStart, previousStart), ...sum(olderStart, previousStart) },
-    lastMonthSameDaysRevenue: lastMonthSameDays.revenue,
+    currentCycle: { label: range(current.start, current.end), ...span(current.start, current.end), ...sum(current.start, nowMs + 1) },
+    previousCycle: { label: range(previous.start, previous.end), ...span(previous.start, previous.end), ...sum(previous.start, previous.end) },
+    olderCycle: { label: range(older.start, older.end), ...span(older.start, older.end), ...sum(older.start, older.end) },
+    lastMonthSameDaysRevenue: comparisonSameDays.revenue,
     days,
   };
 }

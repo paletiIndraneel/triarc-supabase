@@ -8,10 +8,18 @@ import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
+import { comparisonCycle, cyclesBack } from "@/lib/billingCycle";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "@/app/admin/cms/cmsWindowStore";
 import { shortChargerLabel, splitActiveSessions } from "@/app/admin/cms/transactionFilters";
 import { StationSelect, useStationSelection } from "@/app/admin/cms/stationSelection";
 import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
+
+// The three cycles the cards cover plus what the current one is compared against, all from the
+// one cycle definition in @/lib/billingCycle, so a change of billing rule moves these together.
+function overviewCycles(now = new Date()) {
+  const [older, previous, current] = cyclesBack(now, 3);
+  return { current, previous, older, comparison: comparisonCycle(now) };
+}
 
 type Enquiry = { id: string; name: string; message: string; status: "New" | "Contacted" | "Closed"; created_at: string };
 type Invoice = FinanceInvoice & {
@@ -91,7 +99,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
         const active = live ? live.length : cache.active?.count ?? null;
         setCms((current) => ({
           status: "ok",
-          metrics: overviewMetrics([...merged.values()]),
+          metrics: overviewMetrics([...merged.values()], new Date(), overviewCycles()),
           sessions: [...merged.values()],
           // The stored copy has no live count; keep the last one rather than flash 0.
           active: active ?? (current.status === "ok" ? current.active : null),

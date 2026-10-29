@@ -23,7 +23,8 @@ import {
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
-import { fromStoredRow, previousBillingCycle, SESSION_COLUMNS, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
+import { fromStoredRow, SESSION_COLUMNS, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
+import { cycleLabel, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
 import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
@@ -725,22 +726,6 @@ export default function CmsOperatorDashboard() {
       try {
         const now = new Date();
         const todayRange = getDateRangeIST("today");
-        const istParts = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Kolkata",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).formatToParts(now);
-        const istValues = Object.fromEntries(istParts.map(({ type, value }) => [type, value]));
-        const localYear = Number(istValues.year);
-        const localMonth = Number(istValues.month);
-        const localDay = Number(istValues.day);
-        const currentMonthStart = new Date(`${istValues.year}-${istValues.month}-01T00:00:00+05:30`);
-        const previousMonthStartDate = new Date(Date.UTC(localYear, localMonth - 2, 1));
-        const previousMonthMidpoint = new Date(
-          `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-16T00:00:00+05:30`
-        );
-        const currentFirstHalfEnd = new Date(`${istValues.year}-${istValues.month}-16T00:00:00+05:30`);
 
         const metricMap = new Map<string, Transaction>();
         for (const transaction of [...cache.transactions, ...currentActiveTransactions]) {
@@ -761,57 +746,31 @@ export default function CmsOperatorDashboard() {
         );
         setCpoMobileNumbers(cpoMobileNumbers);
         setTodaySplit(splitPeriod(todayTransactions, cpoMobileNumbers));
-        // Billing cycles run 1–15 and 16–end of month: show the current cycle and the one before.
+        // Seven cycles from the one definition in @/lib/billingCycle: the matrix shows the
+        // current one and the one before, Consumption Details the five older ones.
         const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
-        const lastDay = (start: Date) => dayFmt.format(new Date(start.getTime() - 24 * 60 * 60 * 1000));
-        const nextMonthStart = new Date(Date.UTC(localYear, localMonth, 1) - 330 * 60 * 1000);
-        const cycles: Array<[Date, Date]> =
-          localDay <= 15
-            ? [[currentMonthStart, currentFirstHalfEnd], [previousMonthMidpoint, currentMonthStart]]
-            : [[currentFirstHalfEnd, nextMonthStart], [currentMonthStart, currentFirstHalfEnd]];
+        // `end` is exclusive, so the cycle's last day is the day before it.
+        const lastDay = (end: number) => dayFmt.format(new Date(end - 24 * 60 * 60 * 1000));
+        const cycleWindow = cyclesBack(now, 7);
+        const iso = (ms: number) => new Date(ms).toISOString();
         setCycleSplits(
-          cycles.map(([start, end], index) => ({
-            title: `${index === 0 ? "Current cycle" : "Previous cycle"} (${dayFmt.format(start)} – ${lastDay(end)})`,
+          cycleWindow.slice(-2).reverse().map((cycle, index) => ({
+            title: `${index === 0 ? "Current cycle" : "Previous cycle"} (${dayFmt.format(new Date(cycle.start))} – ${lastDay(cycle.end)})`,
             split: splitPeriod(
-              filterTransactionsByRange(metricTransactions, start.toISOString(), (index === 0 && end > now ? now : end).toISOString()),
+              // The current cycle has not finished, so it only counts up to now.
+              filterTransactionsByRange(metricTransactions, iso(cycle.start), iso(index === 0 ? Math.min(cycle.end, now.getTime()) : cycle.end)),
               cpoMobileNumbers
             ),
           }))
         );
 
-        // Consumption Details carries on where the matrix stops: the half-month cycles
-        // older than the two it shows, newest first. Five is what fits beside it.
-        const monthFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short" });
-        const istStart = (year: number, month: number, day: number) =>
-          new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+05:30`);
-        // The oldest cycle the matrix shows, as (year, month, first or second half).
-        let year = localYear;
-        let month = localMonth;
-        let firstHalf = localDay > 15;
-        const earlier: Array<{ label: string; energy: number; revenue: number }> = [];
-        for (let i = 0; i < 5; i += 1) {
-          if (firstHalf) {
-            month -= 1;
-            if (month < 1) { month = 12; year -= 1; }
-            firstHalf = false;
-          } else {
-            firstHalf = true;
-          }
-          const start = firstHalf ? istStart(year, month, 1) : istStart(year, month, 16);
-          const end = firstHalf
-            ? istStart(year, month, 16)
-            : (month === 12 ? istStart(year + 1, 1, 1) : istStart(year, month + 1, 1));
-          const split = splitPeriod(
-            filterTransactionsByRange(metricTransactions, start.toISOString(), end.toISOString()),
-            cpoMobileNumbers
-          );
-          earlier.push({
-            label: `${monthFmt.format(start).slice(0, 3)} ${firstHalf ? "1–15" : "16–end"}`,
-            energy: split.energy.total,
-            revenue: split.revenue.total,
-          });
-        }
-        setEarlierCycles(earlier);
+        // Consumption Details carries on where the matrix stops, newest first.
+        setEarlierCycles(
+          cycleWindow.slice(0, 5).reverse().map((cycle) => {
+            const split = splitPeriod(filterTransactionsByRange(metricTransactions, iso(cycle.start), iso(cycle.end)), cpoMobileNumbers);
+            return { label: cycleLabel(cycle), energy: split.energy.total, revenue: split.revenue.total };
+          })
+        );
       } catch {
         // Metric calculation must not prevent the dashboard from rendering.
       }

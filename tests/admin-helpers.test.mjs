@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, rateExGst, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { backfillWindow, cleanUserName, fromStoredRow, keepMeterValues, meterPatch, previousBillingCycle, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
+import { backfillWindow, cleanUserName, fromStoredRow, keepMeterValues, meterPatch, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
+import { comparisonCycle, cycleContaining, cycleLabel, cyclesBack, previousBillingCycle, previousCycle } from "../src/lib/billingCycle.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
 const item = (quantity, unit_price, gst_rate = 18, discount_percent = 0) => ({ quantity, unit_price, gst_rate, discount_percent });
@@ -165,6 +166,11 @@ test("station records with the same name are one station", async () => {
 
 test("overviewMetrics totals the current and previous half-month billing cycles in IST", async () => {
   const { overviewMetrics } = await import("../src/app/admin/overview/overviewMetrics.ts");
+  // overviewMetrics is handed its ranges; the cycle rule itself lives in billingCycle.ts.
+  const cyclesAt = (now) => {
+    const [older, previous, current] = cyclesBack(now, 3, HALF);
+    return { current, previous, older, comparison: comparisonCycle(now, HALF) };
+  };
   const row = (startedAt, energyKwh, tariffAmount) => ({ startedAt, energyKwh, tariffAmount });
   const rows = [
     row("2026-10-16T00:10:00+05:30", 10, 200),   // today
@@ -179,7 +185,7 @@ test("overviewMetrics totals the current and previous half-month billing cycles 
     row(null, 99, 99),
   ];
   // 16th onward: this cycle is 16th–month end, the previous one 1st–15th
-  const m = overviewMetrics(rows, new Date("2026-10-16T10:00:00+05:30"));
+  const m = overviewMetrics(rows, new Date("2026-10-16T10:00:00+05:30"), cyclesAt(new Date("2026-10-16T10:00:00+05:30")));
   assert.deepEqual(m.today, { label: "16 Oct", kwh: 10, revenue: 200, sessions: 1 });
   assert.deepEqual(m.currentCycle, { label: "16 Oct–31 Oct", from: "2026-10-16", to: "2026-11-01", kwh: 10, revenue: 200, sessions: 1 });
   assert.deepEqual(m.previousCycle, { label: "1 Oct–15 Oct", from: "2026-10-01", to: "2026-10-16", kwh: 9, revenue: 190, sessions: 3 });
@@ -189,13 +195,13 @@ test("overviewMetrics totals the current and previous half-month billing cycles 
   assert.equal(m.days[0].label, "17 Sept");
   assert.equal(m.days[28].kwh, 5);
   // 1st–15th: this cycle is 1st–15th, the previous one 16th–end of last month
-  const early = overviewMetrics(rows, new Date("2026-10-05T10:00:00+05:30"));
+  const early = overviewMetrics(rows, new Date("2026-10-05T10:00:00+05:30"), cyclesAt(new Date("2026-10-05T10:00:00+05:30")));
   assert.deepEqual(early.currentCycle, { label: "1 Oct–15 Oct", from: "2026-10-01", to: "2026-10-16", kwh: 4, revenue: 90, sessions: 2 });
   assert.deepEqual(early.previousCycle, { label: "16 Sept–30 Sept", from: "2026-09-16", to: "2026-10-01", kwh: 29, revenue: 1219, sessions: 4 });
   assert.deepEqual(early.olderCycle, { label: "1 Sept–15 Sept", from: "2026-09-01", to: "2026-09-16", kwh: 1, revenue: 500, sessions: 1 });
   assert.equal(early.lastMonthSameDaysRevenue, 500); // 1 Sept up to 5 Sept 10:00
   // February's second cycle ends on the 28th
-  assert.equal(overviewMetrics([], new Date("2027-02-20T10:00:00+05:30")).currentCycle.label, "16 Feb–28 Feb");
+  assert.equal(overviewMetrics([], new Date("2027-02-20T10:00:00+05:30"), cyclesAt(new Date("2027-02-20T10:00:00+05:30"))).currentCycle.label, "16 Feb–28 Feb");
 });
 
 
@@ -529,4 +535,80 @@ test("isBot refuses crawlers, AI agents and previews, and lets real browsers thr
     "facebookexternalhit/1.1", "WhatsApp/2.23.20.0", "Mozilla/5.0 (compatible; SomeNewCrawler/0.1)",
     "curl/8.4.0", "", null,
   ]) assert.equal(isBot(ua), true, String(ua));
+});
+
+// The one cycle definition (src/lib/billingCycle.ts). ChargeMOD's half-months and Ionage's
+// 7 days have to come out of the same helpers, so both rules are pinned here.
+const HALF = { kind: "half-month" };
+const WEEK = { kind: "days", length: 7, anchor: "2026-10-01" };
+const cycAt = (iso) => new Date(iso);
+
+test("cycleContaining finds the half-month cycle in IST", () => {
+  // Boundaries are IST midnight, which is 18:30 UTC the day before.
+  const second = cycleContaining(cycAt("2026-10-21T08:00:00Z"), HALF);
+  assert.equal(new Date(second.start).toISOString(), "2026-10-15T18:30:00.000Z");
+  assert.equal(new Date(second.end).toISOString(), "2026-10-31T18:30:00.000Z");
+
+  const first = cycleContaining(cycAt("2026-10-05T08:00:00Z"), HALF);
+  assert.equal(new Date(first.start).toISOString(), "2026-09-30T18:30:00.000Z");
+  assert.equal(new Date(first.end).toISOString(), "2026-10-15T18:30:00.000Z");
+
+  // Just before IST midnight on the 16th is still the first half.
+  assert.equal(new Date(cycleContaining(cycAt("2026-10-15T18:20:00Z"), HALF).end).toISOString(), "2026-10-15T18:30:00.000Z");
+
+  // December's second half runs into January.
+  assert.equal(new Date(cycleContaining(cycAt("2026-12-20T08:00:00Z"), HALF).end).toISOString(), "2026-12-31T18:30:00.000Z");
+
+  // February, whatever length it is.
+  assert.equal(new Date(cycleContaining(cycAt("2028-02-20T08:00:00Z"), HALF).end).toISOString(), "2028-02-29T18:30:00.000Z");
+});
+
+test("cycleContaining divides a run of days from its anchor", () => {
+  // Anchor 1 Oct, 7 days: 1–8 (index 0), 8–15, 15–22, so the 21st lands in the third.
+  const third = cycleContaining(cycAt("2026-10-21T08:00:00Z"), WEEK);
+  assert.equal(new Date(third.start).toISOString(), "2026-10-14T18:30:00.000Z");
+  assert.equal(new Date(third.end).toISOString(), "2026-10-21T18:30:00.000Z");
+
+  // The anchor day itself opens the first cycle.
+  assert.equal(new Date(cycleContaining(cycAt("2026-10-01T08:00:00Z"), WEEK).start).toISOString(), "2026-09-30T18:30:00.000Z");
+
+  // Dates before the anchor fall in earlier cycles, not the first one.
+  assert.equal(new Date(cycleContaining(cycAt("2026-09-28T08:00:00Z"), WEEK).start).toISOString(), "2026-09-23T18:30:00.000Z");
+
+  // A cycle is exactly 7 days long, across a month boundary.
+  const across = cycleContaining(cycAt("2026-11-03T08:00:00Z"), WEEK);
+  assert.equal(across.end - across.start, 7 * 24 * 60 * 60 * 1000);
+});
+
+test("previousCycle steps back one cycle under either rule", () => {
+  const half = previousCycle(cycAt("2026-10-21T08:00:00Z"), HALF);
+  assert.equal(new Date(half.start).toISOString(), "2026-09-30T18:30:00.000Z");
+  assert.equal(new Date(half.end).toISOString(), "2026-10-15T18:30:00.000Z");
+
+  const week = previousCycle(cycAt("2026-10-21T08:00:00Z"), WEEK);
+  assert.equal(new Date(week.start).toISOString(), "2026-10-07T18:30:00.000Z");
+  assert.equal(new Date(week.end).toISOString(), "2026-10-14T18:30:00.000Z");
+});
+
+test("cyclesBack returns consecutive cycles, oldest first", () => {
+  const three = cyclesBack(cycAt("2026-10-21T08:00:00Z"), 3, HALF);
+  assert.equal(three.length, 3);
+  assert.deepEqual(three.map((c) => new Date(c.start).toISOString()), [
+    "2026-09-15T18:30:00.000Z", "2026-09-30T18:30:00.000Z", "2026-10-15T18:30:00.000Z",
+  ]);
+  // No gaps: each cycle ends where the next begins.
+  for (let i = 1; i < three.length; i += 1) assert.equal(three[i - 1].end, three[i].start);
+
+  const weeks = cyclesBack(cycAt("2026-10-21T08:00:00Z"), 5, WEEK);
+  for (let i = 1; i < weeks.length; i += 1) assert.equal(weeks[i - 1].end, weeks[i].start);
+  assert.equal(weeks[weeks.length - 1].end, cycleContaining(cycAt("2026-10-21T08:00:00Z"), WEEK).end);
+});
+
+test("cycleLabel names a half-month by its half and a run of days by its dates", () => {
+  assert.equal(cycleLabel(cycleContaining(cycAt("2026-10-21T08:00:00Z"), HALF), HALF), "Oct 16–end");
+  assert.equal(cycleLabel(cycleContaining(cycAt("2026-10-05T08:00:00Z"), HALF), HALF), "Oct 1–15");
+  // "Sept" is what en-IN gives for September, which reads oddly beside "Aug": cut to three.
+  assert.equal(cycleLabel(cycleContaining(cycAt("2026-09-20T08:00:00Z"), HALF), HALF), "Sep 16–end");
+  // A run of days names its first and last day; end is exclusive, so the 21st is not shown.
+  assert.equal(cycleLabel(cycleContaining(cycAt("2026-10-21T08:00:00Z"), WEEK), WEEK), "15 Oct – 21 Oct");
 });

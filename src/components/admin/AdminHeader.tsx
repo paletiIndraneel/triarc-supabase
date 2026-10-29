@@ -29,7 +29,6 @@ export default function AdminHeader({ themeMode, onThemeChange }: { themeMode: T
       <div className="flex shrink-0 items-center gap-[9px] whitespace-nowrap font-bold text-ink">
         <button type="button" onClick={() => setActiveModule("overview")} className="text-[16px] font-bold tracking-tight text-ink">{GROUP_NAME}</button>
         {business && <span className="text-[13px] font-semibold text-muted"><span aria-hidden="true" className="mr-[9px] text-muted">·</span>{business}</span>}
-        <span className="rounded-md bg-surface px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-accent">ADMIN</span>
       </div>
       <nav className="order-last -mx-1 flex w-full items-center overflow-x-auto px-1 md:order-none md:mx-0 md:w-auto md:flex-1 md:px-0" aria-label="Admin modules">
         <SlidingTabs

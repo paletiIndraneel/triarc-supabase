@@ -1,4 +1,4 @@
-const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "stations", "access", "cpo-settings", "platforms"] as const;
+const ADMIN_MODULES = ["overview", "cms", "billing", "enquiries", "stations", "access", "cpo-settings", "platforms", "provider-bills"] as const;
 
 export type AdminModule = (typeof ADMIN_MODULES)[number];
 
@@ -22,6 +22,7 @@ export const GRANTABLE_MODULES: { key: AdminModule; label: string }[] = [
   { key: "enquiries", label: "Enquiries" },
   { key: "stations", label: "Stations" },
   { key: "cpo-settings", label: "CPO Settings" },
+  { key: "provider-bills", label: "Platform Bills" },
 ];
 
 export function canOpenModule(module: AdminModule, isPartner: boolean, modules: readonly string[] = []) {

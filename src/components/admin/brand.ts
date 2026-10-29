@@ -21,6 +21,7 @@ export const MODULE_BUSINESS: Record<AdminModule, BusinessKey | null> = {
   access: null,
   "cpo-settings": "ev-hub",
   platforms: "ev-hub",
+  "provider-bills": "ev-hub",
 };
 
 export const businessName = (key: BusinessKey | null) =>

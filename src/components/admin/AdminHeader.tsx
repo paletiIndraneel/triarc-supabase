@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings2, MapPin, Plug, ShieldCheck } from "lucide-react";
+import { Settings2, MapPin, Plug, ReceiptText, ShieldCheck } from "lucide-react";
 import AccountMenu, { type ThemeMode } from "@/components/admin/AccountMenu";
 import SlidingTabs from "@/components/ui/SlidingTabs";
 import { ADMIN_NAV_ITEMS } from "@/components/admin/adminNavigation";
@@ -16,6 +16,7 @@ const MENU_MODULES: { key: AdminModule; label: string; Icon: typeof MapPin }[] =
   { key: "access", label: "Access", Icon: ShieldCheck },
   { key: "cpo-settings", label: "CPO Settings", Icon: Settings2 },
   { key: "platforms", label: "Platforms", Icon: Plug },
+  { key: "provider-bills", label: "Platform Bills", Icon: ReceiptText },
 ];
 
 export default function AdminHeader({ themeMode, onThemeChange }: { themeMode: ThemeMode; onThemeChange: (mode: ThemeMode) => void }) {

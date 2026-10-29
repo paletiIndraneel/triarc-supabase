@@ -24,7 +24,7 @@ declare
   total int := 0; fails text[] := '{}'; gaps text[] := '{}';
   sensitive text[] := array['enquiries', 'billing_invoices', 'billing_customers', 'billing_items',
     'cms_transactions', 'cpo_mobile_numbers', 'admin_users', 'cms_session', 'devices', 'device_commands',
-    'provider_settings'];
+    'provider_settings', 'provider_bills'];
 begin
   -- Fixtures, as the database owner.
   insert into auth.users (id, email, aud, role)
@@ -50,6 +50,9 @@ begin
   -- Its own platform row, so the test never changes a real one.
   insert into public.provider_settings (provider, enabled) values ('rlstest', true)
     on conflict (provider) do update set enabled = true;
+  insert into public.provider_bills (provider, period_start, period_end, their_energy_kwh)
+    values ('rlstest', '2026-10-01T00:00:00+05:30', '2026-10-08T00:00:00+05:30', 100)
+    on conflict (provider, period_start) do nothing;
   insert into public.cpo_mobile_numbers (mobile_number, normalized_mobile)
     values ('0000000001', '0000000001') on conflict (normalized_mobile) do nothing;
 
@@ -95,6 +98,12 @@ begin
   total := total + 1;
   update public.provider_settings set enabled = false where provider = 'rlstest'; get diagnostics n = row_count;
   if n <> 0 then fails := fails || array['investor switches a platform off']; end if;
+  total := total + 1;
+  -- Platform bills: readable by any active admin, confirmable only with full access.
+  if (select count(*) from public.provider_bills where provider = 'rlstest') <> 1 then fails := fails || array['investor cannot read platform bills']; end if;
+  total := total + 1;
+  update public.provider_bills set status = 'confirmed' where provider = 'rlstest'; get diagnostics n = row_count;
+  if n <> 0 then fails := fails || array['investor confirms a platform bill']; end if;
   total := total + 1;
   if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || array['investor cannot match a CPO number']; end if;
   total := total + 1;
@@ -182,6 +191,9 @@ begin
     total := total + 1;
     update public.provider_settings set enabled = not enabled where provider = 'rlstest'; get diagnostics n = row_count;
     if n <> 1 then fails := fails || array[format('%s cannot switch a platform', who)]; end if;
+    total := total + 1;
+    update public.provider_bills set status = 'confirmed' where provider = 'rlstest'; get diagnostics n = row_count;
+    if n <> 1 then fails := fails || array[format('%s cannot confirm a platform bill', who)]; end if;
     total := total + 1;
     begin update public.admin_users set access = 'investor' where user_id = u_i; denied := false;
     exception when insufficient_privilege then denied := true; end;

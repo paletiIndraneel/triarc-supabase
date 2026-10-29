@@ -20,6 +20,17 @@ export const PROVIDER_CYCLES: Record<string, CycleRule> = {
   chargemod: { kind: "half-month" },
 };
 
+// What the platform charges Triarc per kWh of customer energy — Ionage charges ₹1. Whether it
+// is reckoned on gross energy or net of Triarc's own CPO sessions, and how it rounds, is not
+// settled until the first real bill arrives, so it lives here as one number to correct.
+export const PROVIDER_COMMISSION_PER_KWH: Record<string, number> = {
+  ionage: 1,
+};
+
+export function commissionPerKwh(provider?: string | null) {
+  return (provider && PROVIDER_COMMISSION_PER_KWH[provider]) || 0;
+}
+
 // The rule for figures that are not tied to one platform (the Overview cards, the CMS matrix when
 // no platform is selected). Point it at whichever platform the business runs on.
 export const DEFAULT_CYCLE: CycleRule = { kind: "half-month" };

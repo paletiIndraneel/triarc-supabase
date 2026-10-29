@@ -5,6 +5,7 @@ import AdminHeader, { type ThemeMode } from "@/components/admin/AdminHeader";
 import CmsDashboard from "@/app/admin/cms/CmsDashboard";
 import CpoSettings from "@/app/admin/cpo-settings/CpoSettings";
 import Platforms from "@/app/admin/platforms/Platforms";
+import ProviderBills from "@/app/admin/provider-bills/ProviderBills";
 import Overview from "@/app/admin/overview/Overview";
 import EVBilling from "@/app/admin/billing/EVBilling";
 import EnquiriesTable from "@/app/admin/enquiries/EnquiriesTable";
@@ -15,7 +16,7 @@ import { AdminModuleContext } from "@/components/admin/AdminModuleContext";
 import { ADMIN_NAV_ITEMS, canOpenModule, parseAdminModule, type AdminModule } from "@/components/admin/adminNavigation";
 
 // Set-up modules sit in the account menu, not ADMIN_NAV_ITEMS, so their tab titles are named here.
-const SETUP_TITLES: Partial<Record<AdminModule, string>> = { "cpo-settings": "CPO Settings", platforms: "Platforms" };
+const SETUP_TITLES: Partial<Record<AdminModule, string>> = { "cpo-settings": "CPO Settings", platforms: "Platforms", "provider-bills": "Platform Bills" };
 import { adminTabTitle } from "@/components/admin/brand";
 import styles from "@/app/admin/billing/billing.module.css";
 import adminStyles from "@/components/admin/admin.module.css";
@@ -133,6 +134,7 @@ export default function AdminApp({ enquiries, enquiryError, initialModule, isPar
       {activeModule === "access" && <Access />}
       {activeModule === "cpo-settings" && <CpoSettings />}
       {activeModule === "platforms" && <Platforms />}
+      {activeModule === "provider-bills" && <ProviderBills />}
       </div>
     </AdminModuleContext.Provider>
   );

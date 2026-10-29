@@ -84,7 +84,8 @@ its attribution header, and all of them use the palette tokens only:
 | `Spoiler` | customer data: name, mobile and vehicle number in the CMS table, GSTIN in billing |
 | `RainGlassBackground` | the sign-in page, through `AuthShell`'s `background` prop |
 
-`AuthShell` frames sign-in, set-password, unauthorized and 404. Only sign-in passes `background`,
+`AuthShell` frames sign-in, set-password, unauthorized and 404, under the Triarc Group wordmark
+alone — the ADMIN chip beside it is gone, and sign-in carries no subtitle. Only sign-in passes `background`,
 which puts the card on the rain-on-glass window and frosts it; the others keep the solid card.
 The image is `public/signin-glass.png` — a generated placeholder, replaced by changing
 `DEFAULT_SRC` in `RainGlassBackground.tsx`. It needs WebGL2; the canvas only fades in once the
@@ -135,16 +136,24 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
 - **Station filter**: `stationSelection.tsx` (choice in `localStorage` `triarc-admin-station`);
   `billing_invoice_stations` holds one record per station per platform (`provider`, `location_id`);
   records with the same name are one station (`groupStations`).
-- **Dashboard layout** (`CmsDashboard.tsx`): the top row is `PeriodMatrixCard` — Today, the current
-  cycle and the previous cycle as one fixed-layout table, kWh above and revenue below in each cell —
-  beside `StatusCard`, whose state (Charging/Idle and the count) sits in the `StackPanel` header so
-  the body holds only sessions. Both cards are `self-start`, so opening a session grows the panel
-  without leaving an empty box in the matrix. The second row is one card: consumption, the other
-  periods, and locations as three segments.
+- **Dashboard layout** (`CmsDashboard.tsx`): one row of three cards — `PeriodMatrixCard`, then
+  Consumption Details, then `StatusCard`. The matrix is Today, the current cycle and the previous
+  cycle as one fixed-layout table, each cell carrying kWh above (with its unit) and revenue below.
+  Consumption Details carries on where the matrix stops: the five half-month cycles older than the
+  two it shows, newest first, with energy and revenue — built in the same effect that sets
+  `cycleSplits`, through `splitPeriod` over each cycle's range. The matrix and Consumption share a
+  nested grid so they stretch to each other's height (the matrix's table is `h-full`, so the slack
+  goes into its rows rather than an empty block under Total). `StatusCard` sits outside that pair,
+  in a wrapper whose `max-height` is the pair's measured height (`pairRef` + `ResizeObserver`, wide
+  screens only) and which scrolls — so an open session scrolls inside the card instead of pushing
+  the transactions table down the page, while an idle card still keeps its own small height. Its
+  state (Charging/Idle and the count) sits in the `StackPanel` header, so the body holds only
+  sessions. There is no locations card; `locationOptions` still feeds the table's location filter.
 - **Transactions table**: `displayChargerWithGun` puts the connector id where ChargeMOD's name
   carries the connector standard, because both guns of a DC charger are named `CCS-2` and would
   otherwise read alike. Customer name, mobile and vehicle number are wrapped in `Spoiler`; the gun
-  number is not, and CSV export is unaffected.
+  number is not, and CSV export is unaffected. The header carries no "Active" count — the Status
+  card already says how many sessions are charging.
 
 ## 8. Billing
 

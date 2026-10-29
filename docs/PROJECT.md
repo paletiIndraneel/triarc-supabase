@@ -75,16 +75,19 @@ Done and tested:
 - Live on Cloudflare at `admin.triarcgroup.in`, deployed from `TriarcGroup/ADMIN` `main`.
 - Dependencies brought to their latest supported versions on 28 Oct 2026 (Next 16.4.3,
   TypeScript 6, ESLint 10, Motion 14).
-- CMS dashboard reworked on 29 Oct 2026: the three period cards became one matrix with the Status
-  card beside it, consumption and locations merged into one card, customer columns put behind a
-  click-to-reveal spoiler, and the charger column now shows the gun number. Sign-in sits on a
-  rain-on-glass background.
+- CMS dashboard reworked on 29 Oct 2026: the three period cards became one matrix, with
+  Consumption Details and Status beside it in a single row. Consumption now lists the five
+  half-month cycles older than the matrix's two, with energy and revenue; every figure names its
+  unit. Status is capped to the height of the two cards beside it, so opening a session scrolls
+  inside the card rather than pushing the page down. The locations card and the table's "Active"
+  count are gone, customer columns sit behind a click-to-reveal spoiler, and the charger column
+  shows the gun number. Sign-in sits on a rain-on-glass background.
 
 Open:
 - The sign-in background is a generated placeholder; replace `public/signin-glass.png` with a real
   photograph (change `DEFAULT_SRC` in `RainGlassBackground.tsx` if the extension differs).
 - Opening a live charging session on production has not been seen since the dashboard rework —
-  there were no active sessions at release time.
+  there were no active sessions at release time, so the capped Status height is unverified there.
 - Cloudflare build caching and preview builds are both off; turning them on is a dashboard switch
   (Settings → Build).
 - Ather connector: waits for Ather's API.

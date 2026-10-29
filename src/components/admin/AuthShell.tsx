@@ -13,10 +13,7 @@ export default function AuthShell({
 }: { title: string; subtitle?: string; background?: boolean; children: ReactNode }) {
   const card = (
     <div className="w-full max-w-md">
-      <p className="mb-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
-        <span className="text-3xl font-bold tracking-[-0.03em] sm:text-4xl">{GROUP_NAME}</span>
-        <span className="rounded-md bg-accent-pale px-2 py-1 text-[10px] font-bold tracking-[0.16em] text-accent">ADMIN</span>
-      </p>
+      <p className="mb-8 text-center text-3xl font-bold tracking-[-0.03em] sm:text-4xl">{GROUP_NAME}</p>
       <section
         className={
           background

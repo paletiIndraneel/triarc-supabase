@@ -482,12 +482,12 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
     { label: "CPO DC", energy: (split) => split.energy.cpoDc, revenue: null },
   ];
   return (
-    <GlassCard className="min-w-0 self-start rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse">
+    <GlassCard className="flex min-w-0 flex-col rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
+      <div className="flex-1 overflow-x-auto">
+        <table className="h-full w-full table-fixed border-collapse">
           <colgroup>
             <col className="w-[22%]" />
-            {periods.map((period) => <col key={period.title} className="w-[24%]" />)}
+            {periods.map((period) => <col key={period.title} className="w-[26%]" />)}
           </colgroup>
           <thead>
             <tr>
@@ -806,7 +806,7 @@ export default function CmsOperatorDashboard() {
             cpoMobileNumbers
           );
           earlier.push({
-            label: `${monthFmt.format(start)} ${firstHalf ? "1–15" : "16–end"}`,
+            label: `${monthFmt.format(start).slice(0, 3)} ${firstHalf ? "1–15" : "16–end"}`,
             energy: split.energy.total,
             revenue: split.revenue.total,
           });
@@ -1646,9 +1646,9 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
   };
   for (const session of sessions) pages[pageId(session)] = sessionPage(session, liveById[session.transactionId || session.id]);
 
-  // Both cards in the row keep their own height (self-start), so opening a session makes this
-  // panel taller without leaving an empty box in the period matrix beside it.
-  return <StackPanel className="min-w-0 self-start shadow-sm" pages={pages} root="status" />;
+  // The wrapper around this card caps its height, so a long session detail scrolls
+  // there rather than stretching the row.
+  return <StackPanel className="min-w-0 shadow-sm" pages={pages} root="status" />;
 }
 
 // Site names from ChargeMOD, shortened like the table's Location column; green when a car is charging there.

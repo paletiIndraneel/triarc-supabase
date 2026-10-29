@@ -486,7 +486,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
-            <col className="w-[28%]" />
+            <col className="w-[22%]" />
             {periods.map((period) => <col key={period.title} className="w-[24%]" />)}
           </colgroup>
           <thead>
@@ -512,7 +512,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
                 </th>
                 {periods.map((period) => (
                   <td key={period.title} className="border-t border-line/40 py-2 pl-3 text-right align-baseline leading-tight">
-                    <span className="block text-[14px] font-semibold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(row.energy(period.split)) : "—"}</span>
+                    <span className="block text-[14px] font-semibold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(row.energy(period.split))}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
                     <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : " "}</span>
                   </td>
                 ))}
@@ -522,7 +522,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
               <th scope="row" className="truncate border-t border-line pt-2.5 text-left text-xs font-bold text-ink">Total</th>
               {periods.map((period) => (
                 <td key={period.title} className="border-t border-line pt-2.5 pl-3 text-right align-baseline leading-tight">
-                  <span className="block text-[15px] font-bold tabular-nums tracking-[-0.015em] text-ink">{period.split ? matrixKwh(period.split.energy.total) : "—"}</span>
+                  <span className="block text-[15px] font-bold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(period.split.energy.total)}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
                   <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : " "}</span>
                 </td>
               ))}
@@ -537,7 +537,25 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
 
 export default function CmsOperatorDashboard() {
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
-  const [historicalConsumption, setHistoricalConsumption] = useState<{ items: Array<{ label: string; value: number }> } | null>(null);
+  const [earlierCycles, setEarlierCycles] = useState<Array<{ label: string; energy: number; revenue: number }> | null>(null);
+  // Status is capped to the matrix/Consumption pair's height on a wide screen, so a long
+  // session detail scrolls inside the card rather than stretching the row.
+  const pairRef = useRef<HTMLDivElement>(null);
+  const [pairHeight, setPairHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const pair = pairRef.current;
+    if (!pair || typeof ResizeObserver === "undefined") return;
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const apply = () => setPairHeight(wide.matches ? pair.offsetHeight : null);
+    const watch = new ResizeObserver(apply);
+    watch.observe(pair);
+    wide.addEventListener("change", apply);
+    apply();
+    return () => {
+      watch.disconnect();
+      wide.removeEventListener("change", apply);
+    };
+  }, []);
   const [todaySplit, setTodaySplit] = useState<PeriodSplit | null>(null);
   const [cycleSplits, setCycleSplits] = useState<Array<{ title: string; split: PeriodSplit }> | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
@@ -719,9 +737,6 @@ export default function CmsOperatorDashboard() {
         const localDay = Number(istValues.day);
         const currentMonthStart = new Date(`${istValues.year}-${istValues.month}-01T00:00:00+05:30`);
         const previousMonthStartDate = new Date(Date.UTC(localYear, localMonth - 2, 1));
-        const previousMonthStart = new Date(
-          `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-01T00:00:00+05:30`
-        );
         const previousMonthMidpoint = new Date(
           `${previousMonthStartDate.getUTCFullYear()}-${String(previousMonthStartDate.getUTCMonth() + 1).padStart(2, "0")}-16T00:00:00+05:30`
         );
@@ -764,30 +779,39 @@ export default function CmsOperatorDashboard() {
           }))
         );
 
-        const previousMonthName = previousMonthStart.toLocaleDateString("en-IN", {
-          month: "long",
-          year: "numeric",
-          timeZone: "Asia/Kolkata",
-        });
-        const sumEnergy = (start: Date, end: Date) =>
-          filterTransactionsByRange(metricTransactions, start.toISOString(), end.toISOString())
-            .reduce((sum, transaction) => sum + Math.max(0, transaction.energyKwh ?? 0), 0);
-        if (localDay <= 15) {
-          setHistoricalConsumption({
-            items: [
-              { label: previousMonthName + " (1–15)", value: sumEnergy(previousMonthStart, previousMonthMidpoint) },
-              { label: previousMonthName + " (16–end)", value: sumEnergy(previousMonthMidpoint, currentMonthStart) },
-            ],
-          });
-        } else {
-          setHistoricalConsumption({
-            items: [
-              { label: "This month (1–15)", value: sumEnergy(currentMonthStart, currentFirstHalfEnd) },
-              { label: previousMonthName + " (1–15)", value: sumEnergy(previousMonthStart, previousMonthMidpoint) },
-              { label: previousMonthName + " (16–end)", value: sumEnergy(previousMonthMidpoint, currentMonthStart) },
-            ],
+        // Consumption Details carries on where the matrix stops: the half-month cycles
+        // older than the two it shows, newest first. Five is what fits beside it.
+        const monthFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", month: "short" });
+        const istStart = (year: number, month: number, day: number) =>
+          new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+05:30`);
+        // The oldest cycle the matrix shows, as (year, month, first or second half).
+        let year = localYear;
+        let month = localMonth;
+        let firstHalf = localDay > 15;
+        const earlier: Array<{ label: string; energy: number; revenue: number }> = [];
+        for (let i = 0; i < 5; i += 1) {
+          if (firstHalf) {
+            month -= 1;
+            if (month < 1) { month = 12; year -= 1; }
+            firstHalf = false;
+          } else {
+            firstHalf = true;
+          }
+          const start = firstHalf ? istStart(year, month, 1) : istStart(year, month, 16);
+          const end = firstHalf
+            ? istStart(year, month, 16)
+            : (month === 12 ? istStart(year + 1, 1, 1) : istStart(year, month + 1, 1));
+          const split = splitPeriod(
+            filterTransactionsByRange(metricTransactions, start.toISOString(), end.toISOString()),
+            cpoMobileNumbers
+          );
+          earlier.push({
+            label: `${monthFmt.format(start)} ${firstHalf ? "1–15" : "16–end"}`,
+            energy: split.energy.total,
+            revenue: split.revenue.total,
           });
         }
+        setEarlierCycles(earlier);
       } catch {
         // Metric calculation must not prevent the dashboard from rendering.
       }
@@ -1132,73 +1156,48 @@ export default function CmsOperatorDashboard() {
           </div>
         )}
 
-        <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,33rem)_minmax(0,1fr)]">
-          <PeriodMatrixCard
-            periods={[
-              { title: "Today", short: "Today", split: todaySplit },
-              ...(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => ({
-                title: cycle.title,
-                // "Current cycle (16 Oct – 31 Oct)" heads the column as "Current cycle"; the dates
-                // stay in the title attribute.
-                short: cycle.title.replace(/\s*\([^)]*\)\s*$/, ""),
-                split: cycle.split,
-              })),
-            ]}
-          />
-          <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
-        </div>
-
-        <GlassCard className="@container relative z-0 min-w-0 rounded-xl border border-line/80 bg-surface p-5 shadow-sm">
-          <div className="flex flex-col gap-4 @[44rem]:flex-row @[44rem]:items-center">
-            <div className="min-w-0 @[44rem]:flex-1">
+        {/* The matrix and Consumption are one pair that stretch to each other's height;
+            Status sits beside them, capped to that height so opening a session scrolls
+            inside the card instead of growing the page. */}
+        <div className="relative z-0 mb-6 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,42.5rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,49rem)_minmax(0,1fr)]">
+          <div ref={pairRef} className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,13.5rem)] xl:grid-cols-[minmax(0,33rem)_minmax(0,15rem)]">
+            <PeriodMatrixCard
+              periods={[
+                { title: "Today", short: "Today", split: todaySplit },
+                ...(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => ({
+                  title: cycle.title,
+                  // "Current cycle (16 Oct – 31 Oct)" heads the column as "Current cycle"; the dates
+                  // stay in the title attribute.
+                  short: cycle.title.replace(/\s*\([^)]*\)\s*$/, ""),
+                  split: cycle.split,
+                })),
+              ]}
+            />
+            <GlassCard className="flex min-w-0 flex-col rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">Consumption Details</p>
-              <p className="mt-2 text-2xl font-bold tracking-tight text-ink [overflow-wrap:anywhere]">
-                {historicalConsumption?.items[0]
-                  ? `${historicalConsumption.items[0].value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`
-                  : "—"}
-              </p>
-              <p className="mt-1 text-xs font-medium text-muted">
-                {historicalConsumption?.items[0]?.label ?? "Loading consumption"}
-              </p>
-            </div>
-            <div className="h-px w-full shrink-0 bg-soft @[44rem]:h-16 @[44rem]:w-px" aria-hidden="true" />
-            <div className="min-w-0 space-y-3 @[44rem]:flex-1">
-              {(historicalConsumption?.items ?? []).slice(1).map((item) => (
-                <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <p className="min-w-0 text-xs font-medium text-muted">{item.label}</p>
-                  <p className="text-sm font-semibold whitespace-nowrap text-ink">
-                    {item.value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="h-px w-full shrink-0 bg-soft @[44rem]:h-16 @[44rem]:w-px" aria-hidden="true" />
-            <div className="min-w-0 @[44rem]:flex-1">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted">Locations</p>
-                <p className="text-sm font-semibold text-muted">{locationCount}</p>
+              <p className="mt-1 text-xs font-medium text-muted">Earlier cycles</p>
+              <div className="mt-2.5">
+                {(earlierCycles ?? []).map((cycle) => (
+                  <div key={cycle.label} className="flex items-baseline justify-between gap-2.5 border-t border-line/40 py-1.5 first:border-t-0">
+                    <p className="whitespace-nowrap text-[11px] font-medium text-muted">{cycle.label}</p>
+                    <p className="text-right">
+                      <span className="block whitespace-nowrap text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink">
+                        {matrixKwh(cycle.energy)}
+                        <i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i>
+                      </span>
+                      <span className="mt-px block whitespace-nowrap text-[10.5px] tabular-nums text-muted">{money(cycle.revenue)}</span>
+                    </p>
+                  </div>
+                ))}
+                {!earlierCycles && <p className="text-xs text-muted">Loading consumption</p>}
               </div>
-              {locationOptions.length === 0 ? (
-                <p className="mt-2 text-xs text-muted">—</p>
-              ) : (
-                <ul className="mt-2 space-y-1.5">
-                  {locationOptions.map((name) => {
-                    const charging = liveSessions.some((session) => session.location === name);
-                    return (
-                      <li key={name} className="flex items-center gap-2 text-sm font-semibold text-ink">
-                        <span
-                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${charging ? "bg-emerald-500" : "bg-soft"}`}
-                          aria-label={charging ? "Charging now" : "Idle"}
-                        />
-                        <span className="min-w-0 truncate" title={name}>{displayLocation(name)}</span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+              <p className="mt-auto pt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
+            </GlassCard>
           </div>
-        </GlassCard>
+          <div className="min-w-0 overflow-y-auto" style={pairHeight ? { maxHeight: pairHeight } : undefined}>
+            <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
+          </div>
+        </div>
 
         <GlassCard className="mt-6 overflow-visible rounded-xl border border-line/80 bg-surface p-0 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
@@ -1335,10 +1334,6 @@ export default function CmsOperatorDashboard() {
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="ml-1 flex items-center gap-2 text-xs text-muted">
-                <Activity size={14} />
-                Active: {activeCount}
               </div>
             </div>
           </div>

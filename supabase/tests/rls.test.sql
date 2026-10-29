@@ -100,7 +100,8 @@ begin
   if n <> 0 then fails := fails || array['investor switches a platform off']; end if;
   total := total + 1;
   -- Platform bills: readable by any active admin, confirmable only with full access.
-  if (select count(*) from public.provider_bills where provider = 'rlstest') <> 1 then fails := fails || array['investor cannot read platform bills']; end if;
+  -- This investor has {overview,cms,enquiries}, so without the module the bill is invisible.
+  if (select count(*) from public.provider_bills where provider = 'rlstest') <> 0 then fails := fails || array['investor without the module reads platform bills']; end if;
   total := total + 1;
   update public.provider_bills set status = 'confirmed' where provider = 'rlstest'; get diagnostics n = row_count;
   if n <> 0 then fails := fails || array['investor confirms a platform bill']; end if;

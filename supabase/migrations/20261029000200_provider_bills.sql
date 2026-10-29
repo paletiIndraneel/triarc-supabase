@@ -37,12 +37,16 @@ create table if not exists public.provider_bills (
 );
 alter table public.provider_bills enable row level security;
 
--- Every active admin reads; only full-access admins (partner, IT admin) record or confirm a
--- bill, since confirming one commits Triarc to paying it.
+-- Admins with the Platform Bills module read; only full-access admins (partner, IT admin)
+-- record or confirm a bill, since confirming one commits Triarc to paying it.
+-- admin_has_module() is already true for full access, so this one policy matches the API check
+-- (isPartner || modules.includes("provider-bills")) exactly — the same shape billing_invoices
+-- and cpo_mobile_numbers use. Not "any active admin": these tables are reachable from the
+-- browser through the client-side Supabase singleton, so RLS must not be looser than the route.
 drop policy if exists "Active admins can read provider bills" on public.provider_bills;
-create policy "Active admins can read provider bills" on public.provider_bills for select to authenticated
-using (exists (select 1 from public.admin_users au
-               where au.user_id = (select auth.uid()) and au.role = 'admin' and au.active = true));
+drop policy if exists "Platform-bills-module admins can read provider bills" on public.provider_bills;
+create policy "Platform-bills-module admins can read provider bills" on public.provider_bills for select to authenticated
+using ((select public.admin_has_module('provider-bills')));
 
 drop policy if exists "Full-access admins can manage provider bills" on public.provider_bills;
 create policy "Full-access admins can manage provider bills" on public.provider_bills for all to authenticated

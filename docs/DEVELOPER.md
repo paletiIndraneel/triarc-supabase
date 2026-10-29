@@ -69,9 +69,13 @@ tests/                        unit, API and RLS test runners
 
 `/` is one client component (`AdminApp.tsx`) that switches modules by state, mirrored in
 `/?module=…` (pushState/popstate). Any `/admin/*` URL redirects to `/`. Modules:
-`overview`, `cms`, `billing`, `enquiries`, `stations`, `access`, `cpo-settings`
-(`adminNavigation.ts`). `canOpenModule(module, isPartner, modules)` decides what shows; a blocked
-`?module=` falls back to Overview.
+`overview`, `cms`, `billing`, `enquiries`, `stations`, `access`, `cpo-settings`, `platforms`,
+`provider-bills` (`adminNavigation.ts`). `canOpenModule(module, isPartner, modules)` decides what
+shows; a blocked `?module=` falls back to Overview. `FULL_ACCESS_ONLY` (`access`, `platforms`) are
+never grantable — writing one into `admin_users.modules` still will not open it. Set-up modules
+(Stations, Access, CPO Settings, Platform Bills, Platforms) live in the account menu
+(`AdminHeader.tsx` `MENU_MODULES`), not the top bar, and their tab titles come from
+`SETUP_TITLES` in `AdminApp.tsx`.
 
 **Shared UI** in `components/ui/`, adapted from Kokonut UI (MIT, `motion` package); each file keeps
 its attribution header, and all of them use the palette tokens only:
@@ -118,8 +122,33 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
                      browser: cmsWindowStore ◀── loadCmsWindow ◀───────┘   meter readings ──┘ /api/cms/live/[id]
 ```
 
-- **Providers**: `providerIds.ts` lists platforms (`chargemod`, id prefix `chrgmod_`); `provider.ts`
-  `CONNECTORS` maps each to a connector. Adding Ather: see `README.txt`.
+- **Providers**: `providerIds.ts` lists platforms (`chargemod`, id prefix `chrgmod_`, and the names
+  of the env vars its connector needs); `provider.ts` `CONNECTORS` maps each to a connector. Adding
+  Ather: see `README.txt`.
+- **Switched on** means two things at once: enabled in `provider_settings` (the Platforms page) and
+  a connector that returns non-null, i.e. its credentials exist. `getChargingProviders` requires
+  both, so a stray row cannot start a platform with no credentials and credentials alone cannot
+  start one nobody enabled. If that table cannot be read, every platform is left as its env vars
+  say rather than showing an empty dashboard.
+- **Billing cycles** have one definition: `src/lib/billingCycle.ts`, pure and with no imports so
+  the test runner can load it. `PROVIDER_CYCLES` keys a `CycleRule` by platform — `half-month`, or
+  `days` with a length and an anchor date (Ionage: 7 days). `cycleContaining` / `previousCycle` /
+  `cyclesBack` / `comparisonCycle` / `cycleLabel` / `maxCycleDays` / `previousBillingCycle` all take
+  the rule. The Overview cards, the dashboard matrix and its Consumption Details, and the backfill
+  window all come from it, so changing a platform's billing is one edit here.
+  `overviewMetrics.ts` takes the cycles it should sum rather than working them out, which keeps it
+  pure; `previousBillingCycle` lives here and not in `transactionStore.ts`, which the test runner
+  loads directly and so must keep to type-only imports.
+- **One platform per card**: `cms/platformSelection.tsx`, shared by the dashboard and Overview and
+  kept in `localStorage` (`triarc-admin-platform`). There is no "all platforms" on purpose — two
+  platforms on different cycles cannot be summed into a figure that matches any bill. The platforms
+  on offer are derived from the unfiltered cache, so choosing one never narrows the list. Hidden
+  with fewer than two.
+- **Platform bills**: `provider_bills` holds what a platform billed Triarc for a cycle (`their_*`,
+  keyed in by hand) beside what the sessions say (`our_*`). `/api/admin/provider-bills` recomputes
+  `our_*` from `cms_transactions` on every save rather than trusting the request, excludes CPO
+  sessions from billable energy via `cpo_mobile_matches`, and gates confirming on `isPartner`. The
+  commission per kWh is `PROVIDER_COMMISSION_PER_KWH` in `billingCycle.ts`.
 - **Session ids** are stored with the platform prefix and stripped before calling the platform.
 - **ChargeMOD login** is shared across instances via `cms_session` and the `cms_session_acquire /
   _store / _invalidate` functions (service_role only); one instance holds a login lease.
@@ -171,6 +200,10 @@ in `pdf()` mirrors an Excel template (rows A1:G37).
 - The repo's migrations cannot rebuild the database from empty (the earliest tables predate them);
   the live project is the reference. The ESP32 device tables were created outside the repo.
 - Live migration versions differ from the repo file names (applied with their own timestamp).
+- **Not yet applied**: `20261029000100_provider_settings.sql` and `20261029000200_provider_bills.sql`.
+  Until they are, the Platforms and Platform Bills pages answer with the "ensure the migration has
+  been applied" error, and the provider gate falls back to env vars alone — which is exactly
+  today's behaviour.
 
 ## 10. Tests
 

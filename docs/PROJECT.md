@@ -27,6 +27,8 @@ at the same site, and a second station is planned. The admin has to:
 | Enquiries | Messages from the website contact form, with status (New / Contacted / Closed) | Ticked |
 | Stations | Stations and the charging-platform locations that feed them | Ticked |
 | CPO Settings | Mobile numbers whose sessions count as Triarc's own use (CPO) | Ticked |
+| Platform Bills | What a charging platform bills Triarc each cycle, beside the same cycle worked out from the stored sessions; confirm or dispute | Ticked to read, confirming needs full access |
+| Platforms | Switch a charging platform on or off — how ChargeMOD gets frozen at the Ionage cutover | Partners and IT admins only |
 | Access | Invite admins, set role, modules and stations | Partners and IT admins only |
 
 ## 3. Roles and access
@@ -46,8 +48,13 @@ at the same site, and a second station is planned. The admin has to:
 
 ## 4. Key business rules
 
-- **Billing cycles** are half-months: 1st–15th and 16th–month end (IST). Financial figures use the
-  Indian financial year (from 1 April).
+- **Billing cycles belong to the charging platform, not to Triarc.** ChargeMOD bills in half-months
+  — 1st–15th and 16th–month end (IST) — which is where today's cycles come from; Ionage bills every
+  7 days with payment 3 days after. One place defines this per platform, so a switch is one edit.
+  Customer invoices stay on half-months. Financial figures use the Indian financial year (from 1 April).
+- **A card belongs to one platform.** Two platforms on different cycles cannot be added into one
+  total without producing a figure that matches no bill, so once more than one is live a platform
+  has to be chosen. Today only ChargeMOD is live, so the choice is implied and hidden.
 - **Rates include GST.** An invoice line is quantity × rate; GST is taken out of it, not added.
 - **GST type** follows the customer's GSTIN state code: 36 (Telangana) → CGST + SGST, otherwise IGST.
 - **Invoices are never deleted**, only cancelled, so invoice numbers are never reused.
@@ -82,8 +89,19 @@ Done and tested:
   inside the card rather than pushing the page down. The locations card and the table's "Active"
   count are gone, customer columns sit behind a click-to-reveal spoiler, and the charger column
   shows the gun number. Sign-in sits on a rain-on-glass background.
+- Prepared for the Ionage move on 29 Oct 2026: the billing cycle now has one definition per
+  charging platform, a Platforms page switches a platform on or off, and Platform Bills records
+  what a platform bills Triarc against what the stored sessions say. All of it is inert while
+  ChargeMOD is the only platform live — the admin looks exactly as it did.
 
 Open:
+- **Ionage migration.** Two database tables (`provider_settings`, `provider_bills`) are written as
+  migrations but not yet applied to the live project, so the Platforms and Platform Bills pages
+  cannot load until they are. The cutover itself still needs: Ionage's API (in talks; the CPO
+  portal APIs are the fallback), a connector, the date its 7-day cycles are counted from, and
+  confirmation of whether the commission is on gross energy or net of Triarc's own CPO use, and
+  how it rounds. Those last three are deliberately single values to correct once the first real
+  bill arrives.
 - The sign-in background is a generated placeholder; replace `public/signin-glass.png` with a real
   photograph (change `DEFAULT_SRC` in `RainGlassBackground.tsx` if the extension differs).
 - Opening a live charging session on production has not been seen since the dashboard rework —

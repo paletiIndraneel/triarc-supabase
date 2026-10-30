@@ -436,14 +436,14 @@ function displayChargerWithGun(value: string, connectorId: number | null) {
 
 // CMS UI deployment: column visibility, field adding, and drag-and-drop ordering remain supported; runtime data logic unchanged.
 type PeriodSplit = {
-  energy: { total: number; ac: number; dc: number; cpo: number; cpoAc: number; cpoDc: number };
+  energy: { total: number; ac: number; dc: number; cpo: number };
   revenue: { total: number; ac: number; dc: number };
 };
 
-// AC/DC energy and revenue exclude CPO sessions; the totals include them. CPO energy is also
-// split by charger (cpoAc/cpoDc).
+// AC/DC energy and revenue exclude CPO sessions; the totals include them. CPO energy is one
+// figure: the matrix carries AC and DC together on its CPO row.
 function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>): PeriodSplit {
-  const energy = { total: 0, ac: 0, dc: 0, cpo: 0, cpoAc: 0, cpoDc: 0 };
+  const energy = { total: 0, ac: 0, dc: 0, cpo: 0 };
   const revenue = { total: 0, ac: 0, dc: 0 };
   for (const transaction of transactions) {
     const cpo = isCpoTransaction(transaction, cpoMobileNumbers);
@@ -451,11 +451,7 @@ function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>)
     const kwh = Number(transaction.energyKwh);
     if (Number.isFinite(kwh) && kwh > 0) {
       energy.total += kwh;
-      if (cpo) {
-        energy.cpo += kwh;
-        const cpoCurrent = chargerCurrent(transaction);
-        if (cpoCurrent) energy[cpoCurrent === "ac" ? "cpoAc" : "cpoDc"] += kwh;
-      }
+      if (cpo) energy.cpo += kwh;
       else if (current) energy[current] += kwh;
     }
     const amount = Number(transaction.tariffAmount);
@@ -480,8 +476,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
   const rows: Array<{ label: string; energy: (split: PeriodSplit) => number; revenue: ((split: PeriodSplit) => number) | null }> = [
     { label: "AC Charger", energy: (split) => split.energy.ac, revenue: (split) => split.revenue.ac },
     { label: "DC Charger", energy: (split) => split.energy.dc, revenue: (split) => split.revenue.dc },
-    { label: "CPO AC", energy: (split) => split.energy.cpoAc, revenue: null },
-    { label: "CPO DC", energy: (split) => split.energy.cpoDc, revenue: null },
+    { label: "CPO", energy: (split) => split.energy.cpo, revenue: null },
   ];
   return (
     <GlassCard className="flex min-w-0 flex-col rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
@@ -509,21 +504,21 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
           <tbody>
             {rows.map((row) => (
               <tr key={row.label}>
-                <th scope="row" className={`truncate border-t border-line/40 py-2 text-left text-xs font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
+                <th scope="row" className={`truncate border-t border-line/40 py-1.5 text-left text-xs font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
                   {row.label}
                 </th>
                 {periods.map((period) => (
-                  <td key={period.title} className="border-t border-line/40 py-2 pl-3 text-right align-baseline leading-tight">
-                    <span className="block text-[14px] font-semibold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(row.energy(period.split))}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
+                  <td key={period.title} className="border-t border-line/40 py-1.5 pl-3 text-right align-baseline leading-tight">
+                    <span className="block text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(row.energy(period.split))}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
                     <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : " "}</span>
                   </td>
                 ))}
               </tr>
             ))}
             <tr>
-              <th scope="row" className="truncate border-t border-line pt-2.5 text-left text-xs font-bold text-ink">Total</th>
+              <th scope="row" className="truncate border-t border-line pt-2 text-left text-xs font-bold text-ink">Total</th>
               {periods.map((period) => (
-                <td key={period.title} className="border-t border-line pt-2.5 pl-3 text-right align-baseline leading-tight">
+                <td key={period.title} className="border-t border-line pt-2 pl-3 text-right align-baseline leading-tight">
                   <span className="block text-[15px] font-bold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(period.split.energy.total)}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
                   <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : " "}</span>
                 </td>
@@ -532,7 +527,7 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
+      <p className="mt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below · CPO is AC + DC</p>
     </GlassCard>
   );
 }

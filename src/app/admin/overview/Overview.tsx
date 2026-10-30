@@ -83,7 +83,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
   // The cards follow one platform and its billing cycle; see cms/platformSelection.
   const [livePlatforms, setLivePlatforms] = useState<string[]>([]);
-  const { options: platformOptions, providerId, rule, setPlatform } = usePlatformSelection(livePlatforms);
+  const { options: platformOptions, selection, providerId, rule, setPlatform } = usePlatformSelection(livePlatforms);
   const windowRequested = useRef(false);
   useEffect(() => {
     let shownCache: CmsCache | null = null;
@@ -192,7 +192,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <PlatformSelect options={platformOptions} providerId={providerId} onChange={setPlatform} />
+            <PlatformSelect options={platformOptions} selection={selection} onChange={setPlatform} />
             <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {cms.status === "ok" && cms.updatedAt && (
               <p className="text-xs text-muted">Data till {dataTill.format(new Date(cms.updatedAt))}</p>

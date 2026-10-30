@@ -24,7 +24,7 @@ import {
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 import { fromStoredRow, SESSION_COLUMNS, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
-import { cycleLabel, cyclesBack, previousBillingCycle, type CycleRule } from "@/lib/billingCycle";
+import { cycleLabel, cycleRuleFor, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
 import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
@@ -465,19 +465,36 @@ function splitPeriod(transactions: Transaction[], cpoMobileNumbers: Set<string>)
 
 const formatKwh = (value: number) => `${value.toLocaleString("en-IN", { maximumFractionDigits: 4 })} kWh`;
 
-type MatrixPeriod = { title: string; short: string; split: PeriodSplit | null };
+type MatrixPeriod = {
+  // The full column name, kept in the heading's tooltip; `short` is what is drawn.
+  title: string;
+  short: string;
+  // The column's cycle dates, one per platform shown, listed under the heading when more than
+  // one platform is shown, because each closes its cycle on its own day.
+  dates: string[];
+  // One split per platform shown, in the order of the card's `platforms`.
+  splits: Array<PeriodSplit | null>;
+};
 
 const matrixKwh = (value: number) => value.toLocaleString("en-IN", { maximumFractionDigits: 4 });
 
 // The three billing periods in one card. Every cell leads with kWh and carries the revenue
 // underneath, so four columns do the work the three separate cards needed seven for, and the
-// periods are told apart by space rather than by ruling every column.
-function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
+// periods are told apart by space rather than by ruling every column. With more than one
+// platform shown each row is drawn once per platform: their figures are never added, since
+// their cycles close on different days.
+function PeriodMatrixCard({ platforms, periods }: { platforms: readonly string[]; periods: MatrixPeriod[] }) {
   const rows: Array<{ label: string; energy: (split: PeriodSplit) => number; revenue: ((split: PeriodSplit) => number) | null }> = [
     { label: "AC Charger", energy: (split) => split.energy.ac, revenue: (split) => split.revenue.ac },
     { label: "DC Charger", energy: (split) => split.energy.dc, revenue: (split) => split.revenue.dc },
     { label: "CPO", energy: (split) => split.energy.cpo, revenue: null },
   ];
+  // An empty selection is the first load, before the platforms are known: one unnamed group.
+  const groups = platforms.length ? platforms : [""];
+  const many = groups.length > 1;
+  const platformName = (provider: string) => (
+    <span className="mt-0.5 block text-[9.5px] font-medium uppercase tracking-[0.06em] text-muted">{providerLabel(provider)}</span>
+  );
   return (
     <GlassCard className="flex min-w-0 flex-col rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
       <div className="flex-1 overflow-x-auto">
@@ -497,44 +514,72 @@ function PeriodMatrixCard({ periods }: { periods: MatrixPeriod[] }) {
                   className="whitespace-nowrap pb-2 pl-3 text-right text-[10px] font-semibold uppercase tracking-[0.1em] text-muted"
                 >
                   {period.short}
+                  {many && period.dates.map((dates, index) => (
+                    <span key={groups[index]} className="mt-0.5 block text-[9px] font-medium normal-case tracking-normal text-muted">
+                      {providerLabel(groups[index])} {dates}
+                    </span>
+                  ))}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.label}>
+            {rows.map((row) => groups.map((provider, group) => (
+              <tr key={`${row.label} ${provider}`}>
                 <th scope="row" className={`truncate border-t border-line/40 py-1.5 text-left text-xs font-medium ${row.revenue ? "text-ink" : "text-accent"}`}>
-                  {row.label}
+                  {/* The row is named once for the group; every line says which platform it is. */}
+                  {group === 0 ? row.label : ""}
+                  {many && platformName(provider)}
                 </th>
-                {periods.map((period) => (
-                  <td key={period.title} className="border-t border-line/40 py-1.5 pl-3 text-right align-baseline leading-tight">
-                    <span className="block text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(row.energy(period.split))}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
-                    <span className="block text-[11px] tabular-nums text-muted">{period.split && row.revenue ? money(row.revenue(period.split)) : " "}</span>
-                  </td>
-                ))}
+                {periods.map((period) => {
+                  const split = period.splits[group] ?? null;
+                  return (
+                    <td key={period.title} className="border-t border-line/40 py-1.5 pl-3 text-right align-baseline leading-tight">
+                      <span className="block text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{split ? <>{matrixKwh(row.energy(split))}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
+                      <span className="block text-[11px] tabular-nums text-muted">{split && row.revenue ? money(row.revenue(split)) : " "}</span>
+                    </td>
+                  );
+                })}
+              </tr>
+            )))}
+            {groups.map((provider, group) => (
+              <tr key={`Total ${provider}`}>
+                <th scope="row" className="truncate border-t border-line pt-2 text-left text-xs font-bold text-ink">
+                  Total
+                  {many && platformName(provider)}
+                </th>
+                {periods.map((period) => {
+                  const split = period.splits[group] ?? null;
+                  return (
+                    <td key={period.title} className="border-t border-line pt-2 pl-3 text-right align-baseline leading-tight">
+                      <span className="block text-[15px] font-bold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{split ? <>{matrixKwh(split.energy.total)}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
+                      <span className="block text-[11px] tabular-nums text-muted">{split ? money(split.revenue.total) : " "}</span>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
-            <tr>
-              <th scope="row" className="truncate border-t border-line pt-2 text-left text-xs font-bold text-ink">Total</th>
-              {periods.map((period) => (
-                <td key={period.title} className="border-t border-line pt-2 pl-3 text-right align-baseline leading-tight">
-                  <span className="block text-[15px] font-bold tabular-nums tracking-[-0.015em] text-ink whitespace-nowrap">{period.split ? <>{matrixKwh(period.split.energy.total)}<i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i></> : "—"}</span>
-                  <span className="block text-[11px] tabular-nums text-muted">{period.split ? money(period.split.revenue.total) : " "}</span>
-                </td>
-              ))}
-            </tr>
           </tbody>
         </table>
       </div>
-      <p className="mt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below · CPO is AC + DC</p>
+      <p className="mt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">
+        kWh above · revenue below · CPO is AC + DC{many ? " · per platform, never added" : ""}
+      </p>
     </GlassCard>
   );
 }
 
+// One platform's figures: its columns of the matrix, and its older cycles under it.
+type PlatformMetrics = {
+  provider: string;
+  today: PeriodSplit;
+  // The current cycle, then the one before it.
+  cycles: Array<{ dates: string; split: PeriodSplit }>;
+  earlier: Array<{ label: string; energy: number; revenue: number }>;
+};
+
 export default function CmsOperatorDashboard() {
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
-  const [earlierCycles, setEarlierCycles] = useState<Array<{ label: string; energy: number; revenue: number }> | null>(null);
   // Status is capped to the matrix/Consumption pair's height on a wide screen, so a long
   // session detail scrolls inside the card rather than stretching the row.
   const pairRef = useRef<HTMLDivElement>(null);
@@ -553,8 +598,8 @@ export default function CmsOperatorDashboard() {
       wide.removeEventListener("change", apply);
     };
   }, []);
-  const [todaySplit, setTodaySplit] = useState<PeriodSplit | null>(null);
-  const [cycleSplits, setCycleSplits] = useState<Array<{ title: string; split: PeriodSplit }> | null>(null);
+  // One entry per platform the selector shows: null until the first load finishes.
+  const [platformMetrics, setPlatformMetrics] = useState<PlatformMetrics[] | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [activeTransactions, setActiveTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
@@ -690,8 +735,9 @@ export default function CmsOperatorDashboard() {
 
   // The CMS window is loaded through cmsWindowStore, shared with Overview: a Refresh
   // started on either page is one request, and both pages follow it.
-  // The cards belong to one platform and its billing cycle; see ./platformSelection.
-  const applyCache = useCallback(async (cache: CmsCache, rule: CycleRule, providerId: string | null) => {
+  // The cards belong to the platforms the selector shows, each on its own billing cycle; see
+  // ./platformSelection.
+  const applyCache = useCallback(async (cache: CmsCache, shown: readonly string[]) => {
     try {
       // Fetch one consistent transaction window for all dashboard metrics and the
       // table; the table's date filter is applied client-side and never refetches. It covers the previous
@@ -735,44 +781,46 @@ export default function CmsOperatorDashboard() {
             metricMap.set(key, mergeTransactionData(existing, transaction));
           }
         }
-        // Cards follow the chosen platform: two platforms bill on different cycles, so a
-        // total summed across both would match no bill.
+        // Every platform shown keeps its own figures: they bill on different cycles, so a total
+        // summed across two of them would match no bill.
         const allMetricTransactions = Array.from(metricMap.values());
-        const metricTransactions = providerId
-          ? allMetricTransactions.filter((transaction) => transaction.provider === providerId)
-          : allMetricTransactions;
-        const todayTransactions = filterTransactionsByRange(metricTransactions, todayRange.startDate, todayRange.endDate);
-
         const cpoMobileNumbers = await matchCpoMobiles(
-          metricTransactions.filter((transaction) => !transaction.type?.trim()).map((transaction) => transaction.mobile)
+          allMetricTransactions.filter((transaction) => !transaction.type?.trim()).map((transaction) => transaction.mobile)
         );
         setCpoMobileNumbers(cpoMobileNumbers);
-        setTodaySplit(splitPeriod(todayTransactions, cpoMobileNumbers));
-        // Seven cycles from the one definition in @/lib/billingCycle: the matrix shows the
-        // current one and the one before, Consumption Details the five older ones.
         const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
         // `end` is exclusive, so the cycle's last day is the day before it.
         const lastDay = (end: number) => dayFmt.format(new Date(end - 24 * 60 * 60 * 1000));
-        const cycleWindow = cyclesBack(now, 7, rule);
         const iso = (ms: number) => new Date(ms).toISOString();
-        setCycleSplits(
-          cycleWindow.slice(-2).reverse().map((cycle, index) => ({
-            title: `${index === 0 ? "Current cycle" : "Previous cycle"} (${dayFmt.format(new Date(cycle.start))} – ${lastDay(cycle.end)})`,
-            split: splitPeriod(
-              // The current cycle has not finished, so it only counts up to now.
-              filterTransactionsByRange(metricTransactions, iso(cycle.start), iso(index === 0 ? Math.min(cycle.end, now.getTime()) : cycle.end)),
-              cpoMobileNumbers
-            ),
-          }))
-        );
-
-        // Consumption Details carries on where the matrix stops, newest first.
-        setEarlierCycles(
-          cycleWindow.slice(0, 5).reverse().map((cycle) => {
-            const split = splitPeriod(filterTransactionsByRange(metricTransactions, iso(cycle.start), iso(cycle.end)), cpoMobileNumbers);
-            return { label: cycleLabel(cycle, rule), energy: split.energy.total, revenue: split.revenue.total };
-          })
-        );
+        // An empty selection is the first load, before the platforms are known: everything
+        // counts, on the default cycle.
+        const groups: Array<string | null> = shown.length ? [...shown] : [null];
+        setPlatformMetrics(groups.map((provider) => {
+          const transactions = provider
+            ? allMetricTransactions.filter((transaction) => transaction.provider === provider)
+            : allMetricTransactions;
+          // Seven cycles from the one definition in @/lib/billingCycle: the matrix shows the
+          // current one and the one before, Consumption Details the five older ones.
+          const rule = cycleRuleFor(provider);
+          const cycleWindow = cyclesBack(now, 7, rule);
+          return {
+            provider: provider ?? "",
+            today: splitPeriod(filterTransactionsByRange(transactions, todayRange.startDate, todayRange.endDate), cpoMobileNumbers),
+            cycles: cycleWindow.slice(-2).reverse().map((cycle, index) => ({
+              dates: `${dayFmt.format(new Date(cycle.start))} – ${lastDay(cycle.end)}`,
+              split: splitPeriod(
+                // The current cycle has not finished, so it only counts up to now.
+                filterTransactionsByRange(transactions, iso(cycle.start), iso(index === 0 ? Math.min(cycle.end, now.getTime()) : cycle.end)),
+                cpoMobileNumbers
+              ),
+            })),
+            // Consumption Details carries on where the matrix stops, newest first.
+            earlier: cycleWindow.slice(0, 5).reverse().map((cycle) => {
+              const split = splitPeriod(filterTransactionsByRange(transactions, iso(cycle.start), iso(cycle.end)), cpoMobileNumbers);
+              return { label: cycleLabel(cycle, rule), energy: split.energy.total, revenue: split.revenue.total };
+            }),
+          };
+        }));
       } catch {
         // Metric calculation must not prevent the dashboard from rendering.
       }
@@ -789,7 +837,8 @@ export default function CmsOperatorDashboard() {
   const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
   // Derived from the unfiltered cache, so choosing a platform never narrows what is on offer.
   const [livePlatforms, setLivePlatforms] = useState<string[]>([]);
-  const { options: platformOptions, providerId, rule, setPlatform } = usePlatformSelection(livePlatforms);
+  // This page can draw platforms side by side, so it offers "All platforms".
+  const { options: platformOptions, selection, shown: shownPlatforms, setPlatform } = usePlatformSelection(livePlatforms, { allowAll: true });
   const windowRequested = useRef(false);
   useEffect(() => {
     let shownCache: CmsCache | null = null;
@@ -803,7 +852,7 @@ export default function CmsOperatorDashboard() {
         shownCache = cache;
         setDataTill(cache.coverage.at(-1)?.endDate ?? null);
         setLivePlatforms([...new Set(cache.transactions.map((t) => t.provider).filter((id): id is string => !!id))].sort());
-        void applyCache(filterCache(cache), rule, providerId);
+        void applyCache(filterCache(cache), shownPlatforms);
       }
     };
     sync(getCmsWindowSnapshot());
@@ -813,7 +862,7 @@ export default function CmsOperatorDashboard() {
       void requestCmsWindow();
     }
     return unsubscribe;
-  }, [applyCache, filterCache, rule, providerId]);
+  }, [applyCache, filterCache, shownPlatforms]);
 
   const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 
@@ -916,15 +965,22 @@ export default function CmsOperatorDashboard() {
     }
   }, [backfillRunning]);
 
+  // The table and the Status card follow the platform selector, so neither keeps a platform
+  // filter of its own. An empty selection is the first load, before the platforms are known.
+  const onShownPlatform = useCallback(
+    (transaction: Transaction) => shownPlatforms.length === 0 || shownPlatforms.includes(transaction.provider ?? ""),
+    [shownPlatforms]
+  );
   // Live sessions for the Active now card; a stored copy can carry better energy figures.
   const activeSessions = useMemo(() => {
     const stored = new Map(allTransactions.map((t) => [t.transactionId || t.id, t]));
     return activeTransactions
+      .filter(onShownPlatform)
       .map((t) => {
         const known = stored.get(t.transactionId || t.id);
         return known ? mergeTransactionData(known, t) : t;
       });
-  }, [allTransactions, activeTransactions]);
+  }, [allTransactions, activeTransactions, onShownPlatform]);
   // Stuck sessions (past 7 hours, or an older duplicate on the same gun) are not counted as charging.
   const { live: liveSessions } = useMemo(() => splitActiveSessions(activeSessions), [activeSessions]);
   // Live meter readings for every charging session; the Status list shows their Energy.
@@ -960,17 +1016,12 @@ export default function CmsOperatorDashboard() {
       activeTransactionIds.has(transaction.id) ||
       activeTransactionIds.has(transaction.transactionId);
     return [...live, ...completedOrHistorical].filter((transaction) =>
+      onShownPlatform(transaction) &&
       matchesTransactionFilters(transaction, filters, isLive(transaction), cpoMobileNumbers)
     );
-  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers, liveById]);
+  }, [allTransactions, activeTransactions, activeTransactionIds, datePreset, customFrom, customTo, filters, cpoMobileNumbers, liveById, onShownPlatform]);
   const locationOptions = useMemo(
     () => [...new Set(allTransactions.map((transaction) => transaction.location).filter(Boolean))].sort(),
-    [allTransactions]
-  );
-  // Platforms with sessions in the loaded window; the platform filter and labels only show
-  // when there is more than one.
-  const providerOptions = useMemo(
-    () => [...new Set(allTransactions.map((transaction) => transaction.provider).filter(Boolean))].sort(),
     [allTransactions]
   );
   const chargerOptions = useMemo(
@@ -1058,6 +1109,26 @@ export default function CmsOperatorDashboard() {
   // Match the loaded CMS history window; allow custom filters back to 6 July 2026.
   const customMinDate = "2026-07-06";
   const customMaxDate = istDateString();
+  const manyPlatforms = shownPlatforms.length > 1;
+  // The matrix columns: Today, then the current cycle and the one before, each carrying one
+  // split per platform shown.
+  const cycleColumn = (index: number): MatrixPeriod => {
+    const short = index === 0 ? "Current cycle" : "Previous cycle";
+    const dates = (platformMetrics ?? []).map((metrics) => metrics.cycles[index]?.dates ?? "");
+    return {
+      // With one platform the dates belong in the heading's tooltip; with more they are listed
+      // under it, since each platform closes its cycle on its own day.
+      title: dates.length === 1 ? `${short} (${dates[0]})` : short,
+      short,
+      dates,
+      splits: platformMetrics ? platformMetrics.map((metrics) => metrics.cycles[index]?.split ?? null) : [null],
+    };
+  };
+  const matrixPeriods: MatrixPeriod[] = [
+    { title: "Today", short: "Today", dates: [], splits: platformMetrics ? platformMetrics.map((metrics) => metrics.today) : [null] },
+    cycleColumn(0),
+    cycleColumn(1),
+  ];
   const filterSelectClass =
     "rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft";
 
@@ -1075,7 +1146,7 @@ export default function CmsOperatorDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <PlatformSelect options={platformOptions} providerId={providerId} onChange={setPlatform} />
+            <PlatformSelect options={platformOptions} selection={selection} onChange={setPlatform} />
             <StationSelect options={stationOptions} stationId={stationId} onChange={setStation} />
             {dataTill && (
               <p className="text-xs text-muted">
@@ -1127,41 +1198,39 @@ export default function CmsOperatorDashboard() {
             inside the card instead of growing the page. */}
         <div className="relative z-0 mb-6 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,42.5rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,49rem)_minmax(0,1fr)]">
           <div ref={pairRef} className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,13.5rem)] xl:grid-cols-[minmax(0,33rem)_minmax(0,15rem)]">
-            <PeriodMatrixCard
-              periods={[
-                { title: "Today", short: "Today", split: todaySplit },
-                ...(cycleSplits ?? [{ title: "Current cycle", split: null }, { title: "Previous cycle", split: null }]).map((cycle) => ({
-                  title: cycle.title,
-                  // "Current cycle (16 Oct – 31 Oct)" heads the column as "Current cycle"; the dates
-                  // stay in the title attribute.
-                  short: cycle.title.replace(/\s*\([^)]*\)\s*$/, ""),
-                  split: cycle.split,
-                })),
-              ]}
-            />
+            <PeriodMatrixCard platforms={shownPlatforms} periods={matrixPeriods} />
             <GlassCard className="flex min-w-0 flex-col rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">Consumption Details</p>
               <p className="mt-1 text-xs font-medium text-muted">Earlier cycles</p>
               <div className="mt-2.5">
-                {(earlierCycles ?? []).map((cycle) => (
-                  <div key={cycle.label} className="flex items-baseline justify-between gap-2.5 border-t border-line/40 py-1.5 first:border-t-0">
-                    <p className="whitespace-nowrap text-[11px] font-medium text-muted">{cycle.label}</p>
-                    <p className="text-right">
-                      <span className="block whitespace-nowrap text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink">
-                        {matrixKwh(cycle.energy)}
-                        <i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i>
-                      </span>
-                      <span className="mt-px block whitespace-nowrap text-[10.5px] tabular-nums text-muted">{money(cycle.revenue)}</span>
-                    </p>
+                {/* With two platforms each gets a heading and its three most recent cycles, so the
+                    card keeps roughly the height it has with one. */}
+                {(platformMetrics ?? []).map((metrics) => (
+                  <div key={metrics.provider}>
+                    {manyPlatforms && (
+                      <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-muted first:mt-0">{providerLabel(metrics.provider)}</p>
+                    )}
+                    {metrics.earlier.slice(0, manyPlatforms ? 3 : 5).map((cycle) => (
+                      <div key={cycle.label} className="flex items-baseline justify-between gap-2.5 border-t border-line/40 py-1.5 first:border-t-0">
+                        <p className="whitespace-nowrap text-[11px] font-medium text-muted">{cycle.label}</p>
+                        <p className="text-right">
+                          <span className="block whitespace-nowrap text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink">
+                            {matrixKwh(cycle.energy)}
+                            <i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i>
+                          </span>
+                          <span className="mt-px block whitespace-nowrap text-[10.5px] tabular-nums text-muted">{money(cycle.revenue)}</span>
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 ))}
-                {!earlierCycles && <p className="text-xs text-muted">Loading consumption</p>}
+                {!platformMetrics && <p className="text-xs text-muted">Loading consumption</p>}
               </div>
               <p className="mt-auto pt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
             </GlassCard>
           </div>
           <div className="min-w-0 overflow-y-auto" style={pairHeight ? { maxHeight: pairHeight } : undefined}>
-            <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={providerOptions.length > 1} />
+            <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={manyPlatforms} />
           </div>
         </div>
 
@@ -1313,19 +1382,6 @@ export default function CmsOperatorDashboard() {
               className={`${filterSelectClass} w-full sm:w-64`}
               aria-label="Search transactions"
             />
-            {providerOptions.length > 1 && (
-              <select
-                value={filters.provider}
-                onChange={(event) => updateFilter("provider", event.target.value)}
-                className={filterSelectClass}
-                aria-label="Platform"
-              >
-                <option value="" className="bg-surface">All platforms</option>
-                {providerOptions.map((provider) => (
-                  <option key={provider} value={provider} className="bg-surface">{providerLabel(provider)}</option>
-                ))}
-              </select>
-            )}
             <select
               value={filters.location}
               onChange={(event) => updateFilter("location", event.target.value)}
@@ -1464,7 +1520,12 @@ export default function CmsOperatorDashboard() {
                           {columnId === "transactionId" && displaySessionId(transaction.provider, transaction.transactionId)}
                           {columnId === "chargerId" && transaction.chargerId}
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
-                          {columnId === "startedAt" && formatDate(transaction.startedAt)}
+                          {columnId === "startedAt" && (
+                            <>
+                              {formatDate(transaction.startedAt)}
+                              {manyPlatforms && <span className="mt-0.5 block text-[10px] text-muted">{providerLabel(transaction.provider)}</span>}
+                            </>
+                          )}
                           {columnId === "stoppedAt" && formatDate(transaction.stoppedAt)}
                           {columnId === "userName" && <Spoiler>{displayUserName(transaction.userName)}</Spoiler>}
                           {columnId === "mobile" && (transaction.mobile ? <Spoiler>{transaction.mobile}</Spoiler> : "—")}

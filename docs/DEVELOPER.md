@@ -140,10 +140,17 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
   pure; `previousBillingCycle` lives here and not in `transactionStore.ts`, which the test runner
   loads directly and so must keep to type-only imports.
 - **One platform per card**: `cms/platformSelection.tsx`, shared by the dashboard and Overview and
-  kept in `localStorage` (`triarc-admin-platform`). There is no "all platforms" on purpose — two
-  platforms on different cycles cannot be summed into a figure that matches any bill. The platforms
-  on offer are derived from the unfiltered cache, so choosing one never narrows the list. Hidden
-  with fewer than two.
+  kept in `localStorage` (`triarc-admin-platform`). Two platforms are never summed — their cycles
+  close on different days, so the total would match no bill. "All platforms" therefore means side
+  by side, and only a page that can draw them that way asks for it: the CMS dashboard passes
+  `{ allowAll: true }`, so every matrix row is drawn once per platform (its cycle dates listed
+  under the column heading), Consumption Details heads each platform and shows three cycles for it
+  instead of five, and the Status card and the sessions table name the platform on each row.
+  Overview has one figure to a card, so it never offers "all" and reads a remembered one as the
+  first platform. The hook returns `selection` (what the dropdown shows), `shown` (the platforms
+  the cards cover) and `providerId` (the single platform, null in "all"); the sessions table keeps
+  no platform filter of its own and follows `shown`. The platforms on offer are derived from the
+  unfiltered cache, so choosing one never narrows the list. Hidden with fewer than two.
 - **Platform bills**: `provider_bills` holds what a platform billed Triarc for a cycle (`their_*`,
   keyed in by hand) beside what the sessions say (`our_*`). `/api/admin/provider-bills` recomputes
   `our_*` from `cms_transactions` on every save rather than trusting the request, excludes CPO
@@ -200,10 +207,10 @@ in `pdf()` mirrors an Excel template (rows A1:G37).
 - The repo's migrations cannot rebuild the database from empty (the earliest tables predate them);
   the live project is the reference. The ESP32 device tables were created outside the repo.
 - Live migration versions differ from the repo file names (applied with their own timestamp).
-- **Not yet applied**: `20261029000100_provider_settings.sql` and `20261029000200_provider_bills.sql`.
-  Until they are, the Platforms and Platform Bills pages answer with the "ensure the migration has
-  been applied" error, and the provider gate falls back to env vars alone — which is exactly
-  today's behaviour.
+- `20261029000100_provider_settings.sql` and `20261029000200_provider_bills.sql` were applied on
+  29 Oct 2026 (`chargemod` seeded enabled; `RLS OK`, 81 checks). If the settings table is ever
+  unreadable the provider gate falls back to env vars alone, which is the pre-Platforms
+  behaviour.
 
 ## 10. Tests
 

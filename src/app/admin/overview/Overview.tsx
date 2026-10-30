@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase/billing";
 import { overviewMetrics } from "./overviewMetrics";
 import { comparisonCycle, cyclesBack, type CycleRule } from "@/lib/billingCycle";
 import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "@/app/admin/cms/cmsWindowStore";
-import { shortChargerLabel, splitActiveSessions } from "@/app/admin/cms/transactionFilters";
+import { chargerCurrent, shortChargerLabel, splitActiveSessions } from "@/app/admin/cms/transactionFilters";
 import { StationSelect, useStationSelection } from "@/app/admin/cms/stationSelection";
 import { PlatformSelect, usePlatformSelection } from "@/app/admin/cms/platformSelection";
 import { billedInCycle, financeMetrics, outstanding, type FinanceInvoice } from "./financeMetrics";
@@ -51,6 +51,7 @@ function when(iso: string) {
 }
 
 const card = "rounded-2xl border border-line bg-surface p-5";
+const tightCard = "rounded-2xl border border-line bg-surface px-4 py-[15px]";
 // Widget header, after Kokonut UI's Widget Grid: a muted icon and a small title.
 const widgetTitle = "flex items-center gap-2 text-[13px] font-medium text-muted";
 function WidgetTitle({ icon: Icon, children, id }: { icon: LucideIcon; children: React.ReactNode; id?: string }) {
@@ -163,6 +164,17 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
   const unpaid = liveInvoices.filter((i) => outstanding(i) > 0);
   const newEnquiries = enquiries.filter((e) => e.status === "New").length;
 
+  // Today's AC against DC, by the same rule the CMS dashboard splits consumption with.
+  const todaySplit = cms.status === "ok"
+    ? cms.sessions.reduce((totals, t) => {
+        if (!t.startedAt || istDate(new Date(t.startedAt)) !== todayIst) return totals;
+        if (providerId && t.provider !== providerId) return totals;
+        const current = chargerCurrent(t);
+        if (current) totals[current] += Math.max(0, Number(t.energyKwh) || 0);
+        return totals;
+      }, { ac: 0, dc: 0 })
+    : null;
+
   const days = cms.status === "ok" ? cms.metrics.days : [];
   const values = days.map((d) => d[metric]);
   const max = Math.max(1, ...values);
@@ -210,7 +222,7 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </div>
         ) : (
           <>
-            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,2.4fr)]">
+            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 gap-3.5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,2.4fr)]">
               {(() => {
                 type Totals = { kwh: number; revenue: number; sessions: number };
                 const m = cms.status === "ok" ? cms.metrics : null;
@@ -238,19 +250,28 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
 
                 return (
                   <>
-                    <div className={`${card} flex flex-col`}>
+                    <div className={`${tightCard} flex flex-col`}>
                       <div className="flex items-center justify-between gap-2">
                         <p className={widgetTitle}><CalendarDays aria-hidden="true" className="size-3.5" />Today</p>
                         <p className="text-xs tabular-nums text-muted">{istDay.format(new Date()).replace("Sept", "Sep")}</p>
                       </div>
-                      {m ? <div className="mt-2.5 flex justify-end">{figures(m.today, null)}</div> : skeleton}
+                      {m ? (
+                        <div className="my-auto flex items-baseline justify-between gap-2 pt-1.5">
+                          {todaySplit && (
+                            <span className="text-[11px] font-medium tabular-nums text-muted">
+                              AC {kwh(todaySplit.ac)} · DC {kwh(todaySplit.dc)}
+                            </span>
+                          )}
+                          {figures(m.today, null)}
+                        </div>
+                      ) : skeleton}
                     </div>
 
-                    <div className={`${card} flex flex-col`}>
+                    <div className={`${tightCard} flex flex-col`}>
                       <p className={widgetTitle}><CalendarDays aria-hidden="true" className="size-3.5" />Billing cycles</p>
-                      <div className="mt-2.5 grid grid-cols-1 gap-y-3 sm:grid-cols-3 sm:gap-x-5">
+                      <div className="mt-1.5 grid grid-cols-1 gap-y-2.5 sm:grid-cols-3 sm:gap-x-[18px]">
                         {blocks.map((b, i) => (
-                          <div key={b.label} className={`min-w-0 ${i ? "border-t border-line pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0" : ""}`}>
+                          <div key={b.label} className={`min-w-0 leading-tight ${i ? "border-t border-line pt-2.5 sm:border-l sm:border-t-0 sm:pl-[18px] sm:pt-0" : ""}`}>
                             <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{b.label}</p>
                             {b.totals ? (
                               <div className="mt-1.5 flex items-baseline justify-between gap-2">

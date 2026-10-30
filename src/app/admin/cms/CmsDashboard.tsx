@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, RefreshCw, Settings2, RotateCcw, Save, Download } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Activity, RefreshCw, Search, Settings2, SlidersHorizontal, RotateCcw, Save, Download, X } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { Loader } from "@/components/ui/Loader";
 import { Spoiler } from "@/components/ui/Spoiler";
@@ -361,20 +361,51 @@ function formatDate(value: string | null) {
   });
 }
 
+// The columns the table leads with have names a person would use; the rest keep their field
+// name, which is what someone adding a raw field is looking for.
+const CMS_COLUMN_LABELS: Partial<Record<CmsColumnId, string>> = {
+  vehicle: "Vehicle & customer",
+  soc: "SoC",
+  startedAt: "Session",
+  stoppedAt: "Ended",
+  chargerName: "Charger",
+  energyKwh: "Energy",
+  tariffAmount: "Amount",
+  location: "Location",
+  userName: "Customer",
+  vehicleNumber: "Vehicle number",
+  mobile: "Mobile",
+  stopReason: "Stop reason",
+};
+
 const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> =
-  CMS_COLUMN_IDS.map((id) => ({ id, label: id }));
+  CMS_COLUMN_IDS.map((id) => ({ id, label: CMS_COLUMN_LABELS[id] ?? id }));
 
 const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [
-  "vehicleNumber",
-  "startSoc",
-  "endSoc",
   "startedAt",
-  "userName",
-  "location",
+  "vehicle",
   "chargerName",
+  "soc",
   "energyKwh",
-  "stopReason",
+  "tariffAmount",
 ];
+
+// Start and end state of charge in one cell, with the span drawn as a bar: the figure that
+// matters is how far the car came, and two columns of percentages did not show it.
+function socRange(start: number | null | undefined, end: number | null | undefined) {
+  if (start == null || end == null) return "—";
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap">
+      <span className="relative h-1 w-11 overflow-hidden rounded-full bg-soft" aria-hidden="true">
+        <i className="absolute inset-y-0 left-0 rounded-full bg-accent/35" style={{ width: `${start}%` }} />
+        <i className="absolute inset-y-0 left-0 rounded-full bg-accent/85" style={{ width: `${end}%` }} />
+      </span>
+      <span className="tabular-nums">
+        {start}% <span aria-hidden="true">→</span> <span className="font-semibold text-ink">{end}%</span>
+      </span>
+    </span>
+  );
+}
 
 function collectionLength(value: unknown): number {
   if (Array.isArray(value)) return value.length;
@@ -578,6 +609,38 @@ type PlatformMetrics = {
   earlier: Array<{ label: string; energy: number; revenue: number }>;
 };
 
+// How tall a table row is, kept in this browser like the station and platform choices.
+// Compact is the default: the table is read in long sittings, and the second line of every
+// cell is only wanted when something looks wrong.
+type Density = "compact" | "comfortable";
+const DENSITY_KEY = "triarc-admin-table-density";
+let densityChoice: Density = "compact";
+try {
+  if (typeof window !== "undefined" && window.localStorage.getItem(DENSITY_KEY) === "comfortable") {
+    densityChoice = "comfortable";
+  }
+} catch {
+  // storage blocked: compact stands
+}
+const densityListeners = new Set<() => void>();
+const subscribeDensity = (listener: () => void) => {
+  densityListeners.add(listener);
+  return () => {
+    densityListeners.delete(listener);
+  };
+};
+
+// Outside the component: it writes the module's own value, which is not a render-time effect.
+function selectDensity(value: Density) {
+  densityChoice = value;
+  try {
+    window.localStorage.setItem(DENSITY_KEY, value);
+  } catch {
+    // storage blocked: the choice lasts for this page only
+  }
+  for (const listener of densityListeners) listener();
+}
+
 export default function CmsOperatorDashboard() {
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   // Status is capped to the matrix/Consumption pair's height on a wide screen, so a long
@@ -606,6 +669,7 @@ export default function CmsOperatorDashboard() {
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const density = useSyncExternalStore(subscribeDensity, () => densityChoice, () => "compact" as Density);
   const [datePreset, setDatePreset] = useState<DatePreset | "custom">("today");
   const [customFrom, setCustomFrom] = useState(() => istDateString().slice(0, 8) + "01");
   const [customTo, setCustomTo] = useState(() => istDateString());
@@ -621,6 +685,8 @@ export default function CmsOperatorDashboard() {
   const [columnEditorOpen, setColumnEditorOpen] = useState(false);
   const [savingColumns, setSavingColumns] = useState(false);
   const [columnsLoaded, setColumnsLoaded] = useState(false);
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
   const columnEditorRef = useRef<HTMLDivElement>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const [draggedTableColumn, setDraggedTableColumn] = useState<CmsColumnId | null>(null);
@@ -709,6 +775,17 @@ export default function CmsOperatorDashboard() {
     setDraftColumns(visibleColumns);
     setColumnEditorOpen(false);
   }
+
+  useEffect(() => {
+    if (!filterMenuOpen) return;
+
+    function handleOutsideClick(event: MouseEvent) {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) setFilterMenuOpen(false);
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [filterMenuOpen]);
 
   useEffect(() => {
     if (!columnEditorOpen) return;
@@ -1029,6 +1106,25 @@ export default function CmsOperatorDashboard() {
     [allTransactions]
   );
   const filtersActive = Object.values(filters).some((value) => value.trim() !== "");
+  // One chip per filter that is set, named the way the popover names it.
+  const activeFilters = useMemo(() => {
+    const names: Partial<Record<keyof TransactionFilters, string>> = {
+      location: "Location", charger: "Charger", current: "Current", status: "Status",
+      customer: "Customer", minKwh: "Min kWh",
+    };
+    const values: Record<string, string> = {
+      ac: "AC only", dc: "DC only", live: "Live", completed: "Completed", failed: "Failed",
+      cpo: "CPO", regular: "Regular",
+    };
+    return (Object.keys(names) as Array<keyof TransactionFilters>)
+      .filter((key) => filters[key].trim() !== "")
+      .map((key) => ({
+        key,
+        label: names[key] as string,
+        value: key === "minKwh" ? `${filters[key]} and up` : key === "location" ? displayLocation(filters[key]) : values[filters[key]] ?? filters[key],
+      }));
+  }, [filters]);
+  const activeFilterCount = activeFilters.length;
   const count = transactions.length;
 
   const pagedTransactions = transactions.slice((page - 1) * pageSize, page * pageSize);
@@ -1107,6 +1203,8 @@ export default function CmsOperatorDashboard() {
     { value: "custom", label: "Custom range" },
   ];
   // Match the loaded CMS history window; allow custom filters back to 6 July 2026.
+  const compact = density === "compact";
+  const cellPadding = compact ? "px-4 py-1.5" : "px-4 py-3";
   const customMinDate = "2026-07-06";
   const customMaxDate = istDateString();
   const manyPlatforms = shownPlatforms.length > 1;
@@ -1130,7 +1228,8 @@ export default function CmsOperatorDashboard() {
     cycleColumn(1),
   ];
   const filterSelectClass =
-    "rounded-lg border border-line bg-soft px-2 py-2 text-xs text-ink outline-none hover:bg-soft";
+    "w-full rounded-lg border border-line bg-soft px-2 py-1.5 text-xs text-ink outline-none hover:bg-soft";
+  const filterLabelClass = "mt-2 text-[10px] font-bold uppercase tracking-[0.08em] text-muted first:mt-0";
 
   return (
     <>
@@ -1292,6 +1391,19 @@ export default function CmsOperatorDashboard() {
                   />
                 </>
               )}
+              <div className="inline-flex rounded-full bg-raised p-0.5" role="group" aria-label="Row height">
+                {(["compact", "comfortable"] as Density[]).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => selectDensity(value)}
+                    aria-pressed={density === value}
+                    className={`rounded-full px-2.5 py-1.5 text-xs font-semibold capitalize ${density === value ? "bg-primary text-primary-ink" : "text-muted hover:text-ink"}`}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
               <label className="flex items-center gap-2 text-xs text-muted">
                 <span>Rows:</span>
                 <select
@@ -1373,93 +1485,133 @@ export default function CmsOperatorDashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-3">
-            <input
-              type="search"
-              value={filters.search}
-              onChange={(event) => updateFilter("search", event.target.value)}
-              placeholder="Search name, mobile, vehicle, ID"
-              className={`${filterSelectClass} w-full sm:w-64`}
-              aria-label="Search transactions"
-            />
-            <select
-              value={filters.location}
-              onChange={(event) => updateFilter("location", event.target.value)}
-              className={filterSelectClass}
-              aria-label="Location"
-            >
-              <option value="" className="bg-surface">All locations</option>
-              {locationOptions.map((location) => (
-                <option key={location} value={location} className="bg-surface">{displayLocation(location)}</option>
-              ))}
-            </select>
-            <select
-              value={filters.charger}
-              onChange={(event) => updateFilter("charger", event.target.value)}
-              className={filterSelectClass}
-              aria-label="Charger"
-            >
-              <option value="" className="bg-surface">All chargers</option>
-              {chargerOptions.map((charger) => (
-                <option key={charger} value={charger} className="bg-surface">{charger}</option>
-              ))}
-            </select>
-            <select
-              value={filters.current}
-              onChange={(event) => updateFilter("current", event.target.value as TransactionFilters["current"])}
-              className={filterSelectClass}
-              aria-label="AC or DC"
-            >
-              <option value="" className="bg-surface">AC &amp; DC</option>
-              <option value="ac" className="bg-surface">AC only</option>
-              <option value="dc" className="bg-surface">DC only</option>
-            </select>
-            <select
-              value={filters.status}
-              onChange={(event) => updateFilter("status", event.target.value as TransactionFilters["status"])}
-              className={filterSelectClass}
-              aria-label="Status"
-            >
-              <option value="" className="bg-surface">All statuses</option>
-              <option value="live" className="bg-surface">Live</option>
-              <option value="completed" className="bg-surface">Completed</option>
-              <option value="failed" className="bg-surface">Failed (0 kWh)</option>
-            </select>
-            <select
-              value={filters.customer}
-              onChange={(event) => updateFilter("customer", event.target.value as TransactionFilters["customer"])}
-              className={filterSelectClass}
-              aria-label="Customer type"
-            >
-              <option value="" className="bg-surface">All customers</option>
-              <option value="cpo" className="bg-surface">CPO</option>
-              <option value="regular" className="bg-surface">Regular</option>
-            </select>
-            <label className="flex items-center gap-2 text-xs text-muted">
-              <span>Min kWh:</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-2.5">
+            <div className="relative w-full sm:w-72">
+              <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
-                type="number"
-                min={0}
-                step={0.1}
-                value={filters.minKwh}
-                onChange={(event) => updateFilter("minKwh", event.target.value)}
-                placeholder="0"
-                className={`${filterSelectClass} w-20`}
-                aria-label="Minimum energy in kWh"
+                type="search"
+                value={filters.search}
+                onChange={(event) => updateFilter("search", event.target.value)}
+                placeholder="Search name, mobile, vehicle, ID"
+                className="w-full rounded-full border-0 bg-raised py-2 pl-8 pr-3 text-xs text-ink outline-none focus:ring-2 focus:ring-focus-ring/25"
+                aria-label="Search transactions"
               />
-            </label>
+            </div>
+            {/* Six dropdowns in a wrapping strip became one button: what is set shows as a chip
+                under it, so the row keeps its height whatever is filtered. */}
+            <div ref={filterMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setFilterMenuOpen((open) => !open)}
+                aria-expanded={filterMenuOpen}
+                className="inline-flex items-center gap-2 rounded-full bg-raised px-3 py-2 text-xs font-semibold text-ink hover:bg-soft"
+              >
+                <SlidersHorizontal size={13} className="text-muted" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-ink">{activeFilterCount}</span>
+                )}
+              </button>
+              {filterMenuOpen && (
+                <div className="absolute left-0 top-full z-30 mt-2 w-64 rounded-xl border border-line bg-surface p-3 shadow-xl">
+                  <p className={filterLabelClass}>Location</p>
+                  <select
+                    value={filters.location}
+                    onChange={(event) => updateFilter("location", event.target.value)}
+                    className={filterSelectClass}
+                    aria-label="Location"
+                  >
+                    <option value="" className="bg-surface">All locations</option>
+                    {locationOptions.map((location) => (
+                      <option key={location} value={location} className="bg-surface">{displayLocation(location)}</option>
+                    ))}
+                  </select>
+                  <p className={filterLabelClass}>Charger</p>
+                  <select
+                    value={filters.charger}
+                    onChange={(event) => updateFilter("charger", event.target.value)}
+                    className={filterSelectClass}
+                    aria-label="Charger"
+                  >
+                    <option value="" className="bg-surface">All chargers</option>
+                    {chargerOptions.map((charger) => (
+                      <option key={charger} value={charger} className="bg-surface">{charger}</option>
+                    ))}
+                  </select>
+                  <p className={filterLabelClass}>Current</p>
+                  <select
+                    value={filters.current}
+                    onChange={(event) => updateFilter("current", event.target.value as TransactionFilters["current"])}
+                    className={filterSelectClass}
+                    aria-label="AC or DC"
+                  >
+                    <option value="" className="bg-surface">AC &amp; DC</option>
+                    <option value="ac" className="bg-surface">AC only</option>
+                    <option value="dc" className="bg-surface">DC only</option>
+                  </select>
+                  <p className={filterLabelClass}>Status</p>
+                  <select
+                    value={filters.status}
+                    onChange={(event) => updateFilter("status", event.target.value as TransactionFilters["status"])}
+                    className={filterSelectClass}
+                    aria-label="Status"
+                  >
+                    <option value="" className="bg-surface">All statuses</option>
+                    <option value="live" className="bg-surface">Live</option>
+                    <option value="completed" className="bg-surface">Completed</option>
+                    <option value="failed" className="bg-surface">Failed (0 kWh)</option>
+                  </select>
+                  <p className={filterLabelClass}>Customer</p>
+                  <select
+                    value={filters.customer}
+                    onChange={(event) => updateFilter("customer", event.target.value as TransactionFilters["customer"])}
+                    className={filterSelectClass}
+                    aria-label="Customer type"
+                  >
+                    <option value="" className="bg-surface">All customers</option>
+                    <option value="cpo" className="bg-surface">CPO</option>
+                    <option value="regular" className="bg-surface">Regular</option>
+                  </select>
+                  <p className={filterLabelClass}>Minimum energy</p>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    value={filters.minKwh}
+                    onChange={(event) => updateFilter("minKwh", event.target.value)}
+                    placeholder="0 kWh"
+                    className={filterSelectClass}
+                    aria-label="Minimum energy in kWh"
+                  />
+                </div>
+              )}
+            </div>
+            {/* What is set, and the way back out of it. */}
+            {activeFilters.map((filter) => (
+              <span key={filter.key} className="inline-flex items-center gap-1.5 rounded-full bg-accent-pale py-1 pl-2.5 pr-1 text-[11px] font-medium text-ink">
+                {filter.label} <b className="font-bold">{filter.value}</b>
+                <button
+                  type="button"
+                  onClick={() => updateFilter(filter.key, "" as never)}
+                  className="rounded-full p-0.5 text-muted hover:bg-soft hover:text-ink"
+                  aria-label={`Remove the ${filter.label.toLowerCase()} filter`}
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
             {filtersActive && (
               <button
                 onClick={clearFilters}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-muted hover:bg-soft hover:text-ink"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-muted hover:bg-soft hover:text-ink"
               >
-                <RotateCcw size={13} /> Clear filters
+                <RotateCcw size={12} /> Clear all
               </button>
             )}
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1250px] w-full border-collapse text-left text-sm">
+            <table className="min-w-[880px] w-full border-collapse text-left text-sm">
               <thead className="bg-raised text-xs uppercase tracking-wider text-muted">
                 <tr>
                   {visibleColumns.map((columnId) => {
@@ -1491,7 +1643,7 @@ export default function CmsOperatorDashboard() {
                           setDraggedTableColumn(null);
                         }}
                         className={[
-                          "whitespace-nowrap px-4 py-3 select-none",
+                          `whitespace-nowrap select-none ${compact ? "px-4 py-2" : "px-4 py-3"}`,
                           draggedTableColumn === column.id
                             ? "bg-emerald-300/10 text-emerald-700"
                             : "cursor-grab active:cursor-grabbing",
@@ -1515,19 +1667,26 @@ export default function CmsOperatorDashboard() {
                   return (
                     <tr key={transaction.id} className="hover:bg-raised">
                       {visibleColumns.map((columnId) => (
-                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-muted">
+                        <td key={columnId} className={`whitespace-nowrap text-muted ${cellPadding}`}>
                           {columnId === "id" && displaySessionId(transaction.provider, transaction.id)}
                           {columnId === "transactionId" && displaySessionId(transaction.provider, transaction.transactionId)}
                           {columnId === "chargerId" && transaction.chargerId}
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
+                          {columnId === "vehicle" && (
+                            <>
+                              <span className="block font-mono text-[12.5px] font-semibold tracking-[-0.02em] text-ink">{transaction.vehicleNumber ?? "—"}</span>
+                              {!compact && <span className="block text-[11px] text-muted">{displayUserName(transaction.userName)}</span>}
+                            </>
+                          )}
+                          {columnId === "soc" && socRange(transaction.startSoc, transaction.endSoc)}
                           {columnId === "startedAt" && (
                             <>
                               {formatDate(transaction.startedAt)}
-                              {manyPlatforms && <span className="mt-0.5 block text-[10px] text-muted">{providerLabel(transaction.provider)}</span>}
+                              {manyPlatforms && !compact && <span className="mt-0.5 block text-[10px] text-muted">{providerLabel(transaction.provider)}</span>}
                             </>
                           )}
                           {columnId === "stoppedAt" && formatDate(transaction.stoppedAt)}
-                          {columnId === "userName" && <Spoiler>{displayUserName(transaction.userName)}</Spoiler>}
+                          {columnId === "userName" && displayUserName(transaction.userName)}
                           {columnId === "mobile" && (transaction.mobile ? <Spoiler>{transaction.mobile}</Spoiler> : "—")}
                           {columnId === "userType" && (transaction.userType ?? "—")}
                           {columnId === "tagReference" && (transaction.tagReference ?? "—")}
@@ -1540,7 +1699,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
-                          {columnId === "vehicleNumber" && (transaction.vehicleNumber ? <Spoiler className="font-mono text-emerald-700">{transaction.vehicleNumber}</Spoiler> : "—")}
+                          {columnId === "vehicleNumber" && (transaction.vehicleNumber ? <span className="font-mono text-ink">{transaction.vehicleNumber}</span> : "—")}
                           {columnId === "tariffAmount" && (transaction.tariffAmount == null ? "—" : money(transaction.tariffAmount))}
                           {columnId === "vat" && (transaction.vat ?? "—")}
                           {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}

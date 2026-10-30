@@ -39,3 +39,4 @@ __pycache__/
 /claude-all-skills.txt
 # A stray nested clone lived here once; never commit one
 /triarc-supabase/
+.canvas/

@@ -156,7 +156,10 @@ export function matchesTransactionFilters(
 }
 
 // Every column the transactions table can show; also what /api/admin/preferences accepts.
+// `vehicle` and `soc` are merged columns: the vehicle number with the customer's name under
+// it, and the start and end state of charge in one cell. The parts stay available on their own.
 export type CmsColumnId =
+  | "vehicle" | "soc"
   | "id" | "transactionId" | "chargerId" | "connectorId" | "startedAt" | "stoppedAt"
   | "userName" | "mobile" | "userType" | "tagReference" | "location" | "locationId"
   | "chargerName" | "stationType" | "stopReason" | "energyKwh" | "startSoc" | "endSoc"
@@ -166,6 +169,7 @@ export type CmsColumnId =
   | "stopValue" | "createdAt" | "updatedAt";
 
 export const CMS_COLUMN_IDS: CmsColumnId[] = [
+  "vehicle", "soc",
   "id", "transactionId", "chargerId", "connectorId", "startedAt", "stoppedAt",
   "userName", "mobile", "userType", "tagReference", "location", "locationId",
   "chargerName", "stationType", "stopReason", "energyKwh", "startSoc", "endSoc",

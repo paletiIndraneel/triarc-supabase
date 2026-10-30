@@ -85,7 +85,7 @@ its attribution header, and all of them use the palette tokens only:
 | `SlidingTabs` | header modules, Billing tabs, the Overview metric switch |
 | `StackPanel` | the CMS Status card; a session page comes from `sessionPage()` in `cms/SessionDetails.tsx` |
 | `Loader` | the CMS transactions table while sessions are being fetched |
-| `Spoiler` | customer data: name, mobile and vehicle number in the CMS table, GSTIN in billing |
+| `Spoiler` | mobile numbers in the CMS table, GSTIN in billing |
 | `RainGlassBackground` | the sign-in page, through `AuthShell`'s `background` prop |
 
 `AuthShell` frames sign-in, set-password, unauthorized and 404, under the Triarc Group wordmark
@@ -187,7 +187,8 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
   sessions. There is no locations card; `locationOptions` still feeds the table's location filter.
 - **Transactions table**: `displayChargerWithGun` puts the connector id where ChargeMOD's name
   carries the connector standard, because both guns of a DC charger are named `CCS-2` and would
-  otherwise read alike. Customer name, mobile and vehicle number are wrapped in `Spoiler`; the gun
+  otherwise read alike. The mobile number is wrapped in `Spoiler`; the vehicle number and the
+  customer's name are read together, in plain sight, so a row can be found at a glance. The gun
   number is not, and CSV export is unaffected. The header carries no "Active" count — the Status
   card already says how many sessions are charging.
 
@@ -278,7 +279,8 @@ variables/secrets, and add `<live address>/signin/set-password` to Supabase Auth
 - Shared helpers in `lib/security.ts` for redirects, CSV and mailto/tel; never reimplement.
 - Dialogs: `confirmDialog` / `promptDialog`, not `window.confirm`.
 - Locations shown with `displayLocation()`; invoices print the stored name.
-- Customer data on screen (name, mobile, vehicle number, GSTIN) goes behind `Spoiler`.
+- Mobile numbers and GSTINs on screen go behind `Spoiler`. The CMS table's vehicle number and
+  customer name are deliberately not hidden: they are what a row is recognised by.
 - Dark mode: `data-admin-theme`; overrides in `admin.module.css` / `billing.module.css` (add at the end).
 - Files use CRLF line endings.
 - Never store ChargeMOD `employeeDetails` (customer tokens).

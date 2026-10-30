@@ -210,40 +210,60 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
           </div>
         ) : (
           <>
-            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 [&:has(>*:hover)>*:not(:hover)]:opacity-55">
+            <section aria-label="Charging figures" aria-busy={cms.status === "loading"} className="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,2.4fr)]">
               {(() => {
+                type Totals = { kwh: number; revenue: number; sessions: number };
                 const m = cms.status === "ok" ? cms.metrics : null;
-                const sameDays = m ? m.currentCycle.revenue - m.lastMonthSameDaysRevenue : 0;
-                const cards = [
-                  { label: "Today", dates: istDay.format(new Date()).replace("Sept", "Sep"), kwh: m?.today.kwh, revenue: m?.today.revenue, sessions: m?.today.sessions },
-                  { label: "Current cycle", dates: m ? prettyRange(m.currentCycle.label) : "", kwh: m?.currentCycle.kwh, revenue: m?.currentCycle.revenue, sessions: m?.currentCycle.sessions, compare: m ? sameDays : null },
-                  { label: "Previous cycle", dates: m ? prettyRange(m.previousCycle.label) : "", kwh: m?.previousCycle.kwh, revenue: m?.previousCycle.revenue, sessions: m?.previousCycle.sessions },
-                  { label: "Cycle before", dates: m ? prettyRange(m.olderCycle.label) : "", kwh: m?.olderCycle.kwh, revenue: m?.olderCycle.revenue, sessions: m?.olderCycle.sessions },
-                ];
-                return cards.map((c) => (
-                  <div key={c.label} className={`${card} flex flex-col transition-opacity duration-200 ease-out`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={widgetTitle}><CalendarDays aria-hidden="true" className="size-3.5" />{c.label}</p>
-                      <p className="text-xs tabular-nums text-muted">{c.dates || "\u00a0"}</p>
-                    </div>
-                    {c.kwh === undefined ? (
-                      <div className="mt-4 h-8 w-32 rounded-md bg-soft motion-safe:animate-pulse" />
-                    ) : (
-                      <>
-                        <p className="mt-3 text-[26px] font-semibold leading-tight tracking-tight tabular-nums">{kwh(c.kwh)} kWh</p>
-                        <p className="text-lg font-semibold tabular-nums text-ink">{inr(c.revenue ?? 0)}</p>
-                      </>
+                const skeleton = <div className="mt-3 h-9 w-28 rounded-md bg-soft motion-safe:animate-pulse" />;
+                // One figure block — kWh large, revenue and sessions under it, then the optional
+                // comparison. Today and every billing cycle use it, so the two cards read alike.
+                const figures = (t: Totals, delta: number | null) => (
+                  <span className="text-right text-lg font-semibold leading-tight tracking-tight tabular-nums">
+                    {kwh(t.kwh)} kWh
+                    <span className="block whitespace-nowrap text-xs font-medium text-muted">{inr(t.revenue)} · {t.sessions} sessions</span>
+                    {delta != null && (
+                      <span className={`block whitespace-nowrap text-xs font-medium ${delta >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                        {delta >= 0 ? "▲" : "▼"} {kwh(Math.abs(delta))} kWh
+                      </span>
                     )}
-                    <div className="mt-auto pt-3 text-xs text-muted">
-                      {c.sessions !== undefined && <p>{c.sessions} sessions</p>}
-                      {"compare" in c && c.compare != null && (
-                        <p className={`mt-1.5 font-medium ${c.compare >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                          {c.compare >= 0 ? "▲" : "▼"} {inr(Math.abs(c.compare))} vs same days last month
-                        </p>
-                      )}
+                  </span>
+                );
+                const blocks: Array<{ label: string; dates: string; totals: Totals | null; delta: number | null }> = m
+                  ? [
+                      { label: "Current cycle", dates: prettyRange(m.currentCycle.label), totals: m.currentCycle, delta: m.currentCycle.kwh - m.lastMonthSameDaysKwh },
+                      { label: "Previous cycle", dates: prettyRange(m.previousCycle.label), totals: m.previousCycle, delta: null },
+                      { label: "Cycle before", dates: prettyRange(m.olderCycle.label), totals: m.olderCycle, delta: null },
+                    ]
+                  : ["Current cycle", "Previous cycle", "Cycle before"].map((label) => ({ label, dates: "", totals: null, delta: null }));
+
+                return (
+                  <>
+                    <div className={`${card} flex flex-col`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={widgetTitle}><CalendarDays aria-hidden="true" className="size-3.5" />Today</p>
+                        <p className="text-xs tabular-nums text-muted">{istDay.format(new Date()).replace("Sept", "Sep")}</p>
+                      </div>
+                      {m ? <div className="mt-2.5 flex justify-end">{figures(m.today, null)}</div> : skeleton}
                     </div>
-                  </div>
-                ));
+
+                    <div className={`${card} flex flex-col`}>
+                      <p className={widgetTitle}><CalendarDays aria-hidden="true" className="size-3.5" />Billing cycles</p>
+                      <div className="mt-2.5 grid grid-cols-1 gap-y-3 sm:grid-cols-3 sm:gap-x-5">
+                        {blocks.map((b, i) => (
+                          <div key={b.label} className={`min-w-0 ${i ? "border-t border-line pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0" : ""}`}>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{b.label}</p>
+                            {b.totals ? (
+                              <div className="mt-1.5 flex items-baseline justify-between gap-2">
+                                <span className="whitespace-nowrap text-[11px] font-medium text-muted">{b.dates}</span>
+                                {figures(b.totals, b.delta)}
+                              </div>
+                            ) : skeleton}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                );
               })()}
             </section>
 
@@ -288,20 +308,82 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
               </div>
               {cms.status === "ok" ? (
                 <figure className="mt-4">
-                  <p aria-live="polite" className="text-sm"><span className="font-semibold">{days[shown]?.label}</span> <span className="tabular-nums text-muted">· {format(values[shown] ?? 0)}</span></p>
-                  <div className="mt-2 flex h-[200px] items-end gap-[2px] border-b border-line" onMouseLeave={() => setHover(null)} aria-hidden="true">
-                    {values.map((v, i) => (
-                      <div key={days[i].label} onMouseEnter={() => setHover(i)} className="flex h-full flex-1 items-end">
-                        <div className={`w-full rounded-[3px] transition-colors duration-150 ${i === shown ? "bg-accent" : "bg-soft"}`} style={{ height: `${Math.max(v > 0 ? 2 : 0, (v / max) * 100)}%` }} />
-                      </div>
-                    ))}
-                  </div>
-                  <figcaption className="mt-2 flex justify-between text-[11px] text-muted"><span>{days[0]?.label}</span><span>Today</span></figcaption>
-                  <table className="sr-only">
-                    <caption>Daily totals, last 30 days</caption>
-                    <thead><tr><th>Day</th><th>kWh</th><th>Revenue</th><th>Sessions</th></tr></thead>
-                    <tbody>{days.map((d) => <tr key={d.label}><td>{d.label}</td><td>{kwh(d.kwh)}</td><td>{inr(d.revenue)}</td><td>{d.sessions}</td></tr>)}</tbody>
-                  </table>
+                  {(() => {
+                    // The top of the scale, rounded up to a round number so the axis reads cleanly.
+                    const mag = Math.pow(10, Math.floor(Math.log10(max)));
+                    const top = Math.ceil(max / (mag / 2)) * (mag / 2) || 1;
+                    const total = values.reduce((s, v) => s + v, 0);
+                    const best = Math.max(0, ...values);
+                    const bestDay = days[values.indexOf(best)]?.label ?? "";
+                    const axis = (v: number) =>
+                      metric === "revenue"
+                        ? v >= 1000 ? "₹" + Math.round(v / 1000) + "k" : "₹" + Math.round(v)
+                        : Math.round(v).toLocaleString("en-IN");
+                    // Rounded, for the summary figures: four decimals are noise there.
+                    const brief = (v: number) =>
+                      metric === "kwh" ? (Math.round(v * 10) / 10).toLocaleString("en-IN") + " kWh"
+                        : metric === "revenue" ? inr(v) : Math.round(v) + " sessions";
+                    const ticks = [0, 7, 14, 21, days.length - 1].filter((i) => i >= 0 && i < days.length);
+                    return (
+                      <>
+                        <div className="flex flex-wrap gap-x-7 gap-y-2.5">
+                          {([["30-day total", brief(total)], ["Daily average", brief(total / (values.length || 1))], ["Best day", brief(best)]] as const).map(([l, v]) => (
+                            <div key={l} className="min-w-0">
+                              <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">{l}</span>
+                              <span className="text-[17px] font-semibold tracking-tight tabular-nums">
+                                {v}
+                                {l === "Best day" && bestDay && <em className="ml-1.5 text-xs font-medium not-italic text-muted">{bestDay}</em>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="relative mt-4 pl-14">
+                          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-14 right-0">
+                            {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+                              <span key={f} className={`absolute inset-x-0 border-t border-line ${f ? "border-dashed" : ""}`} style={{ bottom: `${f * 100}%` }}>
+                                <em className="absolute -top-[0.72em] right-[calc(100%+9px)] whitespace-nowrap text-[11px] not-italic tabular-nums text-muted">{axis(top * f)}</em>
+                              </span>
+                            ))}
+                          </div>
+                          <div className="relative" onMouseLeave={() => setHover(null)}>
+                            <div className="flex h-[220px] items-end gap-[2px]" aria-hidden="true">
+                              {values.map((v, i) => (
+                                <div
+                                  key={days[i].label}
+                                  onMouseEnter={() => setHover(i)}
+                                  className={`flex h-full flex-1 items-end rounded-t ${i === hover ? "bg-accent-pale" : ""}`}
+                                >
+                                  <div className="w-full rounded-t-[3px] bg-accent" style={{ height: `${Math.max(v > 0 ? 1.5 : 0, (v / top) * 100)}%` }} />
+                                </div>
+                              ))}
+                            </div>
+                            {hover !== null && days[hover] && (
+                              <div
+                                aria-hidden="true"
+                                className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-[10px] border border-line bg-surface px-2.5 py-2 text-xs shadow-lg"
+                                style={{
+                                  left: `${Math.min(90, Math.max(10, ((hover + 0.5) / (values.length || 1)) * 100))}%`,
+                                  bottom: `${Math.min(55, ((values[hover] ?? 0) / top) * 100 + 3)}%`,
+                                }}
+                              >
+                                <b className="block pb-0.5 font-semibold">{days[hover].label}</b>
+                                <span className="tabular-nums">{format(values[hover] ?? 0)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <figcaption className="mt-2 flex justify-between pl-14 text-[11px] text-muted">
+                          {ticks.map((i) => <span key={i}>{i === days.length - 1 ? "Today" : days[i].label}</span>)}
+                        </figcaption>
+                        <p aria-live="polite" className="sr-only">{days[shown]?.label} · {format(values[shown] ?? 0)}</p>
+                        <table className="sr-only">
+                          <caption>Daily totals, last 30 days</caption>
+                          <thead><tr><th>Day</th><th>kWh</th><th>Revenue</th><th>Sessions</th></tr></thead>
+                          <tbody>{days.map((d) => <tr key={d.label}><td>{d.label}</td><td>{kwh(d.kwh)}</td><td>{inr(d.revenue)}</td><td>{d.sessions}</td></tr>)}</tbody>
+                        </table>
+                      </>
+                    );
+                  })()}
                 </figure>
               ) : <div className="mt-4 h-[230px] rounded-xl bg-raised motion-safe:animate-pulse" />}
             </section>
@@ -369,25 +451,50 @@ export default function Overview({ enquiries }: { enquiries: Enquiry[] }) {
 
                 {cms.status === "ok" && (
                   <div>
-                    <h3 className="text-sm font-bold">Charging revenue vs invoiced, by billing cycle</h3>
-                    <p className="text-xs text-muted">Charging revenue is from the CMS; invoiced counts invoices whose billing period ends in the cycle.</p>
-                    <table className="mt-2 w-full text-sm tabular-nums">
-                      <thead><tr className="text-xs text-muted"><th className="py-1.5 text-left font-semibold">Cycle</th><th className="text-right font-semibold">Charging revenue</th><th className="text-right font-semibold">Invoiced</th><th className="text-right font-semibold">Difference</th></tr></thead>
-                      <tbody>
-                        {[cms.metrics.currentCycle, cms.metrics.previousCycle, cms.metrics.olderCycle].map((c) => {
-                          const billed = billedInCycle(invoices ?? [], c.from, c.to);
-                          const diff = c.revenue - billed;
-                          return (
-                            <tr key={c.label} className="border-t border-line">
-                              <td className="py-2 text-muted">{c.label}</td>
-                              <td className="text-right">{inr(c.revenue)}</td>
-                              <td className="text-right">{inr(billed)}</td>
-                              <td className={`text-right font-semibold ${Math.round(diff) > 0 ? "text-[#b35c00]" : ""}`}>{inr(diff)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    {(() => {
+                      const rows = ([
+                        ["Current cycle", cms.metrics.currentCycle],
+                        ["Previous cycle", cms.metrics.previousCycle],
+                        ["Cycle before", cms.metrics.olderCycle],
+                      ] as const).map(([name, c]) => {
+                        const billed = billedInCycle(invoices ?? [], c.from, c.to);
+                        return { name, cycle: c, billed, gap: c.revenue - billed };
+                      });
+                      // What charging has earned that no invoice covers yet: the figure this
+                      // section exists for, so it leads rather than sitting in a column.
+                      const gap = rows.reduce((s, r) => s + Math.max(0, r.gap), 0);
+                      return (
+                        <>
+                          <div className="rounded-2xl border border-line bg-raised px-4 py-4">
+                            <span className="block text-xs font-semibold text-muted">Earned, not invoiced</span>
+                            <span className={`text-3xl font-bold leading-tight tracking-tight tabular-nums ${gap ? "text-[#b35c00]" : ""}`}>{inr(gap)}</span>
+                            <span className="block text-xs text-muted">across the last {rows.length} billing cycles</span>
+                          </div>
+                          <h3 className="mt-4 text-sm font-bold">Earned against invoiced, by billing cycle</h3>
+                          <p className="text-xs text-muted">Charging revenue is from the CMS. The bar fills as invoices are raised for that cycle.</p>
+                          <ul className="mt-1.5">
+                            {rows.map(({ name, cycle, billed }) => (
+                              <li key={cycle.label} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-line py-2 sm:grid-cols-[minmax(110px,1fr)_minmax(70px,1.2fr)_auto_auto]">
+                                <span className="min-w-0 text-xs font-semibold">
+                                  {name}
+                                  <em className="block text-[10px] font-medium not-italic text-muted">{prettyRange(cycle.label)}</em>
+                                </span>
+                                <span className="hidden h-1.5 overflow-hidden rounded-full bg-soft sm:block">
+                                  <span className="block h-1.5 bg-accent" style={{ width: `${cycle.revenue ? Math.min(100, (billed / cycle.revenue) * 100) : 0}%` }} />
+                                </span>
+                                <span className="whitespace-nowrap text-right text-[13px] font-semibold tabular-nums">
+                                  {inr(cycle.revenue)}
+                                  <em className="block text-[10px] font-medium not-italic text-muted">{inr(billed)} invoiced</em>
+                                </span>
+                                <button type="button" onClick={() => setActiveModule("billing")} className="col-span-full justify-self-end whitespace-nowrap rounded-lg border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-accent hover:bg-accent-pale sm:col-span-1">
+                                  Raise invoice
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 

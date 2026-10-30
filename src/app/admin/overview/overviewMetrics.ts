@@ -52,6 +52,7 @@ export function overviewMetrics(rows: Row[], now: Date, cycles: OverviewCycles) 
     currentCycle: { label: range(current.start, current.end), ...span(current.start, current.end), ...sum(current.start, nowMs + 1) },
     previousCycle: { label: range(previous.start, previous.end), ...span(previous.start, previous.end), ...sum(previous.start, previous.end) },
     olderCycle: { label: range(older.start, older.end), ...span(older.start, older.end), ...sum(older.start, older.end) },
+    lastMonthSameDaysKwh: comparisonSameDays.kwh,
     lastMonthSameDaysRevenue: comparisonSameDays.revenue,
     days,
   };

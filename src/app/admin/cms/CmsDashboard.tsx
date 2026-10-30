@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Activity, RefreshCw, Search, Settings2, SlidersHorizontal, RotateCcw, Save, Download, X } from "lucide-react";
+import { Activity, ArrowDown, ArrowUp, ChevronsUpDown, RefreshCw, Search, Settings2, SlidersHorizontal, RotateCcw, Save, Download, X } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { Loader } from "@/components/ui/Loader";
 import { Spoiler } from "@/components/ui/Spoiler";
@@ -390,6 +390,46 @@ const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [
   "tariffAmount",
 ];
 
+// What a column is worth when the table is sorted by it. Numbers and dates sort as numbers,
+// everything else as text; a missing value always sinks, whichever way the sort runs.
+function sortValue(columnId: CmsColumnId, transaction: Transaction): number | string | null {
+  switch (columnId) {
+    case "startedAt": case "stoppedAt": case "createdAt": case "updatedAt": {
+      const value = transaction[columnId];
+      return value ? Date.parse(value) : null;
+    }
+    case "energyKwh": case "tariffAmount": case "startSoc": case "endSoc":
+    case "baseDeductiveAmount": case "startValue": case "stopValue":
+      return transaction[columnId] == null ? null : Number(transaction[columnId]);
+    // The merged columns sort by what leads them: the vehicle number, and where the car started.
+    case "vehicle": return transaction.vehicleNumber ?? null;
+    case "soc": return transaction.startSoc == null ? null : Number(transaction.startSoc);
+    case "location": return displayLocation(transaction.location) || null;
+    case "userName": return displayUserName(transaction.userName) || null;
+    default: {
+      const value = transaction[columnId as keyof Transaction];
+      if (value == null || typeof value === "object") return null;
+      return typeof value === "number" ? value : String(value);
+    }
+  }
+}
+
+type TableSort = { column: CmsColumnId; direction: "asc" | "desc" };
+
+function compareTransactions(a: Transaction, b: Transaction, sort: TableSort) {
+  const left = sortValue(sort.column, a);
+  const right = sortValue(sort.column, b);
+  if (left == null && right == null) return 0;
+  // Rows with nothing in the column sit at the end either way, so a sort never hides them
+  // among the figures.
+  if (left == null) return 1;
+  if (right == null) return -1;
+  const order = typeof left === "number" && typeof right === "number"
+    ? left - right
+    : String(left).localeCompare(String(right), "en-IN", { numeric: true });
+  return sort.direction === "asc" ? order : -order;
+}
+
 // Start and end state of charge in one cell, with the span drawn as a bar: the figure that
 // matters is how far the car came, and two columns of percentages did not show it.
 function socRange(start: number | null | undefined, end: number | null | undefined) {
@@ -669,6 +709,9 @@ export default function CmsOperatorDashboard() {
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  // No sort of its own until a heading is clicked: the table's own order puts the charging
+  // sessions first, which is what most visits are after.
+  const [sort, setSort] = useState<TableSort | null>(null);
   const density = useSyncExternalStore(subscribeDensity, () => densityChoice, () => "compact" as Density);
   const [datePreset, setDatePreset] = useState<DatePreset | "custom">("today");
   const [customFrom, setCustomFrom] = useState(() => istDateString().slice(0, 8) + "01");
@@ -1127,19 +1170,25 @@ export default function CmsOperatorDashboard() {
   const activeFilterCount = activeFilters.length;
   const count = transactions.length;
 
-  const pagedTransactions = transactions.slice((page - 1) * pageSize, page * pageSize);
+  const sortedTransactions = useMemo(
+    () => (sort ? [...transactions].sort((a, b) => compareTransactions(a, b, sort)) : transactions),
+    [transactions, sort]
+  );
+  const pagedTransactions = sortedTransactions.slice((page - 1) * pageSize, page * pageSize);
 
   function exportTransactionsCsv() {
     // Export every row matching the selected table date filter, not only the
-    // current pagination page or the visible table columns.
-    const headers = CMS_COLUMNS.map((column) => column.label);
+    // current pagination page or the visible table columns, in the order the table shows them.
+    // The merged columns are left out: their parts are already here, each in its own column.
+    const exported = CMS_COLUMN_IDS.filter((columnId) => columnId !== "vehicle" && columnId !== "soc");
+    const headers = exported.map((columnId) => CMS_COLUMN_LABELS[columnId] ?? columnId);
     const csvCell = (value: unknown) => {
       // neutralizeCsvCell stops spreadsheet formula injection from customer-controlled text.
       const text = neutralizeCsvCell(value);
       return `"${text.replace(/"/g, '""')}"`;
     };
-    const rows = transactions.map((transaction) =>
-      CMS_COLUMN_IDS.map((columnId) =>
+    const rows = sortedTransactions.map((transaction) =>
+      exported.map((columnId) =>
         csvCell(
           columnId === "id" || columnId === "transactionId"
             ? displaySessionId(transaction.provider, transaction[columnId])
@@ -1185,6 +1234,16 @@ export default function CmsOperatorDashboard() {
 
   function clearFilters() {
     setFilters(EMPTY_TRANSACTION_FILTERS);
+    setPage(1);
+  }
+
+  // Click a heading to sort by it: ascending, then descending, then back to the table's own
+  // order. The heading is still draggable, which is a different gesture.
+  function sortByColumn(column: CmsColumnId) {
+    setSort((current) => {
+      if (!current || current.column !== column) return { column, direction: "asc" };
+      return current.direction === "asc" ? { column, direction: "desc" } : null;
+    });
     setPage(1);
   }
 
@@ -1642,15 +1701,25 @@ export default function CmsOperatorDashboard() {
                           if (dragged) reorderTableColumn(dragged, column.id);
                           setDraggedTableColumn(null);
                         }}
+                        aria-sort={sort?.column === column.id ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
                         className={[
                           `whitespace-nowrap select-none ${compact ? "px-4 py-2" : "px-4 py-3"}`,
                           draggedTableColumn === column.id
                             ? "bg-emerald-300/10 text-emerald-700"
                             : "cursor-grab active:cursor-grabbing",
                         ].join(" ")}
-                        title="Drag to reorder column"
+                        title="Click to sort, drag to reorder"
                       >
-                        {column.label}
+                        <button
+                          type="button"
+                          onClick={() => sortByColumn(column.id)}
+                          className="group inline-flex items-center gap-1 uppercase tracking-wider text-muted hover:text-ink"
+                        >
+                          {column.label}
+                          {sort?.column === column.id
+                            ? (sort.direction === "asc" ? <ArrowUp size={11} className="text-ink" /> : <ArrowDown size={11} className="text-ink" />)
+                            : <ChevronsUpDown size={11} className="opacity-0 transition-opacity group-hover:opacity-60" />}
+                        </button>
                       </th>
                     );
                   })}

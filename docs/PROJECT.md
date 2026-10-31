@@ -95,9 +95,9 @@ Done and tested:
   ChargeMOD is the only platform live — the admin looks exactly as it did.
 
 Open:
-- **Ionage migration.** Two database tables (`provider_settings`, `provider_bills`) are written as
-  migrations but not yet applied to the live project, so the Platforms and Platform Bills pages
-  cannot load until they are. The cutover itself still needs: Ionage's API (in talks; the CPO
+- **Ionage migration.** The two database tables (`provider_settings`, `provider_bills`) were
+  applied on 29 Oct 2026, so the Platforms and Platform Bills pages work. The cutover itself
+  still needs: Ionage's API (in talks; the CPO
   portal APIs are the fallback), a connector, the date its 7-day cycles are counted from, and
   confirmation of whether the commission is on gross energy or net of Triarc's own CPO use, and
   how it rounds. Those last three are deliberately single values to correct once the first real

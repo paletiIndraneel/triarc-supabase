@@ -1742,10 +1742,12 @@ export default function CmsOperatorDashboard() {
                           {columnId === "chargerId" && transaction.chargerId}
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
                           {columnId === "vehicle" && (
-                            <>
-                              <span className="block font-mono text-[12.5px] font-semibold tracking-[-0.02em] text-ink">{transaction.vehicleNumber ?? "—"}</span>
-                              {!compact && <span className="block text-[11px] text-muted">{displayUserName(transaction.userName)}</span>}
-                            </>
+                            // The name always stays under the number: it is half of what the
+                            // column is for. Compact only tightens the pair.
+                            <span className={compact ? "block leading-[1.15]" : "block"}>
+                              <span className="block font-mono text-[12.5px] font-semibold tracking-[-0.02em] text-ink">{transaction.vehicleNumber?.trim() || "—"}</span>
+                              <span className={`block text-muted ${compact ? "text-[10px]" : "text-[11px]"}`}>{displayUserName(transaction.userName)}</span>
+                            </span>
                           )}
                           {columnId === "soc" && socRange(transaction.startSoc, transaction.endSoc)}
                           {columnId === "startedAt" && (

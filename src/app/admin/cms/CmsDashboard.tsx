@@ -29,6 +29,7 @@ import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";
 import { sessionPage } from "./SessionDetails";
+import { CellPopover, DetailRow } from "./CellPopover";
 import { StackPanel, type StackPage } from "@/components/ui/StackPanel";
 import { useLiveMetrics, withLiveValues, type LiveState } from "./useLiveMetrics";
 import { StationSelect, useStationSelection } from "./stationSelection";
@@ -381,10 +382,12 @@ const CMS_COLUMN_LABELS: Partial<Record<CmsColumnId, string>> = {
 const CMS_COLUMNS: Array<{ id: CmsColumnId; label: string }> =
   CMS_COLUMN_IDS.map((id) => ({ id, label: CMS_COLUMN_LABELS[id] ?? id }));
 
+// The merged cells each open a popover of the fields behind them (see CellPopover), so the
+// table carries five columns and the rest stay in the column editor; the charger and its gun
+// are in the SoC cell's popover.
 const DEFAULT_CMS_COLUMNS: CmsColumnId[] = [
   "startedAt",
   "vehicle",
-  "chargerName",
   "soc",
   "energyKwh",
   "tariffAmount",
@@ -1731,12 +1734,34 @@ export default function CmsOperatorDashboard() {
                           {columnId === "chargerId" && transaction.chargerId}
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
                           {columnId === "vehicle" && (
-                            <>
-                              <span className="block font-mono text-[12.5px] font-semibold tracking-[-0.02em] text-ink">{transaction.vehicleNumber?.trim() || "—"}</span>
-                              <span className="block text-[11px] text-muted">{displayUserName(transaction.userName)}</span>
-                            </>
+                            <CellPopover
+                              title="Customer details"
+                              trigger={
+                                <>
+                                  <span className="block font-mono text-[12.5px] font-semibold tracking-[-0.02em] text-ink">{transaction.vehicleNumber?.trim() || "—"}</span>
+                                  <span className="block text-[11px] text-muted">{displayUserName(transaction.userName)}</span>
+                                </>
+                              }
+                            >
+                              <DetailRow label="Customer" value={displayUserName(transaction.userName)} />
+                              <DetailRow label="Mobile" value={transaction.mobile ? <Spoiler>{transaction.mobile}</Spoiler> : "—"} />
+                              <DetailRow label="User type" value={transaction.userType ?? "—"} />
+                              <DetailRow label="Vehicle" value={transaction.vehicleName ?? "—"} />
+                              <DetailRow label="Vehicle number" value={transaction.vehicleNumber?.trim() || "—"} />
+                              <DetailRow label="Tag reference" value={transaction.tagReference ?? "—"} />
+                            </CellPopover>
                           )}
-                          {columnId === "soc" && socRange(transaction.startSoc, transaction.endSoc)}
+                          {columnId === "soc" && (
+                            <CellPopover title="Charge details" trigger={socRange(transaction.startSoc, transaction.endSoc)}>
+                              <DetailRow label="Start SoC" value={transaction.startSoc == null ? "—" : `${transaction.startSoc}%`} />
+                              <DetailRow label="End SoC" value={transaction.endSoc == null ? "—" : `${transaction.endSoc}%`} />
+                              <DetailRow label="Energy" value={transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh)} />
+                              <DetailRow label="Charger" value={displayChargerWithGun(transaction.chargerName, transaction.connectorId)} />
+                              <DetailRow label="Meter start" value={transaction.startValue ?? "—"} />
+                              <DetailRow label="Meter stop" value={transaction.stopValue ?? "—"} />
+                              <DetailRow label="Stop reason" value={transaction.stopReason ?? "—"} />
+                            </CellPopover>
+                          )}
                           {columnId === "startedAt" && (
                             <>
                               {formatDate(transaction.startedAt)}
@@ -1758,7 +1783,20 @@ export default function CmsOperatorDashboard() {
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}
                           {columnId === "vehicleNumber" && (transaction.vehicleNumber ? <span className="font-mono text-ink">{transaction.vehicleNumber}</span> : "—")}
-                          {columnId === "tariffAmount" && (transaction.tariffAmount == null ? "—" : money(transaction.tariffAmount))}
+                          {columnId === "tariffAmount" && (
+                            <CellPopover
+                              title="Amount details"
+                              trigger={transaction.tariffAmount == null ? "—" : money(transaction.tariffAmount)}
+                            >
+                              <DetailRow label="Amount" value={transaction.tariffAmount == null ? "—" : money(transaction.tariffAmount)} />
+                              <DetailRow label="Energy" value={transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh)} />
+                              <DetailRow label="VAT" value={transaction.vat ?? "—"} />
+                              <DetailRow label="Base deductive" value={transaction.baseDeductiveAmount ?? "—"} />
+                              <DetailRow label="Free session" value={transaction.isFree == null ? "—" : transaction.isFree ? "Yes" : "No"} />
+                              <DetailRow label="Time-based tariff" value={transaction.isTimeBasedTariff == null ? "—" : transaction.isTimeBasedTariff ? "Yes" : "No"} />
+                              <DetailRow label="Invoice" value={transaction.invoiceAvailable ? "Available" : "—"} />
+                            </CellPopover>
+                          )}
                           {columnId === "vat" && (transaction.vat ?? "—")}
                           {columnId === "invoiceAvailable" && (transaction.invoiceAvailable ? "true" : "false")}
                           {columnId === "userId" && (transaction.userId ?? "—")}

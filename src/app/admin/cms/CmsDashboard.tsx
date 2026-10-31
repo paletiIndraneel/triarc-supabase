@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, ArrowDown, ArrowUp, ChevronsUpDown, RefreshCw, Search, Settings2, SlidersHorizontal, RotateCcw, Save, Download, X } from "lucide-react";
 import GlassCard from "@/components/ui/GlassCard";
 import { Loader } from "@/components/ui/Loader";
@@ -649,38 +649,6 @@ type PlatformMetrics = {
   earlier: Array<{ label: string; energy: number; revenue: number }>;
 };
 
-// How tall a table row is, kept in this browser like the station and platform choices.
-// Compact is the default: the table is read in long sittings, and the second line of every
-// cell is only wanted when something looks wrong.
-type Density = "compact" | "comfortable";
-const DENSITY_KEY = "triarc-admin-table-density";
-let densityChoice: Density = "compact";
-try {
-  if (typeof window !== "undefined" && window.localStorage.getItem(DENSITY_KEY) === "comfortable") {
-    densityChoice = "comfortable";
-  }
-} catch {
-  // storage blocked: compact stands
-}
-const densityListeners = new Set<() => void>();
-const subscribeDensity = (listener: () => void) => {
-  densityListeners.add(listener);
-  return () => {
-    densityListeners.delete(listener);
-  };
-};
-
-// Outside the component: it writes the module's own value, which is not a render-time effect.
-function selectDensity(value: Density) {
-  densityChoice = value;
-  try {
-    window.localStorage.setItem(DENSITY_KEY, value);
-  } catch {
-    // storage blocked: the choice lasts for this page only
-  }
-  for (const listener of densityListeners) listener();
-}
-
 export default function CmsOperatorDashboard() {
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   // Status is capped to the matrix/Consumption pair's height on a wide screen, so a long
@@ -712,7 +680,6 @@ export default function CmsOperatorDashboard() {
   // No sort of its own until a heading is clicked: the table's own order puts the charging
   // sessions first, which is what most visits are after.
   const [sort, setSort] = useState<TableSort | null>(null);
-  const density = useSyncExternalStore(subscribeDensity, () => densityChoice, () => "compact" as Density);
   const [datePreset, setDatePreset] = useState<DatePreset | "custom">("today");
   const [customFrom, setCustomFrom] = useState(() => istDateString().slice(0, 8) + "01");
   const [customTo, setCustomTo] = useState(() => istDateString());
@@ -1106,6 +1073,43 @@ export default function CmsOperatorDashboard() {
   // Live meter readings for every charging session; the Status list shows their Energy.
   const liveById = useLiveMetrics(liveSessions.map((s) => s.transactionId || s.id));
   const liveShown = useMemo(() => liveSessions.map((s) => withLiveValues(s, liveById[s.transactionId || s.id])), [liveSessions, liveById]);
+  // Every gun that ran a session in the last 30 days on the shown platforms, with the ones a
+  // live session is on marked. The CMS reports nothing about an idle gun, so this is the only
+  // honest way to list them — and "Idle" can only mean no session is running, never that the
+  // gun is healthy.
+  const connectors = useMemo(() => {
+    const gunKey = (t: Transaction) => `${t.provider ?? ""}|${t.chargerName ?? ""}|${t.connectorId ?? ""}`;
+    const guns = new Map<string, { gun: ConnectorState; at: number }>();
+    let newest = 0;
+    for (const transaction of allTransactions) {
+      if (!onShownPlatform(transaction)) continue;
+      const at = transaction.startedAt ? new Date(transaction.startedAt).getTime() : NaN;
+      if (!Number.isFinite(at)) continue;
+      if (at > newest) newest = at;
+      const key = gunKey(transaction);
+      const known = guns.get(key);
+      // The newest session names the gun, so a renamed charger shows its current name.
+      if (known && known.at >= at) continue;
+      guns.set(key, {
+        at,
+        gun: {
+          id: key,
+          label: shortChargerLabel(transaction.chargerName, transaction.stationType, transaction.connectorId),
+          location: transaction.location ?? null,
+          provider: transaction.provider,
+          charging: false,
+        },
+      });
+    }
+    // Thirty days back from the newest session in the window rather than from the clock, so
+    // the list is the same on every render and a gun that stopped being used drops off.
+    const since = newest - 30 * 24 * 60 * 60 * 1000;
+    const busy = new Set(liveShown.map(gunKey));
+    return Array.from(guns.values())
+      .filter((entry) => entry.at >= since)
+      .sort((a, b) => a.gun.label.localeCompare(b.gun.label))
+      .map((entry) => ({ ...entry.gun, charging: busy.has(entry.gun.id) }));
+  }, [allTransactions, onShownPlatform, liveShown]);
   const transactions = useMemo(() => {
     const dateRange =
       datePreset === "custom" ? getCustomRangeIST(customFrom, customTo) : getDateRangeIST(datePreset);
@@ -1262,8 +1266,6 @@ export default function CmsOperatorDashboard() {
     { value: "custom", label: "Custom range" },
   ];
   // Match the loaded CMS history window; allow custom filters back to 6 July 2026.
-  const compact = density === "compact";
-  const cellPadding = compact ? "px-4 py-1.5" : "px-4 py-3";
   const customMinDate = "2026-07-06";
   const customMaxDate = istDateString();
   const manyPlatforms = shownPlatforms.length > 1;
@@ -1388,7 +1390,7 @@ export default function CmsOperatorDashboard() {
             </GlassCard>
           </div>
           <div className="min-w-0 overflow-y-auto" style={pairHeight ? { maxHeight: pairHeight } : undefined}>
-            <StatusCard count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={manyPlatforms} />
+            <StatusCard connectors={connectors} count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={manyPlatforms} />
           </div>
         </div>
 
@@ -1450,19 +1452,6 @@ export default function CmsOperatorDashboard() {
                   />
                 </>
               )}
-              <div className="inline-flex rounded-full bg-raised p-0.5" role="group" aria-label="Row height">
-                {(["compact", "comfortable"] as Density[]).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => selectDensity(value)}
-                    aria-pressed={density === value}
-                    className={`rounded-full px-2.5 py-1.5 text-xs font-semibold capitalize ${density === value ? "bg-primary text-primary-ink" : "text-muted hover:text-ink"}`}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
               <label className="flex items-center gap-2 text-xs text-muted">
                 <span>Rows:</span>
                 <select
@@ -1703,7 +1692,7 @@ export default function CmsOperatorDashboard() {
                         }}
                         aria-sort={sort?.column === column.id ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
                         className={[
-                          `whitespace-nowrap select-none ${compact ? "px-4 py-2" : "px-4 py-3"}`,
+                          "whitespace-nowrap px-4 py-3 select-none",
                           draggedTableColumn === column.id
                             ? "bg-emerald-300/10 text-emerald-700"
                             : "cursor-grab active:cursor-grabbing",
@@ -1736,24 +1725,22 @@ export default function CmsOperatorDashboard() {
                   return (
                     <tr key={transaction.id} className="hover:bg-raised">
                       {visibleColumns.map((columnId) => (
-                        <td key={columnId} className={`whitespace-nowrap text-muted ${cellPadding}`}>
+                        <td key={columnId} className="whitespace-nowrap px-4 py-3 text-muted">
                           {columnId === "id" && displaySessionId(transaction.provider, transaction.id)}
                           {columnId === "transactionId" && displaySessionId(transaction.provider, transaction.transactionId)}
                           {columnId === "chargerId" && transaction.chargerId}
                           {columnId === "connectorId" && (transaction.connectorId ?? "—")}
                           {columnId === "vehicle" && (
-                            // The name always stays under the number: it is half of what the
-                            // column is for. Compact only tightens the pair.
-                            <span className={compact ? "block leading-[1.15]" : "block"}>
+                            <>
                               <span className="block font-mono text-[12.5px] font-semibold tracking-[-0.02em] text-ink">{transaction.vehicleNumber?.trim() || "—"}</span>
-                              <span className={`block text-muted ${compact ? "text-[10px]" : "text-[11px]"}`}>{displayUserName(transaction.userName)}</span>
-                            </span>
+                              <span className="block text-[11px] text-muted">{displayUserName(transaction.userName)}</span>
+                            </>
                           )}
                           {columnId === "soc" && socRange(transaction.startSoc, transaction.endSoc)}
                           {columnId === "startedAt" && (
                             <>
                               {formatDate(transaction.startedAt)}
-                              {manyPlatforms && !compact && <span className="mt-0.5 block text-[10px] text-muted">{providerLabel(transaction.provider)}</span>}
+                              {manyPlatforms && <span className="mt-0.5 block text-[10px] text-muted">{providerLabel(transaction.provider)}</span>}
                             </>
                           )}
                           {columnId === "stoppedAt" && formatDate(transaction.stoppedAt)}
@@ -1849,7 +1836,9 @@ export default function CmsOperatorDashboard() {
 // Charging state and the sessions charging now, as a Stack Panel: tap a session to drill into
 // its live readings. ChargeMOD's stuck sessions (past 7 hours, or an older duplicate on a gun)
 // are already filtered out by splitActiveSessions.
-function StatusCard({ count, sessions, liveById, showLocation, showProvider }: { count: number; sessions: Transaction[]; liveById: Record<string, LiveState>; showLocation: boolean; showProvider: boolean }) {
+type ConnectorState = { id: string; label: string; location: string | null; provider: string | undefined; charging: boolean };
+
+function StatusCard({ count, sessions, liveById, showLocation, showProvider, connectors }: { count: number; sessions: Transaction[]; liveById: Record<string, LiveState>; showLocation: boolean; showProvider: boolean; connectors: ConnectorState[] }) {
   const time = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false });
   const dateTime = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
   const today = istDateString();
@@ -1898,6 +1887,24 @@ function StatusCard({ count, sessions, liveById, showLocation, showProvider }: {
                 })),
           footer: charging && sessions.length ? "Tap a session for live SoC and time left" : undefined,
         },
+        ...(connectors.length
+          ? [{
+              title: "Chargers",
+              rows: connectors.map((gun) => ({
+                id: `gun:${gun.id}`,
+                dot: gun.charging ? "bg-emerald-500" : "bg-soft",
+                label: (
+                  <>
+                    <span className={gun.charging ? "font-semibold" : "font-medium text-muted"}>{gun.label}</span>
+                    {showLocation && gun.location && <span className="text-muted"> · {displayLocation(gun.location)}</span>}
+                    {showProvider && <span className="text-muted"> · {providerLabel(gun.provider)}</span>}
+                  </>
+                ),
+                detail: gun.charging ? "Charging" : "Idle",
+              })),
+              footer: "Guns that ran a session in the last 30 days. Idle means no session is running, not that the gun is known to be healthy.",
+            }]
+          : []),
       ],
     },
   };

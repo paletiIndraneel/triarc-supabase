@@ -439,13 +439,14 @@ function socRange(start: number | null | undefined, end: number | null | undefin
   if (start == null || end == null) return "—";
   return (
     <span className="flex items-center gap-2 whitespace-nowrap">
-      <span className="relative h-1 w-11 overflow-hidden rounded-full bg-soft" aria-hidden="true">
-        <i className="absolute inset-y-0 left-0 rounded-full bg-accent/35" style={{ width: `${start}%` }} />
-        <i className="absolute inset-y-0 left-0 rounded-full bg-accent/85" style={{ width: `${end}%` }} />
+      <span className="tabular-nums">{start}%</span>
+      <span className="relative h-1 w-16 overflow-hidden rounded-full bg-soft" aria-hidden="true">
+        <i
+          className="absolute inset-y-0 rounded-full bg-emerald-500"
+          style={{ left: `${start}%`, width: `${Math.max(end - start, 0)}%` }}
+        />
       </span>
-      <span className="tabular-nums">
-        {start}% <span aria-hidden="true">→</span> <span className="font-semibold text-ink">{end}%</span>
-      </span>
+      <span className="font-semibold text-ink tabular-nums">{end}%</span>
     </span>
   );
 }

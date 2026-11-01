@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
-import { getChargingProviders, providerErrorMessage, type MeterResult } from "@/lib/cms/provider";
+import { getChargingProviders, providerErrorMessage } from "@/lib/cms/provider";
 import { saveMeterReadings, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
+import { liveMetrics, type MeterReading } from "@/lib/cms/liveMetrics";
 
 export const dynamic = "force-dynamic";
 
+// Readings saved on the session row this recently are served as they are. The row is shared by
+// every server instance and admin, unlike a per-instance memory cache.
 const CACHE_MS = 15_000;
-const cache = new Map<string, { at: number } & MeterResult>();
 
 // Live meter readings for one session, by its stored id (with the platform prefix).
 export async function GET(_request: Request, context: { params: Promise<{ transactionId: string }> }) {
@@ -22,12 +24,21 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
 
   // Read with the user's own client: a station-limited investor sees only their stations'
   // sessions, so a session they cannot read is refused (before the cache, so nothing leaks).
-  const { data: row } = await supabase.from(SESSIONS_TABLE).select("provider").eq("transaction_id", transactionId).maybeSingle();
+  const { data: row } = await supabase
+    .from(SESSIONS_TABLE)
+    .select("provider, meter_values_fetched_at, meter_values_response, meter_values_readings")
+    .eq("transaction_id", transactionId)
+    .maybeSingle();
   if (stationIds && !row) return new NextResponse("Forbidden", { status: 403 });
 
-  const hit = cache.get(transactionId);
-  if (hit && Date.now() - hit.at < CACHE_MS) {
-    return NextResponse.json({ ...hit.metrics, transactionDetails: hit.payload, parsedReadings: hit.readings });
+  const savedReadings = row?.meter_values_readings as MeterReading[] | null;
+  const fetchedAt = Date.parse(row?.meter_values_fetched_at ?? "");
+  if (savedReadings && Date.now() - fetchedAt < CACHE_MS) {
+    return NextResponse.json({
+      ...liveMetrics(savedReadings),
+      transactionDetails: row?.meter_values_response,
+      parsedReadings: savedReadings,
+    });
   }
 
   // The session's platform: from its stored row, else the one whose id prefix it carries.
@@ -48,8 +59,6 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
       console.error("[cms/live] saving latest meter-values response failed:", saveError);
     }
 
-    cache.set(transactionId, { at: Date.now(), ...meter });
-    if (cache.size > 50) cache.delete(cache.keys().next().value!);
     return NextResponse.json({ ...meter.metrics, transactionDetails: meter.payload, parsedReadings: meter.readings });
   } catch (error) {
     console.error("[cms/live]", error);

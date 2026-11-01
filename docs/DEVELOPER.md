@@ -212,6 +212,9 @@ in `pdf()` mirrors an Excel template (rows A1:G37).
   29 Oct 2026 (`chargemod` seeded enabled; `RLS OK`, 81 checks). If the settings table is ever
   unreadable the provider gate falls back to env vars alone, which is the pre-Platforms
   behaviour.
+- `20261101000100_investor_read_only.sql` was applied to the live project on 1 Nov 2026 (dashboard
+  SQL Editor, reported "Success"). It makes investors read-only. `supabase/tests/rls.test.sql` then
+  passed on the live project (reported 1 Nov 2026).
 
 ## 10. Tests
 

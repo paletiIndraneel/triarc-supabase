@@ -20,7 +20,7 @@ const MENU_MODULES: { key: AdminModule; label: string; Icon: typeof MapPin }[] =
 ];
 
 export default function AdminHeader({ themeMode, onThemeChange }: { themeMode: ThemeMode; onThemeChange: (mode: ThemeMode) => void }) {
-  const { activeModule, setActiveModule, canOpen, access } = useAdminModule();
+  const { activeModule, setActiveModule, canOpen } = useAdminModule();
   // The active module's business; on group-wide modules (Overview) show it only while there is one business.
   const business = businessName(MODULE_BUSINESS[activeModule]) ?? (BUSINESSES.length === 1 ? BUSINESSES[0].name : null);
   const navItems = ADMIN_NAV_ITEMS.filter((item) => canOpen(item.key) && !MENU_MODULES.some((m) => m.key === item.key));
@@ -51,7 +51,6 @@ export default function AdminHeader({ themeMode, onThemeChange }: { themeMode: T
             onSelect: () => setActiveModule(key),
           }))}
           onThemeChange={onThemeChange}
-          role={access}
           theme={themeMode}
         />
       </div>

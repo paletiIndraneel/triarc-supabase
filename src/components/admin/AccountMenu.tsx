@@ -9,7 +9,6 @@
 import { Check, ChevronsUpDown, LogOut, Monitor, Moon, Sun } from "lucide-react";
 import { animate, motion, type Transition, useMotionTemplate, useMotionValue, useReducedMotion } from "motion/react";
 import { type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { roleLabel } from "@/lib/adminAccess";
 import { supabase } from "@/lib/supabase/billing";
 import { cn } from "@/lib/utils";
 import LogoutButton from "@/components/admin/LogoutButton";
@@ -149,7 +148,7 @@ function ThemeRow({ uid, theme, onChange, reduced }: { uid: string; theme: Theme
   );
 }
 
-export default function AccountMenu({ role, theme, onThemeChange, items }: { role: string | null; theme: ThemeMode; onThemeChange: (theme: ThemeMode) => void; items: AccountMenuItem[] }) {
+export default function AccountMenu({ theme, onThemeChange, items }: { theme: ThemeMode; onThemeChange: (theme: ThemeMode) => void; items: AccountMenuItem[] }) {
   const uid = useId();
   const user = useAdminUser();
   const reduced = useReducedMotion() === true;
@@ -179,7 +178,6 @@ export default function AccountMenu({ role, theme, onThemeChange, items }: { rol
   const sharedTransition = instant ? INSTANT : SPRING;
   const sharedInPanel = phase === "open";
   const menuId = `${uid}-menu`;
-  const sub = roleLabel(role);
 
   const openMenu = (via: Via, focus: "first" | "last" | "menu") => {
     if (phaseRef.current === "open") return;
@@ -295,7 +293,7 @@ export default function AccountMenu({ role, theme, onThemeChange, items }: { rol
         type="button"
       >
         <span className="min-w-0 flex-1">
-          <Identity name={user.name} shared={!sharedInPanel} stacked={false} sub={sub} transition={sharedTransition} uid={uid} />
+          <Identity name={user.name} shared={!sharedInPanel} stacked={false} sub={user.email} transition={sharedTransition} uid={uid} />
         </span>
         <ChevronsUpDown aria-hidden="true" className={cn("hidden size-4 shrink-0 text-muted transition-opacity duration-150 sm:block", phase !== "closed" && "opacity-0")} />
       </button>
@@ -314,8 +312,7 @@ export default function AccountMenu({ role, theme, onThemeChange, items }: { rol
           >
             <div className="p-1.5" ref={mainRef} style={{ width: PANEL_W }}>
               <div className="flex items-start justify-between px-2.5 pt-2.5 pb-3">
-                <Identity name={user.name} shared={sharedInPanel} stacked sub={user.email || sub} transition={sharedTransition} uid={uid} />
-                <motion.span className="shrink-0 pt-0.5 text-xs text-muted" style={{ opacity: bodyOpacity }}>{sub}</motion.span>
+                <Identity name={user.name} shared={sharedInPanel} stacked sub={user.email} transition={sharedTransition} uid={uid} />
               </div>
               <motion.div aria-label="Account" className="outline-none" id={menuId} role="menu" style={{ opacity: bodyOpacity }} tabIndex={-1}>
                 <ThemeRow onChange={onThemeChange} reduced={reduced} theme={theme} uid={uid} />

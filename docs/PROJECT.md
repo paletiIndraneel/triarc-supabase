@@ -95,6 +95,9 @@ Done and tested:
   ChargeMOD is the only platform live — the admin looks exactly as it did.
 
 Open:
+- **Investor read-only migration (1 Nov 2026).** `20261101000100_investor_read_only.sql` is applied
+  to the live project, so investors already lose Billing and Stations even though the new app code
+  is not yet deployed. The RLS suite passed on the live project (1 Nov 2026).
 - **Ionage migration.** The two database tables (`provider_settings`, `provider_bills`) were
   applied on 29 Oct 2026, so the Platforms and Platform Bills pages work. The cutover itself
   still needs: Ionage's API (in talks; the CPO

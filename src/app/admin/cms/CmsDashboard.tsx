@@ -1774,7 +1774,7 @@ export default function CmsOperatorDashboard() {
                           {columnId === "tagReference" && (transaction.tagReference ?? "—")}
                           {columnId === "location" && displayLocation(transaction.location)}
                           {columnId === "locationId" && (transaction.locationId ?? "—")}
-                          {columnId === "chargerName" && displayChargerWithGun(transaction.chargerName, transaction.connectorId)}
+                          {columnId === "chargerName" && shortChargerLabel(transaction.chargerName, transaction.stationType, transaction.connectorId).replace(/^(AC|DC) /, "")}
                           {columnId === "stationType" && (transaction.stationType ?? "—")}
                           {columnId === "stopReason" && (transaction.stopReason ?? "—")}
                           {columnId === "energyKwh" && (

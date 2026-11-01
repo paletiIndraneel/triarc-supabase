@@ -12,26 +12,39 @@ const MIN_LENGTH = 8;
 export default function SetPasswordForm() {
   const [state, setState] = useState<"checking" | "ready" | "saving" | "invalid" | "error">("checking");
   const [message, setMessage] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
     (async () => {
+      const search = new URLSearchParams(window.location.search);
       const params = new URLSearchParams(window.location.hash.slice(1));
-      const linkError = params.get("error_description");
+      const linkError = params.get("error_description") ?? search.get("error_description");
       const access_token = params.get("access_token");
       const refresh_token = params.get("refresh_token");
+      const code = search.get("code");
       if (linkError) {
         setMessage(linkError.replace(/\+/g, " "));
         setState("invalid");
         return;
       }
+      // A reset link from the browser (PKCE) comes back with ?code=; exchange it for the session.
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        window.history.replaceState(null, "", window.location.pathname);
+        if (error) {
+          setMessage("This link has expired or was already used. Use Forgot password on the sign-in page for a new one.");
+          setState("invalid");
+          return;
+        }
+      }
       if (access_token && refresh_token) {
         const { error } = await supabase.auth.setSession({ access_token, refresh_token });
         window.history.replaceState(null, "", window.location.pathname); // keep tokens out of history
         if (error) {
-          setMessage("This invite link has expired or was already used. Ask for a new invite.");
+          setMessage("This link has expired or was already used. Use Forgot password on the sign-in page for a new one.");
           setState("invalid");
           return;
         }
@@ -42,17 +55,21 @@ export default function SetPasswordForm() {
         setState("invalid");
         return;
       }
+      const savedName = data.user.user_metadata?.display_name;
+      if (typeof savedName === "string") setName(savedName);
       setState("ready");
     })();
   }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!name.trim()) return void (setMessage("Enter your name."), setState("error"));
     if (password.length < MIN_LENGTH) return void (setMessage(`Use at least ${MIN_LENGTH} characters.`), setState("error"));
     if (password !== confirm) return void (setMessage("The two passwords do not match."), setState("error"));
     setState("saving");
     setMessage("");
-    const { error } = await createClient().auth.updateUser({ password });
+    // The name is kept in the account's metadata, where the account menu reads it.
+    const { error } = await createClient().auth.updateUser({ password, data: { display_name: name.trim() } });
     if (error) {
       setMessage(error.message);
       setState("error");
@@ -75,6 +92,10 @@ export default function SetPasswordForm() {
 
   return (
     <form method="post" onSubmit={handleSubmit} className="mt-6 grid gap-4" noValidate>
+      <label className={authLabelClass}>
+        Your name
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={80} required className={inputClass} />
+      </label>
       <label className={authLabelClass}>
         New password
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={MIN_LENGTH} required className={inputClass} />

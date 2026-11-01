@@ -93,6 +93,10 @@ export default function SignInForm() {
         />
       </label>
 
+      <a href="/signin/forgot-password" className="justify-self-end text-sm font-semibold text-accent hover:text-accent-hover">
+        Forgot password?
+      </a>
+
       {status === "error" && (
         <p role="alert" className={authErrorClass}>
           {errorMsg}

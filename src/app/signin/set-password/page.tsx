@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 // they choose a password before opening the admin.
 export default function SetPasswordPage() {
   return (
-    <AuthShell title="Set your password" subtitle="You were invited to the Triarc admin. Choose a password to finish.">
+    <AuthShell title="Set your password" subtitle="Enter your name and choose a password to finish.">
       <SetPasswordForm />
     </AuthShell>
   );

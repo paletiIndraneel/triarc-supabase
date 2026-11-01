@@ -216,6 +216,19 @@ in `pdf()` mirrors an Excel template (rows A1:G37).
   SQL Editor, reported "Success"). It makes investors read-only. `supabase/tests/rls.test.sql` then
   passed on the live project (reported 1 Nov 2026).
 
+### Supabase Auth settings (invites, set password, forgot password)
+
+No migration is needed: the name is kept in the account's `user_metadata.display_name`. These
+dashboard settings must be in place (Authentication section of the Supabase project):
+
+- **URL Configuration**: Site URL `https://admin.triarcgroup.in`. Redirect URLs include
+  `https://admin.triarcgroup.in/signin/set-password`. Invites and reset links are sent there, and
+  Supabase refuses any redirect that is not listed.
+- **Providers → Email**: email and password sign-in enabled.
+- **Email templates**: "Invite user" and "Reset password" keep `{{ .ConfirmationURL }}` (the default).
+- **SMTP settings**: a custom SMTP sender. The built-in sender is shared and rate-limited, so invites
+  and reset links may not arrive reliably without one.
+
 ## 10. Tests
 
 | Suite | Runs | Needs |

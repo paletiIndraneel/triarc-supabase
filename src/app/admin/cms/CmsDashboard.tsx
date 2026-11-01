@@ -419,6 +419,9 @@ function sortValue(columnId: CmsColumnId, transaction: Transaction): number | st
 
 type TableSort = { column: CmsColumnId; direction: "asc" | "desc" };
 
+// The table's own order: the latest session first, then older ones.
+const DEFAULT_TABLE_SORT: TableSort = { column: "startedAt", direction: "desc" };
+
 function compareTransactions(a: Transaction, b: Transaction, sort: TableSort) {
   const left = sortValue(sort.column, a);
   const right = sortValue(sort.column, b);
@@ -681,8 +684,8 @@ export default function CmsOperatorDashboard() {
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  // No sort of its own until a heading is clicked: the table's own order puts the charging
-  // sessions first, which is what most visits are after.
+  // No sort of its own until a heading is clicked: the table's own order is the latest session
+  // first, which is what most visits are after.
   const [sort, setSort] = useState<TableSort | null>(null);
   const [datePreset, setDatePreset] = useState<DatePreset | "custom">("today");
   const [customFrom, setCustomFrom] = useState(() => istDateString().slice(0, 8) + "01");
@@ -1179,7 +1182,7 @@ export default function CmsOperatorDashboard() {
   const count = transactions.length;
 
   const sortedTransactions = useMemo(
-    () => (sort ? [...transactions].sort((a, b) => compareTransactions(a, b, sort)) : transactions),
+    () => [...transactions].sort((a, b) => compareTransactions(a, b, sort ?? DEFAULT_TABLE_SORT)),
     [transactions, sort]
   );
   const pagedTransactions = sortedTransactions.slice((page - 1) * pageSize, page * pageSize);
@@ -1246,7 +1249,7 @@ export default function CmsOperatorDashboard() {
   }
 
   // Click a heading to sort by it: ascending, then descending, then back to the table's own
-  // order. The heading is still draggable, which is a different gesture.
+  // order (latest first). The heading is still draggable, which is a different gesture.
   function sortByColumn(column: CmsColumnId) {
     setSort((current) => {
       if (!current || current.column !== column) return { column, direction: "asc" };

@@ -19,10 +19,9 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // meter values, a batch at a time, for the window's finished sessions that have none yet.
 // Every switched-on platform is included; meters only for platforms that have them.
 export async function POST(request: Request) {
-  const { supabase: userClient, user, stationIds } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
-  // The backfill saves every station's sessions, so a station-limited investor cannot run it.
-  if (stationIds) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase: userClient, user, isPartner } = await getAdminClient();
+  // Investors are read-only, so only full-access admins start a backfill.
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   // Saved with the server's secret key once the user is checked (falls back to their session).
   const supabase = (await getServiceClient()) ?? userClient;
 

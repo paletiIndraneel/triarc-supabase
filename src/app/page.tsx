@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import AdminApp from "@/components/admin/AdminApp";
-import { parseAdminModule } from "@/components/admin/adminNavigation";
+import { canOpenModule, parseAdminModule } from "@/components/admin/adminNavigation";
 import { getAdminClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -25,10 +25,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   // proxy is bypassed or misconfigured, and this adds partner vs investor.
   const { supabase, user, isPartner, access, modules } = await getAdminClient();
   if (!user) redirect("/signin");
-  const { data, error } = await supabase
-    .from("enquiries")
-    .select("id, name, email, phone, message, status, created_at")
-    .order("created_at", { ascending: false });
+  // Enquiries are sent to the browser only for admins who may open them (RLS checks the same).
+  const { data, error } = canOpenModule("enquiries", isPartner, modules)
+    ? await supabase
+        .from("enquiries")
+        .select("id, name, email, phone, message, status, created_at")
+        .order("created_at", { ascending: false })
+    : { data: [], error: null };
 
   return (
     <AdminApp

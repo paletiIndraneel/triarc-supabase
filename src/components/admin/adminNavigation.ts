@@ -9,20 +9,17 @@ export function parseAdminModule(value: string | null | undefined): AdminModule 
 
 // Modules only full-access admins (partners and IT admins, see @/lib/adminAccess) ever open.
 // They are left out of GRANTABLE_MODULES, and listed here as well so a value written straight
-// into admin_users.modules still cannot open them. Platforms switches a charging platform off
-// for everyone, so it belongs with Access.
-const FULL_ACCESS_ONLY: readonly AdminModule[] = ["access", "platforms"];
+// into admin_users.modules still cannot open them. Investors are read-only (owner decision,
+// 1 Nov 2026), so billing, stations and platform bills are full access only too.
+const FULL_ACCESS_ONLY: readonly AdminModule[] = ["access", "platforms", "billing", "stations", "provider-bills"];
 
 // The modules the Access page can tick for an admin without full access (admin_users.modules;
-// RLS and the API check the same list). Overview is always open; full-access admins open
-// everything.
+// the same list as admin_has_module() in Postgres). Overview is always open; full-access admins
+// open everything. CPO Settings lets an investor add numbers only, never list or change them.
 export const GRANTABLE_MODULES: { key: AdminModule; label: string }[] = [
   { key: "cms", label: "CMS Dashboard" },
-  { key: "billing", label: "Billing" },
   { key: "enquiries", label: "Enquiries" },
-  { key: "stations", label: "Stations" },
-  { key: "cpo-settings", label: "CPO Settings" },
-  { key: "provider-bills", label: "Platform Bills" },
+  { key: "cpo-settings", label: "CPO Settings (add numbers)" },
 ];
 
 export function canOpenModule(module: AdminModule, isPartner: boolean, modules: readonly string[] = []) {

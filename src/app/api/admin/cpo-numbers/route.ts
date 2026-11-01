@@ -10,10 +10,11 @@ function normalizeIndianMobile(value: string) {
 }
 
 
-// The list is partner-only; the CMS dashboard only asks the cpo_mobile_matches function.
+// The list, edits and deletes are full access only; an investor with CPO Settings ticked may
+// only add a number. The CMS dashboard only asks the cpo_mobile_matches function.
 export async function GET() {
-  const { supabase, user, isPartner, modules } = await getAdminClient();
-  if (!user || !(isPartner || modules.includes("cpo-settings"))) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   const { data, error } = await supabase.from("cpo_mobile_numbers")
     .select("id, mobile_number, normalized_mobile, created_at, updated_at")
     .order("mobile_number", { ascending: true });
@@ -37,21 +38,21 @@ export async function POST(request: Request) {
     const mobileNumber = body.mobileNumber.trim();
     const normalizedMobile = normalizeIndianMobile(mobileNumber);
     if (!normalizedMobile) return NextResponse.json({ error: "Enter a valid 10-digit Indian mobile number, optionally prefixed with +91 or 0091." }, { status: 400 });
-    const { data, error } = await supabase.from("cpo_mobile_numbers")
-      .insert({ mobile_number: mobileNumber, normalized_mobile: normalizedMobile, created_by: user.id })
-      .select("id, mobile_number, normalized_mobile, created_at, updated_at").single();
+    // Not read back: investors may add a number but not read the list.
+    const { error } = await supabase.from("cpo_mobile_numbers")
+      .insert({ mobile_number: mobileNumber, normalized_mobile: normalizedMobile, created_by: user.id });
     if (error) {
       if (error.code === "23505") return NextResponse.json({ error: "This mobile number is already configured." }, { status: 409 });
       console.error("[admin/cpo-numbers POST]", error);
       return NextResponse.json({ error: "Could not save the CPO mobile number." }, { status: 500 });
     }
-    return NextResponse.json({ number: { id: data.id, mobileNumber: data.mobile_number, normalizedMobile: data.normalized_mobile, createdAt: data.created_at, updatedAt: data.updated_at } }, { status: 201 });
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch { return NextResponse.json({ error: "Invalid request body." }, { status: 400 }); }
 }
 
 export async function PUT(request: Request) {
-  const { supabase, user, isPartner, modules } = await getAdminClient();
-  if (!user || !(isPartner || modules.includes("cpo-settings"))) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   try {
     const body = await request.json() as { id?: unknown; mobileNumber?: unknown };
     if (typeof body.id !== "string" || !body.id || typeof body.mobileNumber !== "string" || !body.mobileNumber.trim())
@@ -73,8 +74,8 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { supabase, user, isPartner, modules } = await getAdminClient();
-  if (!user || !(isPartner || modules.includes("cpo-settings"))) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
   try {
     const body = await request.json() as { id?: unknown };
     if (typeof body.id !== "string" || !body.id) return NextResponse.json({ error: "A number ID is required." }, { status: 400 });

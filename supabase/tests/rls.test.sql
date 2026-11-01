@@ -12,8 +12,8 @@ do $$
 declare
   u_p uuid := gen_random_uuid();   -- partner
   u_t uuid := gen_random_uuid();   -- IT admin
-  u_i uuid := gen_random_uuid();   -- investor, default modules (overview, cms, enquiries)
-  u_ib uuid := gen_random_uuid();  -- investor with the billing module ticked
+  u_i uuid := gen_random_uuid();   -- investor: overview, cms, enquiries, cpo-settings (add only)
+  u_ib uuid := gen_random_uuid();  -- investor with billing ticked but no enquiries (billing is full access only)
   u_is uuid := gen_random_uuid();  -- investor limited to station A
   u_x uuid := gen_random_uuid();   -- inactive partner
   u_n uuid := gen_random_uuid();   -- signed in, not an admin
@@ -37,16 +37,17 @@ begin
   insert into public.admin_users (user_id, role, active, access, modules, station_ids) values
     (u_p, 'admin', true, 'partner', '{overview}', '{}'),
     (u_t, 'admin', true, 'it_admin', '{overview}', '{}'),
-    (u_i, 'admin', true, 'investor', '{overview,cms,enquiries}', '{}'),
-    (u_ib, 'admin', true, 'investor', '{overview,cms,enquiries,billing}', '{}'),
+    (u_i, 'admin', true, 'investor', '{overview,cms,enquiries,cpo-settings}', '{}'),
+    (u_ib, 'admin', true, 'investor', '{overview,cms,billing}', '{}'),
     (u_is, 'admin', true, 'investor', '{overview,cms,enquiries}', array[st_a]),
     (u_x, 'admin', false, 'partner', '{overview}', '{}');
   insert into public.billing_customers (name) values ('RLS test customer') returning id into cust;
   insert into public.billing_invoices (invoice_number, customer_id, billing_name)
     values ('RLSTEST-' || gen_random_uuid(), cust, 'RLS test customer') returning id into inv;
   insert into public.enquiries (name, email, message) values ('RLS test', 'rls@test.invalid', 'test') returning id into enq;
-  insert into public.cms_transactions (transaction_id, provider, location_id, started_at) values
-    (tx_a, 'rlstest', 900000001, now()), (tx_b, 'rlstest', 900000002, now());
+  -- Session mobiles: 0000000001 charges at station A, 0000000003 at station B; 0000000002 never charges.
+  insert into public.cms_transactions (transaction_id, provider, location_id, started_at, mobile) values
+    (tx_a, 'rlstest', 900000001, now(), '+91 00000 00001'), (tx_b, 'rlstest', 900000002, now(), '0000000003');
   -- Its own platform row, so the test never changes a real one.
   insert into public.provider_settings (provider, enabled) values ('rlstest', true)
     on conflict (provider) do update set enabled = true;
@@ -54,7 +55,8 @@ begin
     values ('rlstest', '2026-10-01T00:00:00+05:30', '2026-10-08T00:00:00+05:30', 100)
     on conflict (provider, period_start) do nothing;
   insert into public.cpo_mobile_numbers (mobile_number, normalized_mobile)
-    values ('0000000001', '0000000001') on conflict (normalized_mobile) do nothing;
+    values ('0000000001', '0000000001'), ('0000000002', '0000000002'), ('0000000003', '0000000003')
+    on conflict (normalized_mobile) do nothing;
 
   -- 1. Visitors (anon) and signed-in non-admins see nothing in the sensitive tables.
   foreach who in array array['anon', 'non-admin', 'inactive partner'] loop
@@ -106,17 +108,48 @@ begin
   update public.provider_bills set status = 'confirmed' where provider = 'rlstest'; get diagnostics n = row_count;
   if n <> 0 then fails := fails || array['investor confirms a platform bill']; end if;
   total := total + 1;
-  if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || array['investor cannot match a CPO number']; end if;
+  if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || array['investor cannot match a CPO number on a session'];
+  end if;
+  total := total + 1;
+  if (select count(*) from public.cpo_mobile_matches(array['0000000002'])) <> 0 then fails := fails || array['investor probes a CPO number on no session']; end if;
+  -- Investors may add a CPO number (as themselves) but still not read the list.
+  total := total + 1;
+  begin insert into public.cpo_mobile_numbers (mobile_number, normalized_mobile, created_by) values ('0000000009', '0000000009', u_i); denied := false;
+  exception when insufficient_privilege or unique_violation then denied := true; end;
+  if denied then fails := fails || array['cpo-settings investor cannot add a CPO number']; end if;
+  total := total + 1;
+  begin insert into public.cpo_mobile_numbers (mobile_number, normalized_mobile, created_by) values ('0000000008', '0000000008', u_p); denied := false;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then fails := fails || array['investor adds a CPO number in another admin''s name']; end if;
+  total := total + 1;
+  update public.cpo_mobile_numbers set mobile_number = 'x' where normalized_mobile = '0000000001'; get diagnostics n = row_count;
+  if n <> 0 then fails := fails || array['investor edits a CPO number']; end if;
+  total := total + 1;
+  delete from public.cpo_mobile_numbers where normalized_mobile = '0000000001'; get diagnostics n = row_count;
+  if n <> 0 then fails := fails || array['investor deletes a CPO number']; end if;
   total := total + 1;
   if (select count(*) from public.enquiries where id = enq) <> 1 then fails := fails || array['investor cannot read enquiries']; end if;
   total := total + 1;
   update public.enquiries set status = 'Contacted' where id = enq; get diagnostics n = row_count;
-  if n <> 1 then fails := fails || array['investor cannot change an enquiry status']; end if;
+  if n <> 0 then fails := fails || array['investor changes an enquiry']; end if;
   total := total + 1;
   delete from public.enquiries where id = enq; get diagnostics n = row_count;
   if n <> 0 then fails := fails || array['investor deletes an enquiry']; end if;
   total := total + 1;
   if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || array['investor (all stations) misses sessions']; end if;
+  total := total + 1;
+  begin insert into public.cms_transactions (transaction_id, provider, location_id, started_at) values ('rlstest_i_' || gen_random_uuid(), 'rlstest', 900000002, now()); denied := false;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then fails := fails || array['investor adds a session']; end if;
+  total := total + 1;
+  update public.cms_transactions set energy_kwh = 9999 where transaction_id = tx_a; get diagnostics n = row_count;
+  if n <> 0 then fails := fails || array['investor edits a session']; end if;
+  total := total + 1;
+  if to_regclass('public.charging_sessions') is not null then
+    begin execute 'select count(*) from public.charging_sessions' into n;
+    exception when insufficient_privilege then n := 0; end;
+    if n <> 0 then fails := fails || array['investor reads the old charging_sessions copy']; end if;
+  end if;
   total := total + 1;
   if (select count(*) from public.billing_invoice_stations where id in (st_a, st_b)) <> 2 then fails := fails || array['investor cannot read station names']; end if;
   total := total + 1;
@@ -159,11 +192,18 @@ begin
   perform set_config('request.jwt.claim.sub', u_ib::text, true);
   perform set_config('role', 'authenticated', true);
   total := total + 1;
-  if (select count(*) from public.billing_invoices where id = inv) <> 1 then fails := fails || array['billing-module investor cannot read invoices']; end if;
+  -- Billing is full access only: a ticked billing module grants nothing.
+  if (select count(*) from public.billing_invoices where id = inv) <> 0 then fails := fails || array['investor with billing ticked reads invoices']; end if;
   total := total + 1;
   begin insert into public.billing_customers (name) values ('RLS test 2'); denied := false;
   exception when insufficient_privilege then denied := true; end;
-  if denied then fails := fails || array['billing-module investor cannot add a customer']; end if;
+  if not denied then fails := fails || array['investor with billing ticked adds a customer']; end if;
+  total := total + 1;
+  begin update public.billing_invoice_stations set name = 'RLS test station A' where id = st_b; get diagnostics n = row_count;
+  exception when insufficient_privilege then n := 0; end;
+  if n <> 0 then fails := fails || array['investor with billing ticked renames a station']; end if;
+  total := total + 1;
+  if (select count(*) from public.enquiries where id = enq) <> 0 then fails := fails || array['investor without the enquiries module reads enquiries']; end if;
   perform set_config('role', 'postgres', true);
 
   perform set_config('request.jwt.claims', json_build_object('sub', u_is, 'role', 'authenticated')::text, true);
@@ -176,6 +216,14 @@ begin
   total := total + 1;
   update public.cms_transactions set user_name = 'x' where transaction_id = tx_b; get diagnostics n = row_count;
   if n <> 0 then fails := fails || array['station-limited investor updates another station''s session']; end if;
+  total := total + 1;
+  begin insert into public.cms_transactions (transaction_id, provider, location_id, started_at) values ('rlstest_is_' || gen_random_uuid(), 'rlstest', 900000002, now()); denied := false;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then fails := fails || array['station-limited investor adds a session at another station']; end if;
+  total := total + 1;
+  if (select count(*) from public.cpo_mobile_matches(array['0000000001'])) <> 1 then fails := fails || array['station-limited investor loses the CPO split on own station']; end if;
+  total := total + 1;
+  if (select count(*) from public.cpo_mobile_matches(array['0000000003'])) <> 0 then fails := fails || array['station-limited investor matches a CPO number from another station']; end if;
   perform set_config('role', 'postgres', true);
 
   -- 4. Full access: partner and IT admin.
@@ -189,6 +237,11 @@ begin
     if (select count(*) from public.cpo_mobile_numbers where normalized_mobile = '0000000001') <> 1 then fails := fails || array[format('%s cannot read CPO numbers', who)]; end if;
     total := total + 1;
     if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 2 then fails := fails || array[format('%s misses sessions', who)]; end if;
+    total := total + 1;
+    if (select count(*) from public.cpo_mobile_matches(array['0000000002'])) <> 1 then fails := fails || array[format('%s cannot match any CPO number', who)]; end if;
+    total := total + 1;
+    update public.enquiries set status = 'Contacted' where id = enq; get diagnostics n = row_count;
+    if n <> 1 then fails := fails || array[format('%s cannot change an enquiry status', who)]; end if;
     total := total + 1;
     update public.provider_settings set enabled = not enabled where provider = 'rlstest'; get diagnostics n = row_count;
     if n <> 1 then fails := fails || array[format('%s cannot switch a platform', who)]; end if;

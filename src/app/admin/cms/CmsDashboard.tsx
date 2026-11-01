@@ -34,6 +34,7 @@ import { StackPanel, type StackPage } from "@/components/ui/StackPanel";
 import { useLiveMetrics, withLiveValues, type LiveState } from "./useLiveMetrics";
 import { StationSelect, useStationSelection } from "./stationSelection";
 import { PlatformSelect, usePlatformSelection } from "./platformSelection";
+import { useAdminModule } from "@/components/admin/AdminModuleContext";
 
 // Sessions saved in SESSIONS_TABLE that started in [from, to), oldest first.
 async function readStoredFromBrowser(from: string, to: string) {
@@ -657,6 +658,7 @@ type PlatformMetrics = {
 };
 
 export default function CmsOperatorDashboard() {
+  const { isPartner } = useAdminModule(); // backfill is full access only (investors are read-only)
   const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   // Status is capped to the matrix/Consumption pair's height on a wide screen, so a long
   // session detail scrolls inside the card rather than stretching the row.
@@ -1321,7 +1323,7 @@ export default function CmsOperatorDashboard() {
                 {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(dataTill))}
               </p>
             )}
-            <button
+            {isPartner && <button
               type="button"
               onClick={() => void startHistoricalBackfill()}
               disabled={backfillRunning}
@@ -1329,7 +1331,7 @@ export default function CmsOperatorDashboard() {
             >
               <Activity size={16} className={backfillRunning ? "motion-safe:animate-pulse" : ""} />
               {backfillRunning ? "Backfill running…" : "Start history backfill"}
-            </button>
+            </button>}
             <button
               type="button"
               onClick={() => void load(true)}

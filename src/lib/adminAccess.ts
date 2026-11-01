@@ -7,7 +7,8 @@ export type AccessLevel = string;
 export type Level = { id: AccessLevel; label: string; full: boolean };
 
 // The roles that see and manage everything. Same set as admin_full_access() in Postgres; any
-// other role sees the CMS dashboard and enquiries, for all stations or only its own.
+// other role is read-only: the CMS dashboard and enquiries, for all stations or only its own,
+// plus adding CPO numbers when ticked.
 export const FULL_ACCESS_ROLES = ["partner", "it_admin"];
 
 export function hasFullAccess(access: string | null | undefined) {

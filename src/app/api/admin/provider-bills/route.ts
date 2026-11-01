@@ -104,8 +104,9 @@ function platformOr400(value: unknown) {
 }
 
 export async function GET(request: Request) {
-  const { supabase, user, isPartner, modules } = await getAdminClient();
-  if (!user || !(isPartner || modules.includes("provider-bills"))) return new NextResponse("Forbidden", { status: 403 });
+  // Platform bills are full access only (investors are read-only; audit run-1).
+  const { supabase, user, isPartner } = await getAdminClient();
+  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
 
   const asked = new URL(request.url).searchParams.get("provider");
   const info = asked ? platformOr400(asked) : PROVIDERS[0];

@@ -45,6 +45,9 @@ export default function SignInForm() {
         window.location.origin
       );
 
+      // The CMS cache in sessionStorage is not tied to a user; drop any left by an earlier
+      // account in this tab (session expiry and cross-tab sign-outs skip the Sign Out button).
+      window.sessionStorage.clear();
       window.location.href = destination;
     } catch (error) {
       console.error("[auth] sign-in error:", error);

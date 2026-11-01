@@ -145,12 +145,14 @@ test("mergeLines adds quantities of identical item lines and keeps different rat
   assert.equal(calc(merged, "IGST").total, calc([line("a", 1.3, 15), line("a", 2, 16)], "IGST").total);
 });
 
-test("admins open the ticked modules (Access only with full access); full access opens every module", async () => {
+test("admins open the ticked modules (billing, stations and Access only with full access); full access opens every module", async () => {
   const { canOpenModule } = await import("../src/components/admin/adminNavigation.ts");
   const all = ["overview", "cms", "billing", "enquiries", "stations", "access", "cpo-settings"];
   const investor = ["overview", "cms", "enquiries"];
   assert.deepEqual(all.map((m) => canOpenModule(m, false, investor)), [true, true, false, true, false, false, false]);
-  assert.deepEqual(all.map((m) => canOpenModule(m, false, ["billing", "access"])), [true, false, true, false, false, false, false]);
+  assert.deepEqual(all.map((m) => canOpenModule(m, false, ["billing", "access"])), [true, false, false, false, false, false, false]);
+  assert.deepEqual(all.map((m) => canOpenModule(m, false, ["stations", "cpo-settings", "provider-bills"])), [true, false, false, false, false, false, true]);
+  assert.equal(canOpenModule("provider-bills", false, ["provider-bills"]), false);
   assert.ok(all.every((m) => canOpenModule(m, true)));
 });
 

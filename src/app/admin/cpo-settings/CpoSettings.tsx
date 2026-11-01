@@ -20,12 +20,13 @@ async function readNumbers(): Promise<{ numbers: CpoNumber[]; error: string }> {
 }
 
 export default function CpoSettings() {
-  const { setActiveModule } = useAdminModule();
+  // Investors with CPO Settings ticked may only add numbers; the list is full access only.
+  const { setActiveModule, isPartner } = useAdminModule();
   const [numbers, setNumbers] = useState<CpoNumber[]>([]);
   const [mobileNumber, setMobileNumber] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isPartner);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -41,10 +42,11 @@ export default function CpoSettings() {
   }, [show]);
   // On mount loading is already true and error empty, so the first read only shows its result.
   useEffect(() => {
+    if (!isPartner) return;
     let current = true;
     void readNumbers().then((result) => { if (current) show(result); });
     return () => { current = false; };
-  }, [show]);
+  }, [show, isPartner]);
 
   async function submitNumber(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setNotice("");
@@ -54,7 +56,7 @@ export default function CpoSettings() {
       const response = await fetch("/api/admin/cpo-numbers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mobileNumber }) });
       const data = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Could not add number.");
-      setMobileNumber(""); setNotice("Number added. CPO matching will use the updated list on dashboard refresh."); invalidateCpoMobileNumbers(); await loadNumbers();
+      setMobileNumber(""); setNotice("Number added. CPO matching will use the updated list on dashboard refresh."); invalidateCpoMobileNumbers(); if (isPartner) await loadNumbers();
     } catch (err) { setError(err instanceof Error ? err.message : "Could not add number."); }
     finally { setSaving(false); }
   }
@@ -87,9 +89,9 @@ export default function CpoSettings() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3"><div className="rounded-xl bg-accent-pale p-3 text-accent"><Settings2 size={23}/></div><div>
             <h1 className="text-2xl font-bold tracking-tight">CPO Settings</h1>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">Manage the mobile numbers used to identify CPO transactions. Updates are applied to historical transactions when dashboard summaries are refreshed.</p>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">{isPartner ? "Manage the mobile numbers used to identify CPO transactions. Updates are applied to historical transactions when dashboard summaries are refreshed." : "Add a mobile number used to identify CPO transactions. Only partners can see or change the saved list."}</p>
           </div></div>
-          <button type="button" onClick={() => void loadNumbers()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-raised disabled:opacity-50"><RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""}/> Refresh</button>
+          {isPartner && <button type="button" onClick={() => void loadNumbers()} disabled={loading || saving} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-raised disabled:opacity-50"><RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""}/> Refresh</button>}
         </div>
         {error && <div role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         {notice && <div role="status" className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>}
@@ -102,7 +104,7 @@ export default function CpoSettings() {
           </div>
           {fieldError && <p id="cpo-mobile-error" role="alert" className="mt-2 text-xs font-semibold text-red-700">{fieldError}</p>}
         </form>
-        <div className="mt-7">
+        {isPartner && <div className="mt-7">
           <div className="mb-3 flex items-center justify-between gap-3"><h2 className="text-base font-bold">Configured numbers</h2><span className="rounded-full bg-soft px-2.5 py-1 text-xs font-semibold text-muted">{numbers.length} number{numbers.length === 1 ? "" : "s"}</span></div>
           <div className="overflow-hidden rounded-xl border border-line">
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-b border-line bg-raised px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted"><span>Saved mobile</span><span>Normalized match value</span><span>Actions</span></div>
@@ -119,7 +121,7 @@ export default function CpoSettings() {
               </>}</div>
             </div>)}
           </div>
-        </div>
+        </div>}
         <div className="mt-6 rounded-xl border border-line bg-accent-pale/70 p-4 text-sm leading-6 text-ink"><p className="font-semibold">How matching works</p>
           <p className="mt-1">Formatting is normalized before matching. 9876543210, +91 98765-43210 and 91-9876543210 match the same 10-digit Indian mobile number. Transactions with missing or unmatched mobile numbers are non-CPO.</p>
           <p className="mt-1">CPO energy appears below DC in the Total energy card. The Revenue card is unchanged.</p>

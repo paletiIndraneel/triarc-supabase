@@ -59,6 +59,7 @@ export default function SetPasswordForm() {
       return;
     }
     // A full load, so the proxy checks the new session; absolute to say that's intended.
+    window.sessionStorage.clear(); // a new account: no CMS cache from an earlier one in this tab
     window.location.assign(new URL("/", window.location.origin));
   }
 

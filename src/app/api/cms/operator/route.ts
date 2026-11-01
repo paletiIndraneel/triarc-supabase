@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 type Supabase = Awaited<ReturnType<typeof getAdminClient>>["supabase"];
 
 export async function GET(request: Request) {
-  const { supabase, user, stationIds } = await getAdminClient();
+  const { supabase, user, stationIds, isPartner } = await getAdminClient();
   if (!user) {
     return new NextResponse("Forbidden", { status: 403 });
   }
@@ -32,17 +32,18 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const page = Math.max(1, Number(url.searchParams.get("page") ?? "1"));
-    const perPage = Math.min(
-      100,
-      Math.max(1, Number(url.searchParams.get("perPage") ?? "25"))
-    );
+    // Investors are read-only: a fixed page size and no platform search, so one request cannot
+    // fan out into hundreds of ChargeMOD calls on the shared account (audit run-1).
+    const perPage = isPartner
+      ? Math.min(100, Math.max(1, Number(url.searchParams.get("perPage") ?? "25")))
+      : 100;
     const endDate = url.searchParams.get("endDate") ?? new Date().toISOString();
     const startDate =
       url.searchParams.get("startDate") ??
       new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const searchField = url.searchParams.get("searchField") ?? "";
-    const searchKey = url.searchParams.get("searchKey") ?? "";
+    const searchField = isPartner ? url.searchParams.get("searchField") ?? "" : "";
+    const searchKey = isPartner ? url.searchParams.get("searchKey") ?? "" : "";
 
     // stored=1: only what the sessions table already holds for the window, no platform call,
     // so the dashboard can render at once and then swap in the live response.
@@ -95,7 +96,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       // shortcut: the dashboard's summary/locations come from the first platform that has one
       // (ChargeMOD); merge them when a second platform brings its own.
-      dashboard: synced.find((s) => s.dashboard)?.dashboard ?? { summary: {}, chart: {}, chargers: {}, locations: {} },
+      // Only full-access admins get it: it covers every station of the organisation.
+      dashboard: (isPartner ? synced.find((s) => s.dashboard)?.dashboard : null) ?? { summary: {}, chart: {}, chargers: {}, locations: {} },
       transactions: {
         transactions,
         count: transactions.length,

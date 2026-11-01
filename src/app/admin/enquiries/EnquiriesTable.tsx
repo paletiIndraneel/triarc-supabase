@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Mail, Phone, Search, ChevronDown, ChevronUp, AlertCircle, Inbox } from "lucide-react";
 import { safeMailtoHref, safeTelHref } from "@/lib/security";
 import { supabase } from "@/lib/supabase/billing";
+import { useAdminModule } from "@/components/admin/AdminModuleContext";
 
 type Enquiry = {
   id: string;
@@ -29,6 +30,7 @@ const STATUS_STYLE: Record<Enquiry["status"], string> = {
 };
 
 export default function EnquiriesTable({ enquiries: initialEnquiries, error = false }: Props) {
+  const { isPartner } = useAdminModule(); // investors read enquiries; only full access changes them
   const [enquiries, setEnquiries] = useState(initialEnquiries);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("New");
@@ -166,7 +168,7 @@ export default function EnquiriesTable({ enquiries: initialEnquiries, error = fa
                         <td className="px-5 py-4">
                           <select
                             value={item.status}
-                            disabled={savingId === item.id}
+                            disabled={!isPartner || savingId === item.id}
                             onChange={(e) => void changeStatus(item, e.target.value as Enquiry["status"])}
                             aria-label={`Status of enquiry from ${item.name}`}
                             className={`rounded-full border px-2.5 py-1 text-xs font-semibold outline-none focus:ring-2 focus:ring-focus-ring/40 disabled:opacity-60 ${STATUS_STYLE[item.status]}`}

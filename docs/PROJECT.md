@@ -15,7 +15,7 @@ at the same site, and a second station is planned. The admin has to:
 - Show live and historical charging: energy (kWh), revenue (₹), sessions, chargers in use.
 - Bill business customers for charging, with Indian GST (CGST+SGST in Telangana, IGST elsewhere).
 - Track website enquiries.
-- Let partners decide which investors see which modules and which stations.
+- Let partners decide which stations each investor sees. Investors are read-only: their stations' CMS sessions, enquiries, and adding CPO numbers (decided 1 Nov 2026).
 
 ## 2. Modules
 

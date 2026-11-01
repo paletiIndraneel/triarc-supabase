@@ -1758,8 +1758,6 @@ export default function CmsOperatorDashboard() {
                               <DetailRow label="End SoC" value={transaction.endSoc == null ? "—" : `${transaction.endSoc}%`} />
                               <DetailRow label="Energy" value={transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh)} />
                               <DetailRow label="Charger" value={displayChargerWithGun(transaction.chargerName, transaction.connectorId)} />
-                              <DetailRow label="Meter start" value={transaction.startValue ?? "—"} />
-                              <DetailRow label="Meter stop" value={transaction.stopValue ?? "—"} />
                               <DetailRow label="Stop reason" value={transaction.stopReason ?? "—"} />
                             </CellPopover>
                           )}
@@ -1779,7 +1777,16 @@ export default function CmsOperatorDashboard() {
                           {columnId === "chargerName" && displayChargerWithGun(transaction.chargerName, transaction.connectorId)}
                           {columnId === "stationType" && (transaction.stationType ?? "—")}
                           {columnId === "stopReason" && (transaction.stopReason ?? "—")}
-                          {columnId === "energyKwh" && (transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh))}
+                          {columnId === "energyKwh" && (
+                            <CellPopover
+                              title="Energy details"
+                              trigger={transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh)}
+                            >
+                              <DetailRow label="Energy" value={transaction.energyKwh == null ? "—" : formatKwh(transaction.energyKwh)} />
+                              <DetailRow label="Meter start" value={transaction.startValue ?? "—"} />
+                              <DetailRow label="Meter stop" value={transaction.stopValue ?? "—"} />
+                            </CellPopover>
+                          )}
                           {columnId === "startSoc" && (transaction.startSoc == null ? "—" : `${transaction.startSoc}%`)}
                           {columnId === "endSoc" && (transaction.endSoc == null ? "—" : `${transaction.endSoc}%`)}
                           {columnId === "vehicleName" && (transaction.vehicleName ?? "—")}

@@ -39,7 +39,6 @@ import {
   CMS_COLUMN_LABELS,
   CMS_COLUMNS,
   DEFAULT_CMS_COLUMNS,
-  TableSort,
   DEFAULT_TABLE_SORT,
   compareTransactions,
   socRange,
@@ -49,6 +48,7 @@ import {
   splitPeriod,
   formatKwh,
 } from "./cmsHelpers";
+import { useSessionsTableState } from "./useSessionsTableState";
 import { PeriodMatrixCard, type MatrixPeriod } from "./cmsMatrixCard";
 import { StatusCard, type ConnectorState } from "./cmsStatusCard";
 
@@ -82,31 +82,13 @@ export default function CmsOperatorDashboard() {
   const [activeTransactions, setActiveTransactions] = useState<Transaction[]>([]);
   const [active, setActive] = useState(0);
   const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  // No sort of its own until a heading is clicked: the table's own order is the latest session
-  // first, which is what most visits are after.
-  const [sort, setSort] = useState<TableSort | null>(null);
-  const [datePreset, setDatePreset] = useState<DatePreset | "custom">("today");
-  const [customFrom, setCustomFrom] = useState(() => istDateString().slice(0, 8) + "01");
-  const [customTo, setCustomTo] = useState(() => istDateString());
-  const [filters, setFilters] = useState<TransactionFilters>(EMPTY_TRANSACTION_FILTERS);
+  const { page, setPage, pageSize, setPageSize, sort, setSort, datePreset, setDatePreset, customFrom, setCustomFrom, customTo, setCustomTo, filters, setFilters, visibleColumns, setVisibleColumns, draftColumns, setDraftColumns, columnEditorOpen, setColumnEditorOpen, savingColumns, setSavingColumns, columnsLoaded, setColumnsLoaded, filterMenuOpen, setFilterMenuOpen, filterMenuRef, columnEditorRef, columnMenuRef, draggedTableColumn, setDraggedTableColumn } = useSessionsTableState();
   const [cpoMobileNumbers, setCpoMobileNumbers] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState("");
   const [dataTill, setDataTill] = useState<string | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
-  const [draftColumns, setDraftColumns] = useState<CmsColumnId[]>(DEFAULT_CMS_COLUMNS);
-  const [columnEditorOpen, setColumnEditorOpen] = useState(false);
-  const [savingColumns, setSavingColumns] = useState(false);
-  const [columnsLoaded, setColumnsLoaded] = useState(false);
-  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
-  const filterMenuRef = useRef<HTMLDivElement>(null);
-  const columnEditorRef = useRef<HTMLDivElement>(null);
-  const columnMenuRef = useRef<HTMLDivElement>(null);
-  const [draggedTableColumn, setDraggedTableColumn] = useState<CmsColumnId | null>(null);
 
 
 
@@ -136,7 +118,7 @@ export default function CmsOperatorDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setColumnsLoaded, setDraftColumns, setVisibleColumns]);
 
   async function saveColumnPreferences(columns: CmsColumnId[]) {
     setSavingColumns(true);
@@ -202,7 +184,7 @@ export default function CmsOperatorDashboard() {
 
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [filterMenuOpen]);
+  }, [filterMenuOpen, filterMenuRef, setFilterMenuOpen]);
 
   useEffect(() => {
     if (!columnEditorOpen) return;
@@ -225,7 +207,7 @@ export default function CmsOperatorDashboard() {
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
     };
-  }, [columnEditorOpen, visibleColumns]);
+  }, [columnEditorOpen, visibleColumns, columnEditorRef, columnMenuRef, setColumnEditorOpen, setDraftColumns]);
 
   // The CMS window is loaded through cmsWindowStore, shared with Overview: a Refresh
   // started on either page is one request, and both pages follow it.

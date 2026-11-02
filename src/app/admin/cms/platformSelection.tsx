@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { providerLabel } from "@/lib/cms/providerIds";
-import { cycleRuleFor, type CycleRule } from "@/lib/billingCycle";
+import type { CycleRule } from "@/lib/billingCycle";
+import { cycleRuleFor } from "@/lib/cms/providers";
 
 // The charging platform the cards belong to, shared by the CMS dashboard and Overview, kept in
 // this browser like the station choice.

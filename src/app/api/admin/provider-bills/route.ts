@@ -3,7 +3,8 @@ import { getAdminClient } from "@/lib/supabase/server";
 import { PROVIDERS } from "@/lib/cms/providerIds";
 import { SESSIONS_TABLE } from "@/lib/cms/transactionStore";
 import { normalizeMobile } from "@/app/admin/cms/transactionFilters";
-import { commissionPerKwh, cycleLabel, cycleRuleFor, cyclesBack, type Cycle } from "@/lib/billingCycle";
+import { cycleLabel, cyclesBack, type Cycle } from "@/lib/billingCycle";
+import { commissionPerKwh, cycleRuleFor, paymentDaysFor } from "@/lib/cms/providers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 
@@ -200,8 +201,8 @@ export async function PUT(request: Request) {
       provider: info.id,
       period_start: new Date(cycle.start).toISOString(),
       period_end: new Date(cycle.end).toISOString(),
-      // Ionage settles three days after the cycle closes; harmless for a platform that does not.
-      payment_due: new Date(cycle.end + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      // Each platform's settlement period from the registry (three days by default).
+      payment_due: new Date(cycle.end + paymentDaysFor(info.id) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
       their_energy_kwh: theirEnergyKwh,
       their_amount: theirAmount,
       their_commission: theirCommission,

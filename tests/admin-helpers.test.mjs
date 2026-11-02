@@ -639,3 +639,12 @@ test("raw payloads drop customer tokens and credentials, keep the rest, and stay
   });
   assert.equal(withoutRaw({ id: "t1", raw: { cms: {} } }).raw, undefined);
 });
+
+test("the registry carries each platform's billing terms, and ChargeMOD keeps its half-month cycle", async () => {
+  const { PROVIDERS } = await import("../src/lib/cms/providerIds.ts");
+  const chargemod = PROVIDERS.find((p) => p.id === "chargemod");
+  assert.deepEqual(chargemod.cycle, { kind: "half-month" });
+  // A platform with no billing terms set has none of them, so the lookups fall back to the defaults.
+  assert.equal(chargemod.commissionPerKwh, undefined);
+  assert.equal(chargemod.paymentDays, undefined);
+});

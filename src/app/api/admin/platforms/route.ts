@@ -3,7 +3,7 @@ import { getAdminClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getRuntimeEnv } from "@/lib/cms/operator";
 import { PROVIDERS } from "@/lib/cms/providerIds";
-import { cycleRuleFor } from "@/lib/billingCycle";
+import { cycleRuleFor } from "@/lib/cms/providers";
 export const dynamic = "force-dynamic";
 
 // The Platforms page: which charging platforms are switched on. Full access only (partner or

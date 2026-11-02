@@ -24,7 +24,8 @@ import {
 import { neutralizeCsvCell } from "@/lib/security";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 import { fromStoredRow, SESSION_COLUMNS, SESSIONS_TABLE } from "@/lib/cms/transactionStore";
-import { cycleLabel, cycleRuleFor, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
+import { cycleLabel, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
+import { cycleRuleFor } from "@/lib/cms/providers";
 import { displaySessionId, providerLabel } from "@/lib/cms/providerIds";
 import { supabase } from "@/lib/supabase/billing";
 import { matchCpoMobiles } from "./cpoNumbersCache";

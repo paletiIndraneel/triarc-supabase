@@ -5,39 +5,16 @@
 // Pure on purpose: no imports, so the test runner can load it, and no Date mutation, so every
 // boundary is an epoch millisecond in IST.
 //
-// ChargeMOD billed in half-months, which is where "1–15 / 16–end" came from. Ionage bills every
-// 7 days: add it to PROVIDER_CYCLES as { kind: "days", length: 7, anchor: "YYYY-MM-DD" }, the IST
-// date its first cycle began, and point DEFAULT_CYCLE at it on the cutover.
+// A platform's cycle rule is set in its registry entry (cms/providerIds.ts); the lookups that
+// read it are in cms/providers.ts. This file only does the date arithmetic.
 
 export type CycleRule =
   | { kind: "half-month" }
   | { kind: "days"; length: number; anchor: string }; // anchor: "YYYY-MM-DD", IST
 
-// A cycle belongs to a charging platform, not to Triarc: ChargeMOD billed in half-months, Ionage
-// bills every 7 days, and Ather may do something else again. Key by the provider ids in
-// cms/providerIds.ts; anything not listed falls back to DEFAULT_CYCLE.
-export const PROVIDER_CYCLES: Record<string, CycleRule> = {
-  chargemod: { kind: "half-month" },
-};
-
-// What the platform charges Triarc per kWh of customer energy — Ionage charges ₹1. Whether it
-// is reckoned on gross energy or net of Triarc's own CPO sessions, and how it rounds, is not
-// settled until the first real bill arrives, so it lives here as one number to correct.
-export const PROVIDER_COMMISSION_PER_KWH: Record<string, number> = {
-  ionage: 1,
-};
-
-export function commissionPerKwh(provider?: string | null) {
-  return (provider && PROVIDER_COMMISSION_PER_KWH[provider]) || 0;
-}
-
 // The rule for figures that are not tied to one platform (the Overview cards, the CMS matrix when
 // no platform is selected). Point it at whichever platform the business runs on.
 export const DEFAULT_CYCLE: CycleRule = { kind: "half-month" };
-
-export function cycleRuleFor(provider?: string | null): CycleRule {
-  return (provider && PROVIDER_CYCLES[provider]) || DEFAULT_CYCLE;
-}
 
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;

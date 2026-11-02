@@ -1,7 +1,7 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ChargeModTransaction, CmsTransaction } from "./types";
-import { cleanUserName } from "./transactionStore";
+import { cleanUserName, scrubRawPayload } from "./transactionStore";
 
 type CmsConfig = {
   enabled: boolean;
@@ -656,27 +656,41 @@ export async function getOperatorData(
     collectPages(ocpi, (page) => getOcpiTransactions(config, { ...transactionOptions, page })),
   ]);
 
-  const mergeUnique = (rows: Record<string, unknown>[]) => {
+  // Each row keeps its own source's payload (scrubbed) under raw.<source>, so a session that
+  // CMS and OCPI both describe keeps both.
+  type SourcedRow = { source: "cms" | "ocpi"; row: Record<string, unknown> };
+  const mergeUnique = (rows: SourcedRow[]) => {
     const merged = new Map<string, ReturnType<typeof sanitizeTransaction>>();
-    for (const raw of rows) {
-      const transaction = sanitizeTransaction(raw);
+    for (const { source, row } of rows) {
+      const sanitized = sanitizeTransaction(row);
+      const transaction = { ...sanitized, raw: { [source]: scrubRawPayload(row) } };
       const key = transaction.transactionId || transaction.id;
       if (!key) continue;
       const existing = merged.get(key);
-      merged.set(key, existing ? mergeSanitizedTransactions(existing, transaction) : transaction);
+      if (!existing) {
+        merged.set(key, transaction);
+        continue;
+      }
+      const combined = mergeSanitizedTransactions(existing, transaction);
+      combined.raw = { ...existing.raw, ...transaction.raw };
+      merged.set(key, combined);
     }
     return Array.from(merged.values());
   };
 
-  const uniqueTransactions = mergeUnique([...cmsRows, ...ocpiRows]);
-  const activeRows = [
-    ...(Array.isArray(active.result) ? active.result : []),
-    ...(Array.isArray(ocpiActive.result) ? ocpiActive.result : []),
-  ].filter(
-    (item): item is Record<string, unknown> =>
-      Boolean(item) && typeof item === "object"
-  );
-  const activeTransactions = mergeUnique(activeRows);
+  const sourced = (rows: unknown[], source: "cms" | "ocpi"): SourcedRow[] =>
+    rows
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+      .map((row) => ({ source, row }));
+
+  const uniqueTransactions = mergeUnique([
+    ...sourced(cmsRows, "cms"),
+    ...sourced(ocpiRows, "ocpi"),
+  ]);
+  const activeTransactions = mergeUnique([
+    ...sourced(Array.isArray(active.result) ? active.result : [], "cms"),
+    ...sourced(Array.isArray(ocpiActive.result) ? ocpiActive.result : [], "ocpi"),
+  ]);
 
   return {
     dashboard,

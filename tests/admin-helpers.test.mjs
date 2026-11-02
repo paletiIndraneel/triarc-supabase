@@ -622,3 +622,20 @@ test("cycleLabel names a half-month by its half and a run of days by its dates",
   // A run of days names its first and last day; end is exclusive, so the 21st is not shown.
   assert.equal(cycleLabel(cycleContaining(cycAt("2026-10-21T08:00:00Z"), WEEK), WEEK), "15 Oct – 21 Oct");
 });
+
+test("raw payloads drop customer tokens and credentials, keep the rest, and stay off the browser response", async () => {
+  const { scrubRawPayload, withoutRaw } = await import("../src/lib/cms/transactionStore.ts");
+  const payload = {
+    transactionId: "t1",
+    energy: 4.2,
+    employeeDetails: { refreshToken: "x", fcmToken: "y" },
+    session: { idTag: "abc", apiKey: "secret", connector: { power: 60 } },
+    tokenCount: 3,
+  };
+  assert.deepEqual(scrubRawPayload(payload), {
+    transactionId: "t1",
+    energy: 4.2,
+    session: { idTag: "abc", connector: { power: 60 } },
+  });
+  assert.equal(withoutRaw({ id: "t1", raw: { cms: {} } }).raw, undefined);
+});

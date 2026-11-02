@@ -102,6 +102,9 @@ export type CmsTransaction = {
   vehicleModelId: string | null;
   startingBalance: number | null;
   endingBalance: number | null;
+  // The platform's own payload per source (cms, ocpi), scrubbed of tokens. Stored in the
+  // `raw` column; never sent to the browser (see withoutRaw in transactionStore.ts).
+  raw?: Record<string, unknown> | null;
 };
 
 type SnakeCase<S extends string> = S extends `${infer Head}${infer Tail}`

@@ -11,6 +11,7 @@ import {
   storedRows,
   syncStartDate,
   upsertStoredRows,
+  withoutRaw,
 } from "@/lib/cms/transactionStore";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 
@@ -91,8 +92,9 @@ export async function GET(request: Request) {
     // already limits the stored ones; this covers what the platform returned live).
     const allowed = stationIds ? await stationLocationKeys(supabase, stationIds) : null;
     const visible = (t: CmsTransaction) => !allowed || allowed.has(`${t.provider}|${t.locationId ?? ""}`);
-    const transactions = synced.flatMap((s) => s.transactions).filter(visible);
-    const active = synced.flatMap((s) => s.active).filter(visible);
+    // The stored raw payloads stay on the server; the browser only gets the session.
+    const transactions = synced.flatMap((s) => s.transactions).filter(visible).map(withoutRaw);
+    const active = synced.flatMap((s) => s.active).filter(visible).map(withoutRaw);
     return NextResponse.json({
       // shortcut: the dashboard's summary/locations come from the first platform that has one
       // (ChargeMOD); merge them when a second platform brings its own.

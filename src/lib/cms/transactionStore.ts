@@ -182,3 +182,27 @@ export async function stationLocationKeys(supabase: SupabaseClient, stationIds: 
   const names = new Set((data ?? []).filter((s) => stationIds.includes(s.id)).map((s) => s.name));
   return new Set((data ?? []).filter((s) => names.has(s.name) && s.provider && s.location_id).map((s) => `${s.provider}|${s.location_id}`));
 }
+
+// The original platform payload kept with a session (`raw`), with anything secret or personal
+// removed: the customer's ChargeMOD tokens (employeeDetails) and any key that looks like a
+// credential. Nested objects are cleaned too, to a fixed depth.
+const SECRET_KEY = /token|password|secret|authorization|fcm|refresh|employeedetails|apikey|api_key/i;
+const MAX_RAW_DEPTH = 6;
+
+export function scrubRawPayload(value: unknown, depth = 0): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (depth >= MAX_RAW_DEPTH) return null;
+  if (Array.isArray(value)) return value.map((item) => scrubRawPayload(item, depth + 1));
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !SECRET_KEY.test(key))
+      .map(([key, item]) => [key, scrubRawPayload(item, depth + 1)])
+  );
+}
+
+// The session as the browser gets it: the stored `raw` payload stays on the server.
+export function withoutRaw<T extends { raw?: unknown }>(transaction: T): Omit<T, "raw"> {
+  const copy = { ...transaction };
+  delete copy.raw;
+  return copy;
+}

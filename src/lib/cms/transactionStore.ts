@@ -136,16 +136,18 @@ const toCamel = (key: string) => key.replace(/_([a-z])/g, (_, c: string) => c.to
 
 // transaction_id is the primary key, so an empty transactionId is stored as id.
 export function toStoredRow(transaction: CmsTransaction, syncedAt: string): CmsTransactionRow {
-  return {
+  const row = {
     ...Object.fromEntries(Object.entries(transaction).map(([key, value]) => [toSnake(key), value])),
     transaction_id: transaction.transactionId || transaction.id,
     synced_at: syncedAt,
   } as CmsTransactionRow;
+  // The site as text, so a platform with non-numeric site ids can be stored (see migration 20261102000100).
+  return { ...row, site_id: transaction.locationId == null ? null : String(transaction.locationId) } as CmsTransactionRow & { site_id: string | null };
 }
 
 export function fromStoredRow(row: CmsTransactionRow): CmsTransaction {
-  // synced_at is bookkeeping for the table, not part of a session.
-  const entries = Object.entries(row).filter(([key]) => key !== "synced_at");
+  // synced_at and site_id are bookkeeping for the table, not part of a session.
+  const entries = Object.entries(row).filter(([key]) => key !== "synced_at" && key !== "site_id");
   return Object.fromEntries(entries.map(([key, value]) => [toCamel(key), value])) as CmsTransaction;
 }
 

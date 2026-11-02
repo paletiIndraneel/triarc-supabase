@@ -218,6 +218,14 @@ test("cms_transactions rows round-trip camelCase fields through snake_case colum
   assert.deepEqual(fromStoredRow(row), { ...t, transactionId: "m1" });
 });
 
+test("cms_transactions rows carry the site as text, whatever the platform's id type", () => {
+  const numeric = toStoredRow({ id: "m2", locationId: 900000002 }, "2026-10-16T00:00:00.000Z");
+  assert.equal(numeric.site_id, "900000002");
+  assert.equal(numeric.location_id, 900000002);
+  const none = toStoredRow({ id: "m3", locationId: null }, "2026-10-16T00:00:00.000Z");
+  assert.equal(none.site_id, null);
+});
+
 test("delta sync starts at the newest stored session, or the oldest one still charging", () => {
   const windowStart = "2026-08-31T18:30:00.000Z";
   const newest = "2026-10-16T10:00:00.000Z";

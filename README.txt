@@ -80,6 +80,17 @@ b) Restore the pre-multi-platform data (ids without prefix):
       ('chargemod', 'ather'); a platform with another id (e.g. 'statiq') needs that
       constraint widened in a new migration.
 
+   6. Billing cycle and commission (if they differ from ChargeMOD): src/lib/billingCycle.ts,
+      PROVIDER_CYCLES (e.g. { kind: "days", length: 7, anchor: "YYYY-MM-DD" }) and
+      PROVIDER_COMMISSION_PER_KWH. Both are keyed by the id from step 1.
+
+   7. Site: the connector sets locationId (the platform's site id). Storage keeps it as
+      text in site_id (src/lib/cms/transactionStore.ts). A platform with no site id leaves
+      locationId null and its sessions show without a station.
+
+   Note: sessions have no default platform any more (migration 20261104000100 once applied),
+   so every session must carry its provider. The connector wrapper in provider.ts sets it.
+
    To remove a platform: delete it from PROVIDERS and CONNECTORS (or just remove its env
    vars to switch it off). Its stored sessions stay in the table.
 

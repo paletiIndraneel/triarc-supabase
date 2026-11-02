@@ -13,7 +13,7 @@ export default function ForgotPasswordForm() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setState("saving");
-    const { error } = await createClient().auth.resetPasswordForEmail(email.trim(), {
+    const { error } = await createClient({ flowType: "implicit" }).auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/signin/set-password`,
     });
     setState(error ? "error" : "sent");

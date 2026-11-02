@@ -35,7 +35,7 @@ export default function SetPasswordForm() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         window.history.replaceState(null, "", window.location.pathname);
         if (error) {
-          setMessage("This link has expired or was already used. Use Forgot password on the sign-in page for a new one.");
+          setMessage(`This link has expired or was already used. Use Forgot password on the sign-in page for a new one. (${error.code ?? error.message})`);
           setState("invalid");
           return;
         }
@@ -44,7 +44,7 @@ export default function SetPasswordForm() {
         const { error } = await supabase.auth.setSession({ access_token, refresh_token });
         window.history.replaceState(null, "", window.location.pathname); // keep tokens out of history
         if (error) {
-          setMessage("This link has expired or was already used. Use Forgot password on the sign-in page for a new one.");
+          setMessage(`This link has expired or was already used. Use Forgot password on the sign-in page for a new one. (${error.code ?? error.message})`);
           setState("invalid");
           return;
         }

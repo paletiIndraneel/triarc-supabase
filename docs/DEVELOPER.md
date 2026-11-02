@@ -131,8 +131,9 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
   start one nobody enabled. If that table cannot be read, every platform is left as its env vars
   say rather than showing an empty dashboard.
 - **Billing cycles** have one definition: `src/lib/billingCycle.ts`, pure and with no imports so
-  the test runner can load it. `PROVIDER_CYCLES` keys a `CycleRule` by platform — `half-month`, or
-  `days` with a length and an anchor date (Ionage: 7 days). `cycleContaining` / `previousCycle` /
+  the test runner can load it. Each platform sets its own `cycle` (`half-month`, or `days` with a
+  length and an anchor date) in its registry entry in `providerIds.ts`; `cms/providers.ts` reads it
+  through `cycleRuleFor`, `commissionPerKwh` and `paymentDaysFor`, with defaults for any unset field. `cycleContaining` / `previousCycle` /
   `cyclesBack` / `comparisonCycle` / `cycleLabel` / `maxCycleDays` / `previousBillingCycle` all take
   the rule. The Overview cards, the dashboard matrix and its Consumption Details, and the backfill
   window all come from it, so changing a platform's billing is one edit here.
@@ -155,7 +156,9 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
   keyed in by hand) beside what the sessions say (`our_*`). `/api/admin/provider-bills` recomputes
   `our_*` from `cms_transactions` on every save rather than trusting the request, excludes CPO
   sessions from billable energy via `cpo_mobile_matches`, and gates confirming on `isPartner`. The
-  commission per kWh is `PROVIDER_COMMISSION_PER_KWH` in `billingCycle.ts`.
+  commission per kWh and the payment days come from the platform's registry entry (`commissionPerKwh`, `paymentDays`). Ionage is written as a comment in `providerIds.ts` until its connector exists.
+- **Raw payloads**: each session keeps the scrubbed CMS and OCPI payloads it came from, in the `raw` column (`{ cms, ocpi }`). `scrubRawPayload` in `transactionStore.ts` drops `employeeDetails` and any key that looks like a credential. `withoutRaw` keeps `raw` off the browser response. Only sessions synced after the change have it; older sessions were not backfilled.
+- **Sites**: `site_id` (text) holds the platform's site id, filled on every write. The station view, the access rule and CPO matching read `coalesce(site_id, location_id::text)`.
 - **Session ids** are stored with the platform prefix and stripped before calling the platform.
 - **ChargeMOD login** is shared across instances via `cms_session` and the `cms_session_acquire /
   _store / _invalidate` functions (service_role only); one instance holds a login lease.
@@ -172,6 +175,7 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
 - **Station filter**: `stationSelection.tsx` (choice in `localStorage` `triarc-admin-station`);
   `billing_invoice_stations` holds one record per station per platform (`provider`, `location_id`);
   records with the same name are one station (`groupStations`).
+- **Dashboard files**: `CmsDashboard.tsx` is the page (about 790 lines). The pieces live beside it: `cmsHelpers.tsx` (formatting, sorting, period splits), `cmsCache.ts` (saved-window cache and fetch), `cmsMatrixCard.tsx`, `cmsConsumptionCard.tsx`, `cmsStatusCard.tsx`, `cmsSessionsCard.tsx` (the sessions table, with its popover), and `useSessionsTableState.ts` (the table state: paging, sort, filters, date range, columns). The card components take their values as props; the table takes about 50, typed in `SessionsCardProps`.
 - **Dashboard layout** (`CmsDashboard.tsx`): one row of three cards — `PeriodMatrixCard`, then
   Consumption Details, then `StatusCard`. The matrix is Today, the current cycle and the previous
   cycle as one fixed-layout table, each cell carrying kWh above (with its unit) and revenue below.
@@ -212,6 +216,7 @@ in `pdf()` mirrors an Excel template (rows A1:G37).
   29 Oct 2026 (`chargemod` seeded enabled; `RLS OK`, 81 checks). If the settings table is ever
   unreadable the provider gate falls back to env vars alone, which is the pre-Platforms
   behaviour.
+- `20261102000100_session_site_and_raw.sql` (adds `site_id` and `raw`) and `20261103000100_sessions_read_site_id.sql` (views and CPO matching read `site_id`) were applied to the live project on 2–3 Nov 2026. `20261104000100_drop_provider_default.sql` (no default `provider`) was applied the same day. Each was tested on the staging copy first; the RLS suite passed on live afterwards.
 - `20261101000100_investor_read_only.sql` was applied to the live project on 1 Nov 2026 (dashboard
   SQL Editor, reported "Success"). It makes investors read-only. `supabase/tests/rls.test.sql` then
   passed on the live project (reported 1 Nov 2026).

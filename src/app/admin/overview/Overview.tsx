@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, AlertCircle, BarChart3, CalendarDays, Inbox, ReceiptText, RefreshCw, Wallet, type LucideIcon } from "lucide-react";
 import SlidingTabs from "@/components/ui/SlidingTabs";
-import { mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/CmsDashboard";
+import { mergeTransactionData, type CmsCache, type Transaction } from "@/app/admin/cms/cmsCache";
 import { INVOICE_STATUSES, STATUS_COLORS } from "@/app/admin/billing/EVBilling";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
 import { supabase } from "@/lib/supabase/billing";

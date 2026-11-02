@@ -1,4 +1,4 @@
-import { loadCmsWindow, type CmsCache } from "./CmsDashboard";
+import { loadCmsWindow, type CmsCache } from "./cmsCache";
 
 // One CMS window load for the whole admin tab. Overview and the CMS dashboard both
 // subscribe here, so a Refresh started on one page is the same request the other page

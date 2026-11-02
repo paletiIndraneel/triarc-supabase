@@ -94,6 +94,16 @@ Done and tested:
   what a platform bills Triarc against what the stored sessions say. All of it is inert while
   ChargeMOD is the only platform live — the admin looks exactly as it did.
 
+Open points (3 Nov 2026):
+- **Password reset:** one fresh reset test is pending (the email sender hit its limit during testing). The fix uses the implicit flow and is live on both repos.
+- **Vercel test address and staging test admin:** remove after the reset test. The Vercel address is still on the live redirect list.
+- **Live admin `suryasuriin@gmail.com`:** removed from admins on live. Its login account remains.
+- **Custom email:** skipped for now. Supabase's built-in sender is rate-limited (429).
+- **Ionage and Ather connectors:** waiting for their APIs.
+- **CMS dashboard:** the table's markup is now in `cmsSessionsCard.tsx`. The live status panel and data loading are still in the main component.
+- **Raw payloads:** only sessions synced after the release have them. Older sessions were not backfilled, by decision.
+- **Staging:** session rows cleared; test rows only.
+- **Live-session check:** the status card's live session view needs a car charging to verify.
 Open:
 - **Investor read-only migration (1 Nov 2026).** `20261101000100_investor_read_only.sql` is applied
   to the live project, so investors already lose Billing and Stations even though the new app code

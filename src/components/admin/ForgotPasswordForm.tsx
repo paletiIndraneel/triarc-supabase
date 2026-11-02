@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { authButtonClass, authErrorClass, authInputClass, authLabelClass } from "@/components/admin/AuthShell";
 
 // Sends a reset link. The reset page is the set-password page, which signs the person in from the
@@ -13,7 +13,12 @@ export default function ForgotPasswordForm() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setState("saving");
-    const { error } = await createClient({ flowType: "implicit" }).auth.resetPasswordForEmail(email.trim(), {
+    // Implicit flow: the link carries the session itself, so it opens in any browser (the PKCE
+    // code verifier is only in the browser that asked, which is what failed).
+    const supabase = createSupabaseClient(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_PUBLISHABLE_KEY ?? "", {
+      auth: { flowType: "implicit", persistSession: false },
+    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/signin/set-password`,
     });
     setState(error ? "error" : "sent");

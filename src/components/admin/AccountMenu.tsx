@@ -2,7 +2,7 @@
 
 /**
  * The header's account menu, adapted from Kokonut UI's Account Menu (https://kokonutui.com, MIT,
- * @dorianbaffier). The panel grows out of the trigger and the avatar, name and email travel into
+ * @dorianbaffier). The panel grows out of the trigger and the avatar and name travel into
  * its header. It holds only what the admin has: the theme, the set-up modules and Sign out.
  */
 
@@ -67,7 +67,7 @@ function nextTarget(items: HTMLElement[], active: Element | null, key: string): 
 }
 
 function useAdminUser() {
-  const [user, setUser] = useState({ name: "Loading…", email: "" });
+  const [user, setUser] = useState({ name: "Loading…" });
   useEffect(() => {
     let mounted = true;
     void supabase.auth.getUser().then(({ data }) => {
@@ -75,7 +75,7 @@ function useAdminUser() {
       const metadata = data.user?.user_metadata ?? {};
       const pick = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
       const name = pick(metadata.display_name) ?? pick(metadata.full_name) ?? pick(metadata.name) ?? (data.user?.email?.split("@")[0] || "User");
-      setUser({ name, email: data.user?.email ?? "" });
+      setUser({ name });
     });
     return () => { mounted = false; };
   }, []);
@@ -90,7 +90,7 @@ function initialsOf(name: string) {
  * Avatar, name and second line. Drawn in the trigger while the menu is closed and in the panel
  * header while it is open; shared layout ids let the pieces travel between the two places.
  */
-function Identity({ uid, shared, name, sub, transition, stacked }: { uid: string; shared: boolean; name: string; sub: string; transition: Transition; stacked: boolean }) {
+function Identity({ uid, shared, name, transition, stacked }: { uid: string; shared: boolean; name: string; transition: Transition; stacked: boolean }) {
   const hidden = shared ? undefined : "invisible";
   return (
     <span className={cn("flex min-w-0", stacked ? "flex-col items-start gap-3" : "items-center gap-2.5")}>
@@ -102,9 +102,6 @@ function Identity({ uid, shared, name, sub, transition, stacked }: { uid: string
       <span className={cn("min-w-0 flex-col text-left", stacked ? "flex" : "hidden sm:flex")}>
         <motion.span className={cn("relative z-20 block max-w-[170px] truncate text-sm font-medium leading-5 text-ink", hidden)} key={shared ? "name-shared" : "name-static"} layoutId={shared ? `${uid}-name` : undefined} transition={transition}>
           {name}
-        </motion.span>
-        <motion.span className={cn("relative z-20 block max-w-[170px] truncate text-xs leading-4 text-muted", hidden)} key={shared ? "sub-shared" : "sub-static"} layoutId={shared ? `${uid}-sub` : undefined} transition={transition}>
-          {sub}
         </motion.span>
       </span>
     </span>
@@ -293,7 +290,7 @@ export default function AccountMenu({ theme, onThemeChange, items }: { theme: Th
         type="button"
       >
         <span className="min-w-0 flex-1">
-          <Identity name={user.name} shared={!sharedInPanel} stacked={false} sub={user.email} transition={sharedTransition} uid={uid} />
+          <Identity name={user.name} shared={!sharedInPanel} stacked={false} transition={sharedTransition} uid={uid} />
         </span>
         <ChevronsUpDown aria-hidden="true" className={cn("hidden size-4 shrink-0 text-muted transition-opacity duration-150 sm:block", phase !== "closed" && "opacity-0")} />
       </button>
@@ -312,7 +309,7 @@ export default function AccountMenu({ theme, onThemeChange, items }: { theme: Th
           >
             <div className="p-1.5" ref={mainRef} style={{ width: PANEL_W }}>
               <div className="flex items-start justify-between px-2.5 pt-2.5 pb-3">
-                <Identity name={user.name} shared={sharedInPanel} stacked sub={user.email} transition={sharedTransition} uid={uid} />
+                <Identity name={user.name} shared={sharedInPanel} stacked transition={sharedTransition} uid={uid} />
               </div>
               <motion.div aria-label="Account" className="outline-none" id={menuId} role="menu" style={{ opacity: bodyOpacity }} tabIndex={-1}>
                 <ThemeRow onChange={onThemeChange} reduced={reduced} theme={theme} uid={uid} />

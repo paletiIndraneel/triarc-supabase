@@ -21,6 +21,7 @@ import {
 } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
 import { cycleLabel, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
+import { ConsumptionCard, type PlatformMetrics } from "./cmsConsumptionCard";
 import { cycleRuleFor } from "@/lib/cms/providers";
 import type { CmsCache, Dashboard, Transaction } from "./cmsCache";
 import { fetchColumnPreferences, mergeTransactionData, rememberColumnPreferences } from "./cmsCache";
@@ -45,23 +46,14 @@ import {
   collectionLength,
   displayUserName,
   displayChargerWithGun,
-  PeriodSplit,
   splitPeriod,
   formatKwh,
-  matrixKwh,
 } from "./cmsHelpers";
 import { PeriodMatrixCard, type MatrixPeriod } from "./cmsMatrixCard";
 import { StatusCard, type ConnectorState } from "./cmsStatusCard";
 
 
 // One platform's figures: its columns of the matrix, and its older cycles under it.
-type PlatformMetrics = {
-  provider: string;
-  today: PeriodSplit;
-  // The current cycle, then the one before it.
-  cycles: Array<{ dates: string; split: PeriodSplit }>;
-  earlier: Array<{ label: string; energy: number; revenue: number }>;
-};
 
 export default function CmsOperatorDashboard() {
   const { isPartner } = useAdminModule(); // backfill is full access only (investors are read-only)
@@ -774,35 +766,7 @@ export default function CmsOperatorDashboard() {
         <div className="relative z-0 mb-6 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,42.5rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,49rem)_minmax(0,1fr)]">
           <div ref={pairRef} className="grid min-w-0 items-stretch gap-4 lg:grid-cols-[minmax(0,28rem)_minmax(0,13.5rem)] xl:grid-cols-[minmax(0,33rem)_minmax(0,15rem)]">
             <PeriodMatrixCard platforms={shownPlatforms} periods={matrixPeriods} />
-            <GlassCard className="flex min-w-0 flex-col rounded-xl border border-line/80 bg-surface p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted">Consumption Details</p>
-              <p className="mt-1 text-xs font-medium text-muted">Earlier cycles</p>
-              <div className="mt-2.5">
-                {/* With two platforms each gets a heading and its three most recent cycles, so the
-                    card keeps roughly the height it has with one. */}
-                {(platformMetrics ?? []).map((metrics) => (
-                  <div key={metrics.provider}>
-                    {manyPlatforms && (
-                      <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-[0.06em] text-muted first:mt-0">{providerLabel(metrics.provider)}</p>
-                    )}
-                    {metrics.earlier.slice(0, manyPlatforms ? 3 : 5).map((cycle) => (
-                      <div key={cycle.label} className="flex items-baseline justify-between gap-2.5 border-t border-line/40 py-1.5 first:border-t-0">
-                        <p className="whitespace-nowrap text-[11px] font-medium text-muted">{cycle.label}</p>
-                        <p className="text-right">
-                          <span className="block whitespace-nowrap text-[13px] font-semibold tabular-nums tracking-[-0.015em] text-ink">
-                            {matrixKwh(cycle.energy)}
-                            <i className="ml-[3px] text-[9px] font-semibold not-italic tracking-[0.04em] text-muted">kWh</i>
-                          </span>
-                          <span className="mt-px block whitespace-nowrap text-[10.5px] tabular-nums text-muted">{money(cycle.revenue)}</span>
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-                {!platformMetrics && <p className="text-xs text-muted">Loading consumption</p>}
-              </div>
-              <p className="mt-auto pt-2.5 text-[10px] uppercase tracking-[0.09em] text-muted">kWh above · revenue below</p>
-            </GlassCard>
+            <ConsumptionCard platformMetrics={platformMetrics} manyPlatforms={manyPlatforms} />
           </div>
           <div className="min-w-0 overflow-y-auto" style={pairHeight ? { maxHeight: pairHeight } : undefined}>
             <StatusCard connectors={connectors} count={activeCount} sessions={liveShown} liveById={liveById} showLocation={locationCount > 1} showProvider={manyPlatforms} />

@@ -83,6 +83,106 @@ export function SessionsCard(props: SessionsCardProps) {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <div className="relative w-full sm:w-56">
+                <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                <input
+                  type="search"
+                  value={filters.search}
+                  onChange={(event) => updateFilter("search", event.target.value)}
+                  placeholder="Search name, mobile, vehicle, ID"
+                  className="w-full rounded-full border-0 bg-raised py-2 pl-8 pr-3 text-xs text-ink outline-none focus:ring-2 focus:ring-focus-ring/25"
+                  aria-label="Search transactions"
+                />
+              </div>
+              {/* Six dropdowns in a wrapping strip became one button: what is set shows as a chip
+                  under it, so the row keeps its height whatever is filtered. */}
+              <div ref={filterMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setFilterMenuOpen((open) => !open)}
+                  aria-expanded={filterMenuOpen}
+                  className="inline-flex items-center gap-2 rounded-full bg-raised px-3 py-2 text-xs font-semibold text-ink hover:bg-soft"
+                >
+                  <SlidersHorizontal size={13} className="text-muted" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-ink">{activeFilterCount}</span>
+                  )}
+                </button>
+                {filterMenuOpen && (
+                  <div className="absolute left-0 top-full z-30 mt-2 w-64 rounded-xl border border-line bg-surface p-3 shadow-xl">
+                    <p className={filterLabelClass}>Location</p>
+                    <select
+                      value={filters.location}
+                      onChange={(event) => updateFilter("location", event.target.value)}
+                      className={filterSelectClass}
+                      aria-label="Location"
+                    >
+                      <option value="" className="bg-surface">All locations</option>
+                      {locationOptions.map((location) => (
+                        <option key={location} value={location} className="bg-surface">{displayLocation(location)}</option>
+                      ))}
+                    </select>
+                    <p className={filterLabelClass}>Charger</p>
+                    <select
+                      value={filters.charger}
+                      onChange={(event) => updateFilter("charger", event.target.value)}
+                      className={filterSelectClass}
+                      aria-label="Charger"
+                    >
+                      <option value="" className="bg-surface">All chargers</option>
+                      {chargerOptions.map((charger) => (
+                        <option key={charger} value={charger} className="bg-surface">{charger}</option>
+                      ))}
+                    </select>
+                    <p className={filterLabelClass}>Current</p>
+                    <select
+                      value={filters.current}
+                      onChange={(event) => updateFilter("current", event.target.value as TransactionFilters["current"])}
+                      className={filterSelectClass}
+                      aria-label="AC or DC"
+                    >
+                      <option value="" className="bg-surface">AC &amp; DC</option>
+                      <option value="ac" className="bg-surface">AC only</option>
+                      <option value="dc" className="bg-surface">DC only</option>
+                    </select>
+                    <p className={filterLabelClass}>Status</p>
+                    <select
+                      value={filters.status}
+                      onChange={(event) => updateFilter("status", event.target.value as TransactionFilters["status"])}
+                      className={filterSelectClass}
+                      aria-label="Status"
+                    >
+                      <option value="" className="bg-surface">All statuses</option>
+                      <option value="live" className="bg-surface">Live</option>
+                      <option value="completed" className="bg-surface">Completed</option>
+                      <option value="failed" className="bg-surface">Failed (0 kWh)</option>
+                    </select>
+                    <p className={filterLabelClass}>Customer</p>
+                    <select
+                      value={filters.customer}
+                      onChange={(event) => updateFilter("customer", event.target.value as TransactionFilters["customer"])}
+                      className={filterSelectClass}
+                      aria-label="Customer type"
+                    >
+                      <option value="" className="bg-surface">All customers</option>
+                      <option value="cpo" className="bg-surface">CPO</option>
+                      <option value="regular" className="bg-surface">Regular</option>
+                    </select>
+                    <p className={filterLabelClass}>Minimum energy</p>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      value={filters.minKwh}
+                      onChange={(event) => updateFilter("minKwh", event.target.value)}
+                      placeholder="0 kWh"
+                      className={filterSelectClass}
+                      aria-label="Minimum energy in kWh"
+                    />
+                  </div>
+                )}
+              </div>
               <button
                 onClick={exportTransactionsCsv}
                 disabled={waiting || transactions.length === 0}
@@ -211,107 +311,8 @@ export function SessionsCard(props: SessionsCardProps) {
             </div>
           </div>
 
+          {filtersActive && (
           <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-2.5">
-            <div className="relative w-full sm:w-72">
-              <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-              <input
-                type="search"
-                value={filters.search}
-                onChange={(event) => updateFilter("search", event.target.value)}
-                placeholder="Search name, mobile, vehicle, ID"
-                className="w-full rounded-full border-0 bg-raised py-2 pl-8 pr-3 text-xs text-ink outline-none focus:ring-2 focus:ring-focus-ring/25"
-                aria-label="Search transactions"
-              />
-            </div>
-            {/* Six dropdowns in a wrapping strip became one button: what is set shows as a chip
-                under it, so the row keeps its height whatever is filtered. */}
-            <div ref={filterMenuRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setFilterMenuOpen((open) => !open)}
-                aria-expanded={filterMenuOpen}
-                className="inline-flex items-center gap-2 rounded-full bg-raised px-3 py-2 text-xs font-semibold text-ink hover:bg-soft"
-              >
-                <SlidersHorizontal size={13} className="text-muted" />
-                Filters
-                {activeFilterCount > 0 && (
-                  <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-ink">{activeFilterCount}</span>
-                )}
-              </button>
-              {filterMenuOpen && (
-                <div className="absolute left-0 top-full z-30 mt-2 w-64 rounded-xl border border-line bg-surface p-3 shadow-xl">
-                  <p className={filterLabelClass}>Location</p>
-                  <select
-                    value={filters.location}
-                    onChange={(event) => updateFilter("location", event.target.value)}
-                    className={filterSelectClass}
-                    aria-label="Location"
-                  >
-                    <option value="" className="bg-surface">All locations</option>
-                    {locationOptions.map((location) => (
-                      <option key={location} value={location} className="bg-surface">{displayLocation(location)}</option>
-                    ))}
-                  </select>
-                  <p className={filterLabelClass}>Charger</p>
-                  <select
-                    value={filters.charger}
-                    onChange={(event) => updateFilter("charger", event.target.value)}
-                    className={filterSelectClass}
-                    aria-label="Charger"
-                  >
-                    <option value="" className="bg-surface">All chargers</option>
-                    {chargerOptions.map((charger) => (
-                      <option key={charger} value={charger} className="bg-surface">{charger}</option>
-                    ))}
-                  </select>
-                  <p className={filterLabelClass}>Current</p>
-                  <select
-                    value={filters.current}
-                    onChange={(event) => updateFilter("current", event.target.value as TransactionFilters["current"])}
-                    className={filterSelectClass}
-                    aria-label="AC or DC"
-                  >
-                    <option value="" className="bg-surface">AC &amp; DC</option>
-                    <option value="ac" className="bg-surface">AC only</option>
-                    <option value="dc" className="bg-surface">DC only</option>
-                  </select>
-                  <p className={filterLabelClass}>Status</p>
-                  <select
-                    value={filters.status}
-                    onChange={(event) => updateFilter("status", event.target.value as TransactionFilters["status"])}
-                    className={filterSelectClass}
-                    aria-label="Status"
-                  >
-                    <option value="" className="bg-surface">All statuses</option>
-                    <option value="live" className="bg-surface">Live</option>
-                    <option value="completed" className="bg-surface">Completed</option>
-                    <option value="failed" className="bg-surface">Failed (0 kWh)</option>
-                  </select>
-                  <p className={filterLabelClass}>Customer</p>
-                  <select
-                    value={filters.customer}
-                    onChange={(event) => updateFilter("customer", event.target.value as TransactionFilters["customer"])}
-                    className={filterSelectClass}
-                    aria-label="Customer type"
-                  >
-                    <option value="" className="bg-surface">All customers</option>
-                    <option value="cpo" className="bg-surface">CPO</option>
-                    <option value="regular" className="bg-surface">Regular</option>
-                  </select>
-                  <p className={filterLabelClass}>Minimum energy</p>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    value={filters.minKwh}
-                    onChange={(event) => updateFilter("minKwh", event.target.value)}
-                    placeholder="0 kWh"
-                    className={filterSelectClass}
-                    aria-label="Minimum energy in kWh"
-                  />
-                </div>
-              )}
-            </div>
             {/* What is set, and the way back out of it. */}
             {activeFilters.map((filter) => (
               <span key={filter.key} className="inline-flex items-center gap-1.5 rounded-full bg-accent-pale py-1 pl-2.5 pr-1 text-[11px] font-medium text-ink">
@@ -335,6 +336,7 @@ export function SessionsCard(props: SessionsCardProps) {
               </button>
             )}
           </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="min-w-[880px] w-full border-collapse text-left text-sm">

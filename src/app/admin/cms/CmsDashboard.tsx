@@ -2,33 +2,29 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Activity, RefreshCw } from "lucide-react";
-import { getCmsWindowSnapshot, requestCmsWindow, subscribeCmsWindow, type CmsWindowSnapshot } from "./cmsWindowStore";
+import { requestCmsWindow } from "./cmsWindowStore";
 import { type DatePreset, getCustomRangeIST, getDateRangeIST, istDateString } from "./dateRanges";
 import { CMS_COLUMN_IDS, type CmsColumnId, displayLocation, EMPTY_TRANSACTION_FILTERS, type TransactionFilters, chargerLabel, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "./transactionFilters";
 import { neutralizeCsvCell } from "@/lib/security";
-import { cycleLabel, cyclesBack, previousBillingCycle } from "@/lib/billingCycle";
-import { ConsumptionCard, type PlatformMetrics } from "./cmsConsumptionCard";
-import { cycleRuleFor } from "@/lib/cms/providers";
-import type { CmsCache, Dashboard, Transaction } from "./cmsCache";
+import { previousBillingCycle } from "@/lib/billingCycle";
+import { ConsumptionCard } from "./cmsConsumptionCard";
+import type { Transaction } from "./cmsCache";
 import { fetchColumnPreferences, mergeTransactionData, rememberColumnPreferences } from "./cmsCache";
 import { displaySessionId } from "@/lib/cms/providerIds";
-import { matchCpoMobiles } from "./cpoNumbersCache";
 import { useLiveMetrics, withLiveValues } from "./useLiveMetrics";
 import { StationSelect, useStationSelection } from "./stationSelection";
 import { PlatformSelect, usePlatformSelection } from "./platformSelection";
 import { useAdminModule } from "@/components/admin/AdminModuleContext";
-import { filterTransactionsByRange, CMS_COLUMN_LABELS, DEFAULT_CMS_COLUMNS, DEFAULT_TABLE_SORT, compareTransactions, collectionLength, splitPeriod } from "./cmsHelpers";
+import { filterTransactionsByRange, CMS_COLUMN_LABELS, DEFAULT_CMS_COLUMNS, DEFAULT_TABLE_SORT, compareTransactions, collectionLength } from "./cmsHelpers";
 import { useSessionsTableState } from "./useSessionsTableState";
 import { PeriodMatrixCard, type MatrixPeriod } from "./cmsMatrixCard";
 import { StatusCard, type ConnectorState } from "./cmsStatusCard";
 import { SessionsCard } from "./cmsSessionsCard";
+import { useCmsData } from "./useCmsData";
 
-
-// One platform's figures: its columns of the matrix, and its older cycles under it.
 
 export default function CmsOperatorDashboard() {
   const { isPartner } = useAdminModule(); // backfill is full access only (investors are read-only)
-  const [baseDashboard, setBaseDashboard] = useState<Dashboard | null>(null);
   // Status is capped to the matrix/Consumption pair's height on a wide screen, so a long
   // session detail scrolls inside the card rather than stretching the row.
   const pairRef = useRef<HTMLDivElement>(null);
@@ -48,18 +44,9 @@ export default function CmsOperatorDashboard() {
     };
   }, []);
   // One entry per platform the selector shows: null until the first load finishes.
-  const [platformMetrics, setPlatformMetrics] = useState<PlatformMetrics[] | null>(null);
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
-  const [activeTransactions, setActiveTransactions] = useState<Transaction[]>([]);
-  const [active, setActive] = useState(0);
-  const [activeTransactionIds, setActiveTransactionIds] = useState<Set<string>>(new Set());
   const { page, setPage, pageSize, setPageSize, sort, setSort, datePreset, setDatePreset, customFrom, setCustomFrom, customTo, setCustomTo, filters, setFilters, visibleColumns, setVisibleColumns, draftColumns, setDraftColumns, columnEditorOpen, setColumnEditorOpen, savingColumns, setSavingColumns, columnsLoaded, setColumnsLoaded, filterMenuOpen, setFilterMenuOpen, filterMenuRef, columnEditorRef, columnMenuRef, draggedTableColumn, setDraggedTableColumn } = useSessionsTableState();
-  const [cpoMobileNumbers, setCpoMobileNumbers] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
   const [backfillRunning, setBackfillRunning] = useState(false);
   const [backfillStatus, setBackfillStatus] = useState("");
-  const [dataTill, setDataTill] = useState<string | null>(null);
 
 
 
@@ -184,132 +171,12 @@ export default function CmsOperatorDashboard() {
   // started on either page is one request, and both pages follow it.
   // The cards belong to the platforms the selector shows, each on its own billing cycle; see
   // ./platformSelection.
-  const applyCache = useCallback(async (cache: CmsCache, shown: readonly string[]) => {
-    try {
-      // Fetch one consistent transaction window for all dashboard metrics and the
-      // table; the table's date filter is applied client-side and never refetches. It covers the previous
-      // calendar month and the current month-to-date.
-      const apply = async (cache: CmsCache) => {
-      if (cache.dashboard) setBaseDashboard(cache.dashboard);
-      const activeData = cache.active ?? {};
-
-      const activeWasFetched =
-        activeData.transactions !== undefined || activeData.count !== undefined;
-      const currentActiveTransactions = activeData.transactions ?? [];
-      setAllTransactions(cache.transactions);
-
-      if (activeWasFetched) {
-        setActiveTransactions(currentActiveTransactions);
-        setActive(activeData.count ?? currentActiveTransactions.length);
-        setActiveTransactionIds(
-          new Set(
-            currentActiveTransactions.flatMap((transaction) =>
-              [transaction.transactionId, transaction.id].filter(Boolean)
-            )
-          )
-        );
-      }
-
-      // All dashboard metrics are derived from transactions already retrieved
-      // and cached locally. They do not issue separate transaction API requests,
-      // and their date ranges are independent of the table's selected filter.
-      try {
-        const now = new Date();
-        const todayRange = getDateRangeIST("today");
-
-        const metricMap = new Map<string, Transaction>();
-        for (const transaction of [...cache.transactions, ...currentActiveTransactions]) {
-          const key = transaction.transactionId || transaction.id;
-          if (!key) continue;
-          const existing = metricMap.get(key);
-          if (!existing) {
-            metricMap.set(key, transaction);
-          } else {
-            metricMap.set(key, mergeTransactionData(existing, transaction));
-          }
-        }
-        // Every platform shown keeps its own figures: they bill on different cycles, so a total
-        // summed across two of them would match no bill.
-        const allMetricTransactions = Array.from(metricMap.values());
-        const cpoMobileNumbers = await matchCpoMobiles(
-          allMetricTransactions.filter((transaction) => !transaction.type?.trim()).map((transaction) => transaction.mobile)
-        );
-        setCpoMobileNumbers(cpoMobileNumbers);
-        const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
-        // `end` is exclusive, so the cycle's last day is the day before it.
-        const lastDay = (end: number) => dayFmt.format(new Date(end - 24 * 60 * 60 * 1000));
-        const iso = (ms: number) => new Date(ms).toISOString();
-        // An empty selection is the first load, before the platforms are known: everything
-        // counts, on the default cycle.
-        const groups: Array<string | null> = shown.length ? [...shown] : [null];
-        setPlatformMetrics(groups.map((provider) => {
-          const transactions = provider
-            ? allMetricTransactions.filter((transaction) => transaction.provider === provider)
-            : allMetricTransactions;
-          // Seven cycles from the one definition in @/lib/billingCycle: the matrix shows the
-          // current one and the one before, Consumption Details the five older ones.
-          const rule = cycleRuleFor(provider);
-          const cycleWindow = cyclesBack(now, 7, rule);
-          return {
-            provider: provider ?? "",
-            today: splitPeriod(filterTransactionsByRange(transactions, todayRange.startDate, todayRange.endDate), cpoMobileNumbers),
-            cycles: cycleWindow.slice(-2).reverse().map((cycle, index) => ({
-              dates: `${dayFmt.format(new Date(cycle.start))} – ${lastDay(cycle.end)}`,
-              split: splitPeriod(
-                // The current cycle has not finished, so it only counts up to now.
-                filterTransactionsByRange(transactions, iso(cycle.start), iso(index === 0 ? Math.min(cycle.end, now.getTime()) : cycle.end)),
-                cpoMobileNumbers
-              ),
-            })),
-            // Consumption Details carries on where the matrix stops, newest first.
-            earlier: cycleWindow.slice(0, 5).reverse().map((cycle) => {
-              const split = splitPeriod(filterTransactionsByRange(transactions, iso(cycle.start), iso(cycle.end)), cpoMobileNumbers);
-              return { label: cycleLabel(cycle, rule), energy: split.energy.total, revenue: split.revenue.total };
-            }),
-          };
-        }));
-      } catch {
-        // Metric calculation must not prevent the dashboard from rendering.
-      }
-      };
-
-      await apply(cache);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "CMS request failed.");
-    }
-  }, []);
-
-  // The station selector narrows every card and the table; a new choice re-applies the loaded
-  // window (this effect re-runs) without fetching again.
   const { options: stationOptions, stationId, setStation, filterCache } = useStationSelection();
   // Derived from the unfiltered cache, so choosing a platform never narrows what is on offer.
   const [livePlatforms, setLivePlatforms] = useState<string[]>([]);
   // This page can draw platforms side by side, so it offers "All platforms".
   const { options: platformOptions, selection, shown: shownPlatforms, setPlatform } = usePlatformSelection(livePlatforms, { allowAll: true });
-  const windowRequested = useRef(false);
-  useEffect(() => {
-    let shownCache: CmsCache | null = null;
-    const sync = ({ cache, refreshing, error }: CmsWindowSnapshot) => {
-      // Stored rows are enough to render immediately; live CMS sync continues in the background.
-      // Reflect the shared refresh state even when cached rows remain visible.
-      // This keeps the Refresh button disabled/spinning consistently with Overview.
-      setLoading(refreshing);
-      setMessage(error ?? "");
-      if (cache && cache !== shownCache) {
-        shownCache = cache;
-        setDataTill(cache.coverage.at(-1)?.endDate ?? null);
-        setLivePlatforms([...new Set(cache.transactions.map((t) => t.provider).filter((id): id is string => !!id))].sort());
-        void applyCache(filterCache(cache), shownPlatforms);
-      }
-    };
-    sync(getCmsWindowSnapshot());
-    const unsubscribe = subscribeCmsWindow(sync);
-    if (!windowRequested.current) {
-      windowRequested.current = true;
-      void requestCmsWindow();
-    }
-    return unsubscribe;
-  }, [applyCache, filterCache, shownPlatforms]);
+  const { baseDashboard, platformMetrics, allTransactions, activeTransactions, active, activeTransactionIds, cpoMobileNumbers, loading, message, setMessage, dataTill } = useCmsData({ filterCache, shownPlatforms, setLivePlatforms });
 
   const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 

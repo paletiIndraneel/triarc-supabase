@@ -103,7 +103,7 @@ Open points (3 Nov 2026):
 - **CMS dashboard:** the table's markup is now in `cmsSessionsCard.tsx`. The live status panel and data loading are still in the main component.
 - **Raw payloads:** only sessions synced after the release have them. Older sessions were not backfilled, by decision.
 - **Staging:** session rows cleared; test rows only.
-- **Live-session check:** the status card's live session view needs a car charging to verify.
+- **Live-session check:** passed. Live sessions show on the status card as expected (confirmed 3 Nov 2026).
 Open:
 - **Investor read-only migration (1 Nov 2026).** `20261101000100_investor_read_only.sql` is applied
   to the live project, so investors already lose Billing and Stations even though the new app code

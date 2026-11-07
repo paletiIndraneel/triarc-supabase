@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase/billing";
-import { SESSION_COLUMNS, SESSIONS_TABLE, fromStoredRow } from "@/lib/cms/transactionStore";
+import { CMS_HISTORY_START, SESSION_COLUMNS, SESSIONS_TABLE, fromStoredRow } from "@/lib/cms/transactionStore";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 import type { CmsColumnId } from "./transactionFilters";
 
@@ -50,7 +50,7 @@ export type CmsCache = {
   active?: ActiveTransactionResponse;
 };
 
-export const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v8";
+export const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v9";
 export const CMS_BACKFILL_KEY = "triarc-cms-history-backfill-2026-07-v1";
 
 export function readCmsCache(): CmsCache {
@@ -205,7 +205,7 @@ export async function loadCmsWindow(
 ): Promise<CmsCache> {
   const nowForMetrics = new Date();
   // Load CMS history from 6 July 2026 at 00:00 IST, staying within the API's 370-day limit.
-  const metricFetchStart = new Date("2026-07-06T00:00:00+05:30");
+  const metricFetchStart = new Date(CMS_HISTORY_START);
   const metricFetchRange = {
     startDate: metricFetchStart.toISOString(),
     endDate: nowForMetrics.toISOString(),

@@ -79,8 +79,11 @@ export function meterPatch(
   return patch;
 }
 
-// Upserts by transaction_id in chunks of 500 and stops at the first failed chunk.
-export async function upsertStoredRows(supabase: SupabaseClient, rows: CmsTransactionRow[]) {
+// Upserts by transaction_id in chunks of 500 and stops at the first failed chunk. Oldest first:
+// the delta sync resumes from the newest stored session, so a newer chunk saved ahead of a
+// failed older one would leave the older sessions behind for good.
+export async function upsertStoredRows(supabase: SupabaseClient, unsorted: CmsTransactionRow[]) {
+  let rows = [...unsorted].sort((a, b) => String(a.started_at ?? "").localeCompare(String(b.started_at ?? "")));
   const openIds = rows.filter((row) => !row.stopped_at).map((row) => row.transaction_id);
   if (openIds.length) {
     const { data, error } = await supabase
@@ -115,7 +118,7 @@ export async function saveMeterReadings(supabase: SupabaseClient, transactionId:
     .from(SESSIONS_TABLE)
     .update({
       ...meterPatch(row, meter.metrics),
-      meter_values_response: meter.payload,
+      meter_values_response: scrubRawPayload(meter.payload),
       meter_values_readings: meter.readings,
       current_soc: meter.metrics.currentSoc,
       meter_values_last_reading_at: meter.metrics.lastReadingAt,
@@ -158,6 +161,28 @@ export function fromStoredRow(row: CmsTransactionRow): CmsTransaction {
 // Never before the window itself.
 const SYNC_OVERLAP_MS = 60 * 1000;
 
+// The start of the history the dashboard loads.
+export const CMS_HISTORY_START = "2026-07-06T00:00:00+05:30";
+// A browser clock a little behind the server's still counts as "through now".
+const WINDOW_END_TOLERANCE_MS = 5 * 60 * 1000;
+
+// Saving a session can move the delta sync's resume point (the newest stored session), and
+// nothing before that point is fetched again. So only a fetch that joins up with what is stored
+// and runs through now may save: a search, a later page, a window starting after the newest
+// stored session or ending in the past would leave a hole that is never filled.
+export function fetchMayMoveResumePoint(fetch: {
+  windowStart: string;
+  windowEnd: string;
+  page: number;
+  searchKey: string;
+  newestStoredStart: string | null | undefined;
+  now?: number;
+}) {
+  if (fetch.searchKey || fetch.page !== 1) return false;
+  if (Date.parse(fetch.windowEnd) < (fetch.now ?? Date.now()) - WINDOW_END_TOLERANCE_MS) return false;
+  return Date.parse(fetch.windowStart) <= Date.parse(fetch.newestStoredStart ?? CMS_HISTORY_START);
+}
+
 export function syncStartDate(
   windowStart: string,
   newestStoredStart: string | null | undefined,
@@ -198,6 +223,16 @@ export function scrubRawPayload(value: unknown, depth = 0): unknown {
       .filter(([key]) => !SECRET_KEY.test(key))
       .map(([key, item]) => [key, scrubRawPayload(item, depth + 1)])
   );
+}
+
+// What Overview needs, for an admin without the CMS module: an allowlist, so a column added
+// later stays hidden from them until it is added here.
+const OVERVIEW_COLUMN_LIST = ["provider", "transaction_id", "id", "location", "location_id", "charger_id", "connector_id", "charger_name", "station_type", "started_at", "stopped_at", "energy_kwh", "tariff_amount"];
+export const OVERVIEW_COLUMNS = OVERVIEW_COLUMN_LIST.join(",");
+
+export function withoutCustomerData(transaction: CmsTransaction) {
+  const fields = OVERVIEW_COLUMN_LIST.map(toCamel);
+  return Object.fromEntries(Object.entries(transaction).filter(([key]) => fields.includes(key))) as CmsTransaction;
 }
 
 // The session as the browser gets it: the stored `raw` payload stays on the server.

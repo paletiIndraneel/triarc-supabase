@@ -167,7 +167,7 @@ ChargeMOD API ──(chargemod.ts / operator.ts)──▶ provider.ts ──▶ 
 - **Delta sync**: each platform is asked only for sessions from its newest stored one (or the oldest still
   charging, under 2 days old), starting one minute early; older sessions come from the table.
 - **Browser cache**: one window (6 Jul 2026 → now) in `sessionStorage`
-  `triarc-cms-transaction-cache-v8`; Overview and the dashboard share it through `cmsWindowStore.ts`.
+  `triarc-cms-transaction-cache-v9`; Overview and the dashboard share it through `cmsWindowStore.ts`.
   Bump the key when the session shape changes; a new field also needs a table column and an entry in
   `SESSION_COLUMNS`.
 - **Live readings**: `useLiveMetrics` polls every 30 s for charging sessions; `liveMetrics.ts` derives

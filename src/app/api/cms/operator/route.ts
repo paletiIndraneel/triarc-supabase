@@ -3,14 +3,17 @@ import { getAdminClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getChargingProviders, providerErrorMessage, type ChargingProvider } from "@/lib/cms/provider";
 import {
+  fetchMayMoveResumePoint,
   fromStoredRow,
   MAX_ACTIVE_MS,
+  OVERVIEW_COLUMNS,
   SESSION_COLUMNS,
   SESSIONS_TABLE,
   stationLocationKeys,
   storedRows,
   syncStartDate,
   upsertStoredRows,
+  withoutCustomerData,
   withoutRaw,
 } from "@/lib/cms/transactionStore";
 import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
@@ -20,7 +23,7 @@ export const dynamic = "force-dynamic";
 type Supabase = Awaited<ReturnType<typeof getAdminClient>>["supabase"];
 
 export async function GET(request: Request) {
-  const { supabase, user, stationIds, isPartner } = await getAdminClient();
+  const { supabase, user, stationIds, isPartner, modules } = await getAdminClient();
   if (!user) {
     return new NextResponse("Forbidden", { status: 403 });
   }
@@ -53,10 +56,28 @@ export async function GET(request: Request) {
     const searchField = isPartner ? url.searchParams.get("searchField") ?? "" : "";
     const searchKey = isPartner ? url.searchParams.get("searchKey") ?? "" : "";
 
+    // Sessions are saved with the server's secret key (the user is checked above), so a
+    // station-limited investor's load still saves every session the platform returns.
+    const writer = (await getServiceClient()) ?? supabase;
+
+    // Every admin opens Overview, but only the CMS module shows customers. Without it, the table
+    // refuses their own client (RLS), so the server reads Overview's columns with its key and
+    // limits them to their stations below.
+    const seesCustomers = isPartner || modules.includes("cms");
+    const reader = seesCustomers ? supabase : writer;
+    const columns = seesCustomers ? SESSION_COLUMNS : OVERVIEW_COLUMNS;
+
+    // A station-limited investor gets only their stations' sessions (the database read policy
+    // already limits their own client; this covers the platform's live rows and the server's reads).
+    const allowed = stationIds ? await stationLocationKeys(supabase, stationIds) : null;
+    const visible = (t: CmsTransaction) => !allowed || allowed.has(`${t.provider}|${t.locationId ?? ""}`);
+    // The stored raw payloads stay on the server; the browser only gets the session.
+    const forBrowser = (t: CmsTransaction) => (seesCustomers ? withoutRaw(t) : withoutCustomerData(t));
+
     // stored=1: only what the sessions table already holds for the window, no platform call,
     // so the dashboard can render at once and then swap in the live response.
     if (url.searchParams.get("stored") === "1") {
-      const transactions = await readStoredTransactions(supabase, startDate, endDate);
+      const transactions = (await readStoredTransactions(reader, columns, startDate, endDate)).filter(visible).map(forBrowser);
       const newest = transactions.reduce<string | null>(
         (latest, t) => (t.startedAt && (!latest || t.startedAt > latest) ? t.startedAt : latest),
         null
@@ -78,15 +99,12 @@ export async function GET(request: Request) {
     // one session exists, all requests use normal delta sync instead of repeatedly
     // fetching history from the requested start date (including new browsers).
     const backfillRequested = url.searchParams.get("backfill") === "1" && !searchKey;
-    // Sessions are saved with the server's secret key (the user is checked above), so a
-    // station-limited investor's load still saves every session the platform returns.
-    const writer = (await getServiceClient()) ?? supabase;
 
     // Each platform syncs on its own; one that fails is reported in sourceErrors and the
     // others still load. Only when every platform fails does the request fail.
     const results = await Promise.allSettled(
       providers.map((provider) =>
-        syncProvider(supabase, writer, provider, { page, perPage, startDate, endDate, searchField, searchKey, backfillRequested })
+        syncProvider(reader, writer, provider, { columns, page, perPage, startDate, endDate, searchField, searchKey, backfillRequested })
       )
     );
     const synced = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
@@ -95,13 +113,8 @@ export async function GET(request: Request) {
     );
     if (!synced.length) throw results.find((r) => r.status === "rejected")?.reason;
 
-    // A station-limited investor gets only their stations' sessions (the database read policy
-    // already limits the stored ones; this covers what the platform returned live).
-    const allowed = stationIds ? await stationLocationKeys(supabase, stationIds) : null;
-    const visible = (t: CmsTransaction) => !allowed || allowed.has(`${t.provider}|${t.locationId ?? ""}`);
-    // The stored raw payloads stay on the server; the browser only gets the session.
-    const transactions = synced.flatMap((s) => s.transactions).filter(visible).map(withoutRaw);
-    const active = synced.flatMap((s) => s.active).filter(visible).map(withoutRaw);
+    const transactions = synced.flatMap((s) => s.transactions).filter(visible).map(forBrowser);
+    const active = synced.flatMap((s) => s.active).filter(visible).map(forBrowser);
     return NextResponse.json({
       // shortcut: the dashboard's summary/locations come from the first platform that has one
       // (ChargeMOD); merge them when a second platform brings its own.
@@ -130,10 +143,11 @@ export async function GET(request: Request) {
 // One platform: fetch only what is new since its newest stored session (delta sync), save
 // it, and add its older sessions of the window from the table.
 async function syncProvider(
-  supabase: Supabase,
+  reader: Supabase,
   writer: Supabase,
   provider: ChargingProvider,
   options: {
+    columns: string;
     page: number;
     perPage: number;
     startDate: string;
@@ -143,8 +157,9 @@ async function syncProvider(
     backfillRequested: boolean;
   }
 ) {
-  const { page, perPage, startDate, endDate, searchField, searchKey, backfillRequested } = options;
+  const { columns, page, perPage, startDate, endDate, searchField, searchKey, backfillRequested } = options;
   let syncStart = startDate;
+  let newestStoredStart: string | null = null;
   if (!searchKey) {
     // Where to resume is a fact about the whole table, so it is read with the writer (a
     // station-limited investor's own client would only see their stations' newest row).
@@ -164,6 +179,7 @@ async function syncProvider(
     if (error) {
       console.error(`[cms/operator] reading stored ${provider.id} sessions failed:`, error.message);
     } else {
+      newestStoredStart = newest.data?.started_at ?? null;
       const hasStoredHistory = Boolean(newest.data?.started_at);
       const shouldBackfill = backfillRequested && !hasStoredHistory;
       if (!shouldBackfill) {
@@ -177,18 +193,19 @@ async function syncProvider(
 
   // Start persisting fetched sessions as soon as they are available, then overlap the upsert
   // with the historical read. Await persistence before responding so serverless runtimes
-  // cannot terminate the write after the response has returned. Every active admin's load
-  // saves (RLS: insert/update for active admins).
+  // cannot terminate the write after the response has returned. Every active admin's normal
+  // load saves; any other fetch is only returned (see fetchMayMoveResumePoint).
   let persistPromise: Promise<void> = Promise.resolve();
   const rows = storedRows(data.active, data.transactions, new Date().toISOString());
-  if (rows.length > 0) {
+  const maySave = fetchMayMoveResumePoint({ windowStart: startDate, windowEnd: endDate, page, searchKey, newestStoredStart });
+  if (maySave && rows.length > 0) {
     persistPromise = upsertStoredRows(writer, rows).then(({ error }) => {
       if (error) console.error(`[cms/operator] saving ${provider.id} sessions failed:`, error);
     });
   }
 
   const stored: CmsTransaction[] =
-    syncStart !== startDate ? await readStoredTransactions(supabase, startDate, syncStart, provider.id) : [];
+    syncStart !== startDate ? await readStoredTransactions(reader, columns, startDate, syncStart, provider.id) : [];
   await persistPromise;
 
   return {
@@ -201,7 +218,7 @@ async function syncProvider(
 
 // Sessions saved in the sessions table that started in [from, to), oldest first; one
 // platform's only when `provider` is given.
-async function readStoredTransactions(supabase: Supabase, from: string, to: string, provider?: string) {
+async function readStoredTransactions(supabase: Supabase, columns: string, from: string, to: string, provider?: string) {
   const stored: CmsTransactionRow[] = [];
   // Larger bounded pages reduce sequential Supabase round trips for historical windows.
   const pageSize = 500;
@@ -209,7 +226,7 @@ async function readStoredTransactions(supabase: Supabase, from: string, to: stri
     let query = supabase
       .from(SESSIONS_TABLE)
       // Avoid loading the potentially large meter-values JSON on every dashboard read.
-      .select(SESSION_COLUMNS)
+      .select(columns)
       .gte("started_at", from)
       .lt("started_at", to);
     if (provider) query = query.eq("provider", provider);

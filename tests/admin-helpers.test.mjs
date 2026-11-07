@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, rateExGst, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
 import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { backfillWindow, cleanUserName, fromStoredRow, keepMeterValues, meterPatch, storedRows, syncStartDate, toStoredRow } from "../src/lib/cms/transactionStore.ts";
+import { backfillWindow, cleanUserName, CMS_HISTORY_START, fetchMayMoveResumePoint, fromStoredRow, keepMeterValues, meterPatch, saveMeterReadings, storedRows, syncStartDate, toStoredRow, upsertStoredRows, withoutCustomerData } from "../src/lib/cms/transactionStore.ts";
 import { comparisonCycle, cycleContaining, cycleLabel, cyclesBack, previousBillingCycle, previousCycle } from "../src/lib/billingCycle.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
@@ -647,4 +647,67 @@ test("the registry carries each platform's billing terms, and ChargeMOD keeps it
   // A platform with no billing terms set has none of them, so the lookups fall back to the defaults.
   assert.equal(chargemod.commissionPerKwh, undefined);
   assert.equal(chargemod.paymentDays, undefined);
+});
+
+const resume = (overrides = {}) => fetchMayMoveResumePoint({
+  windowStart: CMS_HISTORY_START,
+  windowEnd: "2026-11-07T10:00:00.000Z",
+  page: 1,
+  searchKey: "",
+  newestStoredStart: "2026-11-07T03:30:00.000Z",
+  now: Date.parse("2026-11-07T10:00:00.000Z"),
+  ...overrides,
+});
+
+test("a normal load through now may move the resume point", () => {
+  assert.equal(resume(), true);
+  assert.equal(resume({ windowStart: "2026-11-07T03:30:00.000Z" }), true); // starts right at the newest stored session
+  assert.equal(resume({ newestStoredStart: null }), true); // empty table, full history asked for
+});
+
+test("a fetch that would leave a hole may not move the resume point", () => {
+  // A narrow window after the newest stored session: the sessions between would never be fetched.
+  assert.equal(resume({ windowStart: "2026-11-07T09:59:00.000Z" }), false);
+  assert.equal(resume({ windowEnd: "2026-11-07T04:00:00.000Z" }), false); // active sessions would jump past the gap
+  assert.equal(resume({ searchKey: "TS09" }), false);
+  assert.equal(resume({ page: 2 }), false);
+  // An empty table (or one that could not be read) needs the full history before saving.
+  assert.equal(resume({ newestStoredStart: null, windowStart: "2026-11-01T00:00:00.000Z" }), false);
+});
+
+test("sessions are saved oldest first, so a failed chunk cannot skip older ones", async () => {
+  const rows = [
+    { transaction_id: "new", started_at: "2026-11-07T00:00:00.000Z", stopped_at: "2026-11-07T01:00:00.000Z" },
+    ...Array.from({ length: 500 }, (_, i) => ({ transaction_id: `old${i}`, started_at: "2026-11-01T00:00:00.000Z", stopped_at: "2026-11-01T01:00:00.000Z" })),
+  ];
+  const chunks = [];
+  const client = { from: () => ({ upsert: async (chunk) => { chunks.push(chunk); return { error: chunks.length === 2 ? { message: "failed" } : null }; } }) };
+  const result = await upsertStoredRows(client, rows);
+  assert.equal(result.error, "failed");
+  assert.ok(chunks[0].every((row) => row.transaction_id !== "new"));
+  assert.equal(chunks[1][0].transaction_id, "new"); // the newest row is in the chunk that failed
+});
+
+test("withoutCustomerData keeps Overview's fields and nothing that identifies a customer", () => {
+  const session = withoutCustomerData({
+    id: "1", transactionId: "chrgmod_1", provider: "chargemod", location: "Hub", locationId: 7, chargerId: "C1", connectorId: 2,
+    chargerName: "DC 60", stationType: "DC", startedAt: "2026-11-07T00:00:00.000Z", stoppedAt: null, energyKwh: 12, tariffAmount: 240,
+    userName: "A Customer", mobile: "9876543210", userEmail: "a@test.invalid", vehicleNumber: "TS09", vehicleName: "EV", userId: "u1",
+    vehicleId: "v1", idTag: "t1", tagReference: "r1", geoLatitude: 17, geoLongitude: 78, invoiceLink: "https://x.invalid", raw: { cms: {} },
+  });
+  assert.deepEqual(Object.keys(session).sort(), [
+    "chargerId", "chargerName", "connectorId", "energyKwh", "id", "location", "locationId", "provider", "startedAt", "stationType", "stoppedAt", "tariffAmount", "transactionId",
+  ]);
+});
+
+test("saveMeterReadings scrubs the platform's payload before storing it", async () => {
+  let saved;
+  const query = {
+    select: () => query, eq: () => query,
+    maybeSingle: async () => ({ data: { stopped_at: null, energy_kwh: 0, start_soc: null, end_soc: null }, error: null }),
+    update: (patch) => { saved = patch; return { eq: () => ({ select: async () => ({ data: [{}], error: null }) }) }; },
+  };
+  const payload = { employeeDetails: { refreshToken: "x" }, chargerDetails: { connectivity: { wifi: { password: "x", ssid: "s" } } } };
+  assert.equal(await saveMeterReadings({ from: () => query }, "chrgmod_1", { payload, readings: [], metrics: {} }), null);
+  assert.deepEqual(saved.meter_values_response, { chargerDetails: { connectivity: { wifi: { ssid: "s" } } } });
 });

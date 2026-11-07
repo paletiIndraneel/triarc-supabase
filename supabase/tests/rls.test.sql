@@ -15,6 +15,7 @@ declare
   u_i uuid := gen_random_uuid();   -- investor: overview, cms, enquiries, cpo-settings (add only)
   u_ib uuid := gen_random_uuid();  -- investor with billing ticked but no enquiries (billing is full access only)
   u_is uuid := gen_random_uuid();  -- investor limited to station A
+  u_nc uuid := gen_random_uuid();  -- investor without the cms module
   u_x uuid := gen_random_uuid();   -- inactive partner
   u_n uuid := gen_random_uuid();   -- signed in, not an admin
   st_a uuid; st_b uuid; cust uuid; inv uuid; enq uuid;
@@ -29,7 +30,7 @@ begin
   -- Fixtures, as the database owner.
   insert into auth.users (id, email, aud, role)
   select id, 'rls-' || id || '@test.invalid', 'authenticated', 'authenticated'
-  from unnest(array[u_p, u_t, u_i, u_ib, u_is, u_x, u_n]) id;
+  from unnest(array[u_p, u_t, u_i, u_ib, u_is, u_nc, u_x, u_n]) id;
   insert into public.billing_invoice_stations (name, provider, location_id, active)
     values ('RLS test station A', 'rlstest', '900000001', true) returning id into st_a;
   insert into public.billing_invoice_stations (name, provider, location_id, active)
@@ -40,6 +41,7 @@ begin
     (u_i, 'admin', true, 'investor', '{overview,cms,enquiries,cpo-settings}', '{}'),
     (u_ib, 'admin', true, 'investor', '{overview,cms,billing}', '{}'),
     (u_is, 'admin', true, 'investor', '{overview,cms,enquiries}', array[st_a]),
+    (u_nc, 'admin', true, 'investor', '{overview,enquiries}', '{}'),
     (u_x, 'admin', false, 'partner', '{overview}', '{}');
   insert into public.billing_customers (name) values ('RLS test customer') returning id into cust;
   insert into public.billing_invoices (invoice_number, customer_id, billing_name)
@@ -206,6 +208,16 @@ begin
   if (select count(*) from public.enquiries where id = enq) <> 0 then fails := fails || array['investor without the enquiries module reads enquiries']; end if;
   perform set_config('role', 'postgres', true);
 
+  -- Without the CMS module the sessions table shows nothing: Overview gets its figures from the server.
+  perform set_config('request.jwt.claims', json_build_object('sub', u_nc, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', u_nc::text, true);
+  perform set_config('role', 'authenticated', true);
+  total := total + 1;
+  if (select count(*) from public.cms_transactions where transaction_id in (tx_a, tx_b)) <> 0 then fails := fails || array['investor without the cms module reads sessions']; end if;
+  total := total + 1;
+  if (select count(*) from public.enquiries where id = enq) <> 1 then fails := fails || array['investor with only enquiries misses enquiries']; end if;
+  perform set_config('role', 'postgres', true);
+
   perform set_config('request.jwt.claims', json_build_object('sub', u_is, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', u_is::text, true);
   perform set_config('role', 'authenticated', true);
@@ -265,6 +277,26 @@ begin
   total := total + 1;
   delete from public.enquiries where id = enq; get diagnostics n = row_count;
   if n <> 1 then fails := fails || array['partner cannot delete an enquiry']; end if;
+
+  -- Editing an invoice keeps its payment state true (save_billing_invoice).
+  update public.billing_invoices set invoice_status = 'paid', amount_paid = 1000, grand_total = 1000 where id = inv;
+  perform public.save_billing_invoice(inv, '{"amount_paid": 5, "invoice_status": "paid"}'::jsonb,
+    '[{"description": "RLS test", "unit": "kWh", "quantity": 1, "unit_price": 2000, "gst_rate": 18, "tax_type": "CGST_SGST"}]'::jsonb);
+  total := total + 1;
+  if not exists (select 1 from public.billing_invoices where id = inv and grand_total = 2000 and amount_paid = 1000 and invoice_status = 'partially_paid' and not payment_received)
+    then fails := fails || array['raising a paid invoice''s total does not leave it part paid']; end if;
+  total := total + 1;
+  begin
+    perform public.save_billing_invoice(inv, '{}'::jsonb,
+      '[{"description": "RLS test", "unit": "kWh", "quantity": 1, "unit_price": 500, "gst_rate": 18, "tax_type": "CGST_SGST"}]'::jsonb);
+    denied := false;
+  exception when invalid_parameter_value then denied := true; end;
+  if not denied then fails := fails || array['an invoice total below what was received is accepted']; end if;
+  perform public.save_billing_invoice(inv, '{}'::jsonb,
+    '[{"description": "RLS test", "unit": "kWh", "quantity": 1, "unit_price": 1000, "gst_rate": 18, "tax_type": "CGST_SGST"}]'::jsonb);
+  total := total + 1;
+  if not exists (select 1 from public.billing_invoices where id = inv and grand_total = 1000 and invoice_status = 'paid' and payment_received)
+    then fails := fails || array['lowering an invoice total to what was received does not make it paid']; end if;
   perform set_config('role', 'postgres', true);
 
   -- Always roll back: the outcome travels in the exception message.

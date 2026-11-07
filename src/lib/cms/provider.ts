@@ -53,7 +53,7 @@ async function enabledPlatforms(supabase: SupabaseClient): Promise<Set<string> |
 }
 
 export type MeterResult = {
-  payload: unknown; // the platform's raw response, stored as-is in meter_values_response
+  payload: unknown; // the platform's raw response, stored scrubbed in meter_values_response
   readings: MeterReading[];
   metrics: LiveMetrics;
 };

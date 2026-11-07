@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
   // sessions, so a session they cannot read is refused (before the cache, so nothing leaks).
   const { data: row } = await supabase
     .from(SESSIONS_TABLE)
-    .select("provider, meter_values_fetched_at, meter_values_response, meter_values_readings")
+    .select("provider, meter_values_fetched_at, meter_values_readings")
     .eq("transaction_id", transactionId)
     .maybeSingle();
   if (stationIds && !row) return new NextResponse("Forbidden", { status: 403 });
@@ -36,7 +36,6 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
   if (savedReadings && Date.now() - fetchedAt < CACHE_MS) {
     return NextResponse.json({
       ...liveMetrics(savedReadings),
-      transactionDetails: row?.meter_values_response,
       parsedReadings: savedReadings,
     });
   }
@@ -59,7 +58,7 @@ export async function GET(_request: Request, context: { params: Promise<{ transa
       console.error("[cms/live] saving latest meter-values response failed:", saveError);
     }
 
-    return NextResponse.json({ ...meter.metrics, transactionDetails: meter.payload, parsedReadings: meter.readings });
+    return NextResponse.json({ ...meter.metrics, parsedReadings: meter.readings });
   } catch (error) {
     console.error("[cms/live]", error);
     return NextResponse.json({ error: providerErrorMessage(error) }, { status: 502 });

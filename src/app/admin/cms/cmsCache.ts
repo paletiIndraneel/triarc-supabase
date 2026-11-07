@@ -66,6 +66,7 @@ export function readCmsCache(): CmsCache {
       coverage: Array.isArray(parsed.coverage) ? parsed.coverage : [],
       dashboard: parsed.dashboard,
       active: parsed.active,
+      warnings: parsed.warnings,
     };
   } catch {
     return { transactions: [], coverage: [] };

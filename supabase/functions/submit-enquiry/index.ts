@@ -20,6 +20,29 @@ const PER_EMAIL_WINDOW_MS = 10 * 60 * 1000;
 const SITE_LIMIT = 30; // all enquiries in SITE_WINDOW_MS
 const SITE_WINDOW_MS = 60 * 60 * 1000;
 
+// The body as text, or null once it passes maxChars. Reads the stream and stops at the
+// limit, so an oversized body is never held in memory whole (content-length can be absent).
+async function readLimited(req: Request, maxChars: number): Promise<string | null> {
+  const maxBytes = maxChars * 4; // a UTF-8 character is at most 4 bytes
+  if (Number(req.headers.get("content-length") ?? 0) > maxBytes) return null;
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const text = await new Blob(chunks).text();
+  return text.length > maxChars ? null : text;
+}
+
 export default {
   fetch: withSupabase(
     { auth: "none" },
@@ -32,9 +55,9 @@ export default {
       }
 
       try {
-        const rawBody = await req.text();
+        const rawBody = await readLimited(req, MAX_BODY_CHARS);
 
-        if (rawBody.length > MAX_BODY_CHARS) {
+        if (rawBody === null) {
           return Response.json(
             { error: "Request is too large." },
             { status: 413 }

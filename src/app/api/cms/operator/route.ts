@@ -32,16 +32,23 @@ export async function GET(request: Request) {
 
   try {
     const url = new URL(request.url);
-    const page = Math.max(1, Number(url.searchParams.get("page") ?? "1"));
+    const page = Math.max(1, Math.trunc(Number(url.searchParams.get("page") ?? "1")) || 1);
     // Investors are read-only: a fixed page size and no platform search, so one request cannot
     // fan out into hundreds of ChargeMOD calls on the shared account (audit run-1).
     const perPage = isPartner
-      ? Math.min(100, Math.max(1, Number(url.searchParams.get("perPage") ?? "25")))
+      ? Math.min(100, Math.max(1, Math.trunc(Number(url.searchParams.get("perPage") ?? "25")) || 25))
       : 100;
-    const endDate = url.searchParams.get("endDate") ?? new Date().toISOString();
-    const startDate =
-      url.searchParams.get("startDate") ??
-      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    // Dates are re-serialised, so the platforms only ever receive a valid ISO timestamp.
+    const isoDate = (name: string, fallback: Date) => {
+      const raw = url.searchParams.get(name);
+      const date = raw === null ? fallback : new Date(raw);
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    };
+    const endDate = isoDate("endDate", new Date());
+    const startDate = isoDate("startDate", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    if (!endDate || !startDate || startDate > endDate) {
+      return NextResponse.json({ error: "startDate and endDate must be valid dates, in order." }, { status: 400 });
+    }
 
     const searchField = isPartner ? url.searchParams.get("searchField") ?? "" : "";
     const searchKey = isPartner ? url.searchParams.get("searchKey") ?? "" : "";

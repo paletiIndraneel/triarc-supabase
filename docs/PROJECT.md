@@ -100,7 +100,7 @@ Open points (3 Nov 2026):
 - **Live admin `suryasuriin@gmail.com`:** removed from admins on live. Its login account remains.
 - **Custom email:** skipped for now. Supabase's built-in sender is rate-limited (429).
 - **Ionage and Ather connectors:** waiting for their APIs.
-- **CMS dashboard:** the table's markup is now in `cmsSessionsCard.tsx`. The live status panel and data loading are still in the main component.
+- **CMS dashboard:** split into hooks and cards, and released to the company repo (`f79b73e`, 3 Nov 2026). Search and Filters sit in the table's top row before Export CSV. Nothing pending.
 - **Raw payloads:** only sessions synced after the release have them. Older sessions were not backfilled, by decision.
 - **Staging:** session rows cleared; test rows only.
 - **Live-session check:** passed. Live sessions show on the status card as expected (confirmed 3 Nov 2026).

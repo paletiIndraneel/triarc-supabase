@@ -13,8 +13,8 @@ const CACHE_MS = 15_000;
 
 // Live meter readings for one session, by its stored id (with the platform prefix).
 export async function GET(_request: Request, context: { params: Promise<{ transactionId: string }> }) {
-  const { supabase, user, stationIds } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { supabase, user, stationIds, isPartner, modules } = await getAdminClient();
+  if (!user || !(isPartner || modules.includes("cms"))) return new NextResponse("Forbidden", { status: 403 });
 
   const providers = await getChargingProviders(supabase);
   if (!providers.length) return new NextResponse("Not Found", { status: 404 });

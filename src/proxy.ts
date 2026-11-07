@@ -14,7 +14,17 @@ export async function proxy(request: NextRequest) {
   if (pathname !== "/robots.txt" && isBot(request.headers.get("user-agent"))) {
     return new NextResponse("Not available.", { status: 403, headers: { "X-Robots-Tag": NO_INDEX } });
   }
-  if (pathname !== "/") return NextResponse.next();
+  // Pages get a per-request script nonce (the API serves JSON and keeps next.config's CSP).
+  const csp = pathname.startsWith("/api/") ? null : contentSecurityPolicy();
+  const next = () => {
+    if (!csp) return NextResponse.next({ request });
+    const headers = new Headers(request.headers);
+    headers.set("Content-Security-Policy", csp);
+    const res = NextResponse.next({ request: { headers } });
+    res.headers.set("Content-Security-Policy", csp);
+    return res;
+  };
+  if (pathname !== "/") return next();
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -24,9 +34,7 @@ export async function proxy(request: NextRequest) {
     return redirectToSignIn(request);
   }
 
-  let response = NextResponse.next({
-    request,
-  });
+  let response = next();
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -39,9 +47,7 @@ export async function proxy(request: NextRequest) {
           request.cookies.set(name, value);
         });
 
-        response = NextResponse.next({
-          request,
-        });
+        response = next();
 
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
@@ -78,6 +84,16 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+// Only scripts carrying this request's nonce run, plus what they load ('strict-dynamic');
+// Next.js reads the nonce from the request header and adds it to its own scripts. Styles and
+// connections stay open (inline motion styles, Supabase). Pages must render per request, see
+// connection() in the root layout, or a prebuilt page would carry no nonce and stay blank.
+function contentSecurityPolicy() {
+  const nonce = btoa(crypto.randomUUID());
+  const dev = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+  return `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev}; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'`;
 }
 
 function redirectToSignIn(request: NextRequest) {

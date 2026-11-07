@@ -16,9 +16,8 @@ const nextConfig: NextConfig = {
 
   images: { unoptimized: true },
 
-  // Baseline security headers. The CSP is limited to directives that cannot affect
-  // scripts, styles, images, fonts or API calls (so nothing on the site is blocked):
-  // it stops the site being framed, blocks <base>/<object> injection and form hijacking.
+  // Baseline security headers. The API's CSP stops framing and <base>/<object> injection and
+  // form hijacking; pages get the same plus a nonce-based script-src from src/proxy.ts.
   async headers() {
     return [
       {
@@ -31,6 +30,12 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), payment=()" },
           { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        ],
+      },
+      {
+        // Pages get a stricter policy with a script nonce from src/proxy.ts.
+        source: "/api/:path*",
+        headers: [
           {
             key: "Content-Security-Policy",
             value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",

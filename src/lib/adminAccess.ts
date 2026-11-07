@@ -15,6 +15,16 @@ export function hasFullAccess(access: string | null | undefined) {
   return FULL_ACCESS_ROLES.includes(access ?? "");
 }
 
+// Who an API route is for. Every route names one (requireAdmin in @/lib/supabase/server).
+export type AdminRule = "any-admin" | "full-access" | { module: string };
+
+export function adminMayUse(rule: AdminRule | undefined, admin: { isPartner: boolean; modules: readonly string[] }) {
+  if (rule === "any-admin") return true;
+  if (rule === "full-access") return admin.isPartner;
+  if (!rule?.module) return false;
+  return admin.isPartner || admin.modules.includes(rule.module);
+}
+
 // A picklist value as people read it: "it_admin" -> "IT admin", "partner" -> "Partner"
 // (words of two letters or fewer are taken as abbreviations).
 export function roleLabel(access: string | null | undefined) {

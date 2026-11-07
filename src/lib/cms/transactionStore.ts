@@ -47,13 +47,14 @@ export function storedRows(active: CmsTransaction[], finished: CmsTransaction[],
 
 type MeterFields = Pick<CmsTransactionRow, "transaction_id" | "energy_kwh" | "start_soc" | "end_soc">;
 
-// ChargeMOD's copy of a session still charging often has energy 0 and no SoC. Keep the
-// values the meter readings stored on those rows rather than wiping them on every sync.
+// ChargeMOD's copy of a session can have energy 0 and no SoC, charging or finished. Keep the
+// values the meter readings stored on those rows rather than wiping them on every sync; a
+// figure the platform does send wins.
 export function keepMeterValues(rows: CmsTransactionRow[], stored: MeterFields[]) {
   const byId = new Map(stored.map((s) => [s.transaction_id, s]));
   return rows.map((row) => {
     const known = byId.get(row.transaction_id);
-    if (row.stopped_at || !known) return row;
+    if (!known) return row;
     return {
       ...row,
       energy_kwh: (row.energy_kwh ?? 0) > 0 ? row.energy_kwh : known.energy_kwh ?? row.energy_kwh,
@@ -84,15 +85,17 @@ export function meterPatch(
 // failed older one would leave the older sessions behind for good.
 export async function upsertStoredRows(supabase: SupabaseClient, unsorted: CmsTransactionRow[]) {
   let rows = [...unsorted].sort((a, b) => String(a.started_at ?? "").localeCompare(String(b.started_at ?? "")));
-  const openIds = rows.filter((row) => !row.stopped_at).map((row) => row.transaction_id);
-  if (openIds.length) {
+  const known: MeterFields[] = [];
+  for (let i = 0; i < rows.length; i += 200) {
     const { data, error } = await supabase
       .from(SESSIONS_TABLE)
       .select("transaction_id,energy_kwh,start_soc,end_soc")
-      .in("transaction_id", openIds);
-    if (error) console.error("[cms] reading stored meter values failed:", error.message);
-    else rows = keepMeterValues(rows, data as MeterFields[]);
+      .in("transaction_id", rows.slice(i, i + 200).map((row) => row.transaction_id));
+    // Without them a save could wipe stored figures, so nothing is saved this time.
+    if (error) return { written: 0, error: `reading stored meter values failed: ${error.message}` };
+    known.push(...(data as MeterFields[]));
   }
+  rows = keepMeterValues(rows, known);
   let written = 0;
   for (let i = 0; i < rows.length; i += 500) {
     const chunk = rows.slice(i, i + 500);
@@ -181,6 +184,40 @@ export function fetchMayMoveResumePoint(fetch: {
   if (fetch.searchKey || fetch.page !== 1) return false;
   if (Date.parse(fetch.windowEnd) < (fetch.now ?? Date.now()) - WINDOW_END_TOLERANCE_MS) return false;
   return Date.parse(fetch.windowStart) <= Date.parse(fetch.newestStoredStart ?? CMS_HISTORY_START);
+}
+
+// Where a platform's stored sessions stand: its newest session, and its oldest still charging.
+// Read with the secret-key client: this is a fact about the whole table, and a station-limited
+// investor's own client would only see their stations' newest row.
+export async function readResumePoint(writer: SupabaseClient, provider: string) {
+  const latestStart = (open: boolean) => {
+    let query = writer
+      .from(SESSIONS_TABLE)
+      .select("started_at")
+      .eq("provider", provider)
+      .not("started_at", "is", null);
+    // Only open sessions from the last MAX_ACTIVE_MS: an older one is a platform ghost and,
+    // as the oldest, would hide the real ones still waiting for their stop time.
+    if (open) query = query.is("stopped_at", null).gte("started_at", new Date(Date.now() - MAX_ACTIVE_MS).toISOString());
+    return query.order("started_at", { ascending: open }).limit(1).maybeSingle();
+  };
+  const [newest, oldestOpen] = await Promise.all([latestStart(false), latestStart(true)]);
+  return {
+    newest: (newest.data?.started_at as string | undefined) ?? null,
+    oldestOpen: (oldestOpen.data?.started_at as string | undefined) ?? null,
+    error: (newest.error ?? oldestOpen.error)?.message ?? null,
+  };
+}
+
+// A charger that was offline uploads its sessions late, with start times before the newest
+// stored one, where the delta sync never looks. The scheduled sync therefore always re-reads
+// this far back; re-saving a session is harmless.
+const SCHEDULED_LOOKBACK_MS = 48 * 60 * 60 * 1000;
+
+export function scheduledSyncStart(newestStoredStart: string | null, oldestOpenStart: string | null, now = Date.now()) {
+  const history = new Date(CMS_HISTORY_START).toISOString();
+  const resume = syncStartDate(history, newestStoredStart, oldestOpenStart);
+  return new Date(Math.min(Date.parse(resume), now - SCHEDULED_LOOKBACK_MS)).toISOString();
 }
 
 export function syncStartDate(

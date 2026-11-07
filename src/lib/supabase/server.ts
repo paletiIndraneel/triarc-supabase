@@ -1,6 +1,7 @@
 ﻿import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { hasFullAccess } from "@/lib/adminAccess";
+import { NextResponse } from "next/server";
+import { adminMayUse, hasFullAccess, type AdminRule } from "@/lib/adminAccess";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -33,7 +34,17 @@ export async function createClient() {
   });
 }
 
-// Route handlers aren't covered by the /admin proxy guard, so each one calls this.
+// The access check every API handler starts with: it names who the route is for, and a test in
+// tests/admin-helpers.test.mjs fails if a handler leaves it out.
+export async function requireAdmin(rule: AdminRule) {
+  const admin = await getAdminClient();
+  if (!admin.user || !adminMayUse(rule, admin)) {
+    return { ...admin, user: null, denied: new NextResponse("Forbidden", { status: 403 }) } as const;
+  }
+  return { ...admin, user: admin.user, denied: null } as const;
+}
+
+// Pages use this directly; route handlers aren't covered by the proxy guard and use requireAdmin.
 // Returns the cookie-bound client plus the user when they are an active admin.
 // `isPartner` means full access (partner or IT admin, see @/lib/adminAccess); other roles open
 // the `modules` ticked for them on the Access page (admin_users.modules), and `stationIds` lists

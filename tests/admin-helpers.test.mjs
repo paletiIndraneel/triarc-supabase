@@ -4,8 +4,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { calc, gstinError, mergeLines, rateExGst, words } from "../src/app/admin/billing/invoiceMath.mjs";
 import { getCustomRangeIST, getDateRangeIST } from "../src/app/admin/cms/dateRanges.ts";
-import { getSafeCallbackUrl } from "../src/lib/security.ts";
-import { backfillWindow, cleanUserName, CMS_HISTORY_START, fetchMayMoveResumePoint, fromStoredRow, keepMeterValues, meterPatch, saveMeterReadings, storedRows, syncStartDate, toStoredRow, upsertStoredRows, withoutCustomerData } from "../src/lib/cms/transactionStore.ts";
+import { getSafeCallbackUrl, sameSecret } from "../src/lib/security.ts";
+import { adminMayUse } from "../src/lib/adminAccess.ts";
+import { readdirSync, readFileSync } from "node:fs";
+import { backfillWindow, cleanUserName, CMS_HISTORY_START, fetchMayMoveResumePoint, fromStoredRow, keepMeterValues, meterPatch, saveMeterReadings, scheduledSyncStart, storedRows, syncStartDate, toStoredRow, upsertStoredRows, withoutCustomerData } from "../src/lib/cms/transactionStore.ts";
 import { comparisonCycle, cycleContaining, cycleLabel, cyclesBack, previousBillingCycle, previousCycle } from "../src/lib/billingCycle.ts";
 import { EMPTY_TRANSACTION_FILTERS, isCpoTransaction, matchesTransactionFilters, shortChargerLabel, splitActiveSessions, isStuckSession } from "../src/app/admin/cms/transactionFilters.ts";
 
@@ -681,7 +683,10 @@ test("sessions are saved oldest first, so a failed chunk cannot skip older ones"
     ...Array.from({ length: 500 }, (_, i) => ({ transaction_id: `old${i}`, started_at: "2026-11-01T00:00:00.000Z", stopped_at: "2026-11-01T01:00:00.000Z" })),
   ];
   const chunks = [];
-  const client = { from: () => ({ upsert: async (chunk) => { chunks.push(chunk); return { error: chunks.length === 2 ? { message: "failed" } : null }; } }) };
+  const client = { from: () => ({
+    select: () => ({ in: async () => ({ data: [], error: null }) }),
+    upsert: async (chunk) => { chunks.push(chunk); return { error: chunks.length === 2 ? { message: "failed" } : null }; },
+  }) };
   const result = await upsertStoredRows(client, rows);
   assert.equal(result.error, "failed");
   assert.ok(chunks[0].every((row) => row.transaction_id !== "new"));
@@ -698,6 +703,60 @@ test("withoutCustomerData keeps Overview's fields and nothing that identifies a 
   assert.deepEqual(Object.keys(session).sort(), [
     "chargerId", "chargerName", "connectorId", "energyKwh", "id", "location", "locationId", "provider", "startedAt", "stationType", "stoppedAt", "tariffAmount", "transactionId",
   ]);
+});
+
+test("a finished copy with no figures keeps what the meter readings stored", () => {
+  const [row] = keepMeterValues(
+    [{ transaction_id: "a", stopped_at: "2026-10-20T10:00:00Z", energy_kwh: 0, start_soc: null, end_soc: 90 }],
+    [{ transaction_id: "a", energy_kwh: 8.2, start_soc: 20, end_soc: 60 }]
+  );
+  assert.deepEqual([row.energy_kwh, row.start_soc, row.end_soc], [8.2, 20, 90]);
+});
+
+test("the scheduled sync looks back 48 hours, so late-uploaded sessions are found", () => {
+  const now = Date.parse("2026-11-07T10:00:00.000Z");
+  assert.equal(scheduledSyncStart("2026-11-07T09:00:00.000Z", "2026-11-07T09:00:00.000Z", now), "2026-11-05T10:00:00.000Z");
+  // Never later than where the sync has to resume from, and an empty table takes the whole history.
+  assert.equal(scheduledSyncStart("2026-11-01T00:00:00.000Z", "2026-11-01T00:00:00.000Z", now), "2026-10-31T23:59:00.000Z");
+  assert.equal(scheduledSyncStart(null, null, now), new Date(CMS_HISTORY_START).toISOString());
+});
+
+test("adminMayUse follows the route's rule and refuses anything else", () => {
+  const investor = { isPartner: false, modules: ["cms"] };
+  const partner = { isPartner: true, modules: [] };
+  assert.equal(adminMayUse("any-admin", investor), true);
+  assert.equal(adminMayUse("full-access", investor), false);
+  assert.equal(adminMayUse("full-access", partner), true);
+  assert.equal(adminMayUse({ module: "cms" }, investor), true);
+  assert.equal(adminMayUse({ module: "enquiries" }, investor), false);
+  assert.equal(adminMayUse({ module: "enquiries" }, partner), true);
+  assert.equal(adminMayUse(undefined, partner), false);
+});
+
+test("sameSecret only matches the exact secret", () => {
+  assert.equal(sameSecret("abc123", "abc123"), true);
+  assert.equal(sameSecret("abc124", "abc123"), false);
+  assert.equal(sameSecret("abc", "abc123"), false);
+  assert.equal(sameSecret("", ""), false);
+});
+
+test("every API handler checks access before anything else", () => {
+  const root = new URL("../src/app/api/", import.meta.url);
+  const routes = readdirSync(root, { recursive: true }).map(String).filter((p) => /route\.ts$/.test(p));
+  assert.ok(routes.length >= 9);
+  // Called by the Worker's schedule, not a person: it has its own secret.
+  const ownCheck = { "cms/sync/route.ts": "sameSecret(" };
+  for (const path of routes) {
+    const name = path.replaceAll("\\", "/");
+    const source = readFileSync(new URL(name, root), "utf8");
+    assert.ok(!source.includes("getAdminClient"), `${name} checks access by hand`);
+    const handlers = source.split(/^export async function (?=GET|POST|PUT|PATCH|DELETE)/m).slice(1);
+    assert.ok(handlers.length, `${name} has no handlers`);
+    for (const handler of handlers) {
+      const check = ownCheck[name] ?? (name === "admin/access/route.ts" ? "await context()" : "await requireAdmin(");
+      assert.ok(handler.includes(check), `${name} ${handler.slice(0, 6)} has no access check`);
+    }
+  }
 });
 
 test("saveMeterReadings scrubs the platform's payload before storing it", async () => {

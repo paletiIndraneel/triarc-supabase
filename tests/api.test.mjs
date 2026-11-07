@@ -36,6 +36,7 @@ const ROUTES = [
   ["GET", "/api/cms/operator"],
   ["GET", "/api/cms/live/chrgmod_1"],
   ["POST", "/api/cms/live/backfill", { stage: "transactions" }],
+  ["POST", "/api/cms/sync"],
 ];
 
 test("admin API refuses requests without a signed-in admin", { skip }, async () => {

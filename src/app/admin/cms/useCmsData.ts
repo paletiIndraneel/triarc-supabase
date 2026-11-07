@@ -25,6 +25,7 @@ export function useCmsData({ filterCache, shownPlatforms, setLivePlatforms }: {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [dataTill, setDataTill] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const applyCache = useCallback(async (cache: CmsCache, shown: readonly string[]) => {
     try {
@@ -135,6 +136,7 @@ export function useCmsData({ filterCache, shownPlatforms, setLivePlatforms }: {
       if (cache && cache !== shownCache) {
         shownCache = cache;
         setDataTill(cache.coverage.at(-1)?.endDate ?? null);
+        setWarnings(cache.warnings ?? []);
         setLivePlatforms([...new Set(cache.transactions.map((t) => t.provider).filter((id): id is string => !!id))].sort());
         void applyCache(filterCache(cache), shownPlatforms);
       }
@@ -147,5 +149,5 @@ export function useCmsData({ filterCache, shownPlatforms, setLivePlatforms }: {
     }
     return unsubscribe;
   }, [applyCache, filterCache, shownPlatforms, setLivePlatforms]);
-  return { baseDashboard, setBaseDashboard, platformMetrics, setPlatformMetrics, allTransactions, setAllTransactions, activeTransactions, setActiveTransactions, active, setActive, activeTransactionIds, setActiveTransactionIds, cpoMobileNumbers, setCpoMobileNumbers, loading, setLoading, message, setMessage, dataTill, setDataTill, applyCache };
+  return { baseDashboard, setBaseDashboard, platformMetrics, setPlatformMetrics, allTransactions, setAllTransactions, activeTransactions, setActiveTransactions, active, setActive, activeTransactionIds, setActiveTransactionIds, cpoMobileNumbers, setCpoMobileNumbers, loading, setLoading, message, setMessage, dataTill, setDataTill, warnings, applyCache };
 }

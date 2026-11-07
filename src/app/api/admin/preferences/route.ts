@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/supabase/server";
 import { CMS_COLUMN_IDS } from "@/app/admin/cms/transactionFilters";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +17,8 @@ const DEFAULT_COLUMNS = [
 ];
 
 export async function GET() {
-  const { supabase, user } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase, user } = await requireAdmin("any-admin");
+  if (denied) return denied;
 
   const { data, error } = await supabase
     .from("admin_users")
@@ -40,8 +40,8 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const { supabase, user } = await getAdminClient();
-  if (!user) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase, user } = await requireAdmin("any-admin");
+  if (denied) return denied;
 
   try {
     const body = (await request.json()) as { columns?: unknown };

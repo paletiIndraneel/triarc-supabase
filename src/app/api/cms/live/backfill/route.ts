@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getChargingProviders, providerErrorMessage } from "@/lib/cms/provider";
 import { backfillWindow, saveMeterReadings, SESSIONS_TABLE, storedRows, upsertStoredRows } from "@/lib/cms/transactionStore";
@@ -19,9 +19,9 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // meter values, a batch at a time, for the window's finished sessions that have none yet.
 // Every switched-on platform is included; meters only for platforms that have them.
 export async function POST(request: Request) {
-  const { supabase: userClient, user, isPartner } = await getAdminClient();
   // Investors are read-only, so only full-access admins start a backfill.
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase: userClient } = await requireAdmin("full-access");
+  if (denied) return denied;
   // Saved with the server's secret key once the user is checked (falls back to their session).
   const supabase = (await getServiceClient()) ?? userClient;
 

@@ -55,7 +55,7 @@ export default function CmsOperatorDashboard() {
   const [livePlatforms, setLivePlatforms] = useState<string[]>([]);
   // This page can draw platforms side by side, so it offers "All platforms".
   const { options: platformOptions, selection, shown: shownPlatforms, setPlatform } = usePlatformSelection(livePlatforms, { allowAll: true });
-  const { baseDashboard, platformMetrics, allTransactions, activeTransactions, active, activeTransactionIds, cpoMobileNumbers, loading, message, setMessage, dataTill } = useCmsData({ filterCache, shownPlatforms, setLivePlatforms });
+  const { baseDashboard, platformMetrics, allTransactions, activeTransactions, active, activeTransactionIds, cpoMobileNumbers, loading, message, setMessage, dataTill, warnings } = useCmsData({ filterCache, shownPlatforms, setLivePlatforms });
 
   const load = useCallback((forceRefresh = false) => requestCmsWindow(forceRefresh), []);
 
@@ -290,6 +290,12 @@ export default function CmsOperatorDashboard() {
         {backfillStatus && (
           <div role="status" aria-live="polite" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {backfillStatus}
+          </div>
+        )}
+
+        {warnings.length > 0 && (
+          <div role="status" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span className="font-semibold">Part of the last sync failed.</span> {warnings.join("; ")}
           </div>
         )}
 

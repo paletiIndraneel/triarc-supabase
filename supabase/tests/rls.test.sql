@@ -25,7 +25,7 @@ declare
   total int := 0; fails text[] := '{}'; gaps text[] := '{}';
   sensitive text[] := array['enquiries', 'billing_invoices', 'billing_customers', 'billing_items',
     'cms_transactions', 'cpo_mobile_numbers', 'admin_users', 'cms_session', 'devices', 'device_commands',
-    'provider_settings', 'provider_bills'];
+    'provider_settings', 'provider_bills', 'billing_invoice_audit'];
 begin
   -- Fixtures, as the database owner.
   insert into auth.users (id, email, aud, role)
@@ -297,6 +297,20 @@ begin
   total := total + 1;
   if not exists (select 1 from public.billing_invoices where id = inv and grand_total = 1000 and invoice_status = 'paid' and payment_received)
     then fails := fails || array['lowering an invoice total to what was received does not make it paid']; end if;
+  -- Those edits are on record: full-access admins read it, nobody can write it.
+  total := total + 1;
+  if not exists (select 1 from public.billing_invoice_audit where invoice_id = inv and changed_by = u_p and new_row ->> 'invoice_status' = 'partially_paid')
+    then fails := fails || array['an invoice edit is not in the audit record']; end if;
+  total := total + 1;
+  begin delete from public.billing_invoice_audit where invoice_id = inv; denied := false;
+  exception when insufficient_privilege then denied := true; end;
+  if not denied then fails := fails || array['a partner deletes the invoice audit record']; end if;
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_i, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', u_i::text, true);
+  perform set_config('role', 'authenticated', true);
+  total := total + 1;
+  if (select count(*) from public.billing_invoice_audit where invoice_id = inv) <> 0 then fails := fails || array['an investor reads the invoice audit record']; end if;
   perform set_config('role', 'postgres', true);
 
   -- Always roll back: the outcome travels in the exception message.

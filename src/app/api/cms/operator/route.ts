@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getAdminClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getChargingProviders, providerErrorMessage, type ChargingProvider } from "@/lib/cms/provider";
 import {
   fetchMayMoveResumePoint,
   fromStoredRow,
-  MAX_ACTIVE_MS,
   OVERVIEW_COLUMNS,
+  readResumePoint,
   SESSION_COLUMNS,
   SESSIONS_TABLE,
   stationLocationKeys,
@@ -20,13 +21,12 @@ import type { CmsTransaction, CmsTransactionRow } from "@/lib/cms/types";
 
 export const dynamic = "force-dynamic";
 
-type Supabase = Awaited<ReturnType<typeof getAdminClient>>["supabase"];
+type Supabase = SupabaseClient;
 
 export async function GET(request: Request) {
-  const { supabase, user, stationIds, isPartner, modules } = await getAdminClient();
-  if (!user) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
+  // Any admin: Overview is open to all. What identifies a customer needs the CMS module (below).
+  const { denied, supabase, stationIds, isPartner, modules } = await requireAdmin("any-admin");
+  if (denied) return denied;
 
   const providers = await getChargingProviders(supabase);
   if (!providers.length) {
@@ -163,27 +163,14 @@ async function syncProvider(
   if (!searchKey) {
     // Where to resume is a fact about the whole table, so it is read with the writer (a
     // station-limited investor's own client would only see their stations' newest row).
-    const latestStart = (open: boolean) => {
-      let query = writer
-        .from(SESSIONS_TABLE)
-        .select("started_at")
-        .eq("provider", provider.id)
-        .not("started_at", "is", null);
-      // Only open sessions from the last MAX_ACTIVE_MS: an older one is a platform ghost and,
-      // as the oldest, would hide the real ones still waiting for their stop time.
-      if (open) query = query.is("stopped_at", null).gte("started_at", new Date(Date.now() - MAX_ACTIVE_MS).toISOString());
-      return query.order("started_at", { ascending: open }).limit(1).maybeSingle();
-    };
-    const [newest, oldestOpen] = await Promise.all([latestStart(false), latestStart(true)]);
-    const error = newest.error ?? oldestOpen.error;
-    if (error) {
-      console.error(`[cms/operator] reading stored ${provider.id} sessions failed:`, error.message);
+    const resume = await readResumePoint(writer, provider.id);
+    if (resume.error) {
+      console.error(`[cms/operator] reading stored ${provider.id} sessions failed:`, resume.error);
     } else {
-      newestStoredStart = newest.data?.started_at ?? null;
-      const hasStoredHistory = Boolean(newest.data?.started_at);
-      const shouldBackfill = backfillRequested && !hasStoredHistory;
+      newestStoredStart = resume.newest;
+      const shouldBackfill = backfillRequested && !resume.newest;
       if (!shouldBackfill) {
-        syncStart = syncStartDate(startDate, newest.data?.started_at, oldestOpen.data?.started_at);
+        syncStart = syncStartDate(startDate, resume.newest, resume.oldestOpen);
       }
     }
     if (syncStart > endDate) syncStart = endDate;
@@ -196,11 +183,15 @@ async function syncProvider(
   // cannot terminate the write after the response has returned. Every active admin's normal
   // load saves; any other fetch is only returned (see fetchMayMoveResumePoint).
   let persistPromise: Promise<void> = Promise.resolve();
+  const errors = data.errors.map((e) => `${provider.label}: ${e}`);
   const rows = storedRows(data.active, data.transactions, new Date().toISOString());
   const maySave = fetchMayMoveResumePoint({ windowStart: startDate, windowEnd: endDate, page, searchKey, newestStoredStart });
   if (maySave && rows.length > 0) {
     persistPromise = upsertStoredRows(writer, rows).then(({ error }) => {
-      if (error) console.error(`[cms/operator] saving ${provider.id} sessions failed:`, error);
+      if (!error) return;
+      console.error(`[cms/operator] saving ${provider.id} sessions failed:`, error);
+      // The page still shows the sessions it fetched, so say they were not kept.
+      errors.push(`${provider.label}: sessions could not be saved (${error})`);
     });
   }
 
@@ -211,7 +202,7 @@ async function syncProvider(
   return {
     transactions: [...stored, ...data.transactions],
     active: data.active,
-    errors: data.errors.map((e) => `${provider.label}: ${e}`),
+    errors,
     dashboard: data.dashboard,
   };
 }

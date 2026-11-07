@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getRuntimeEnv } from "@/lib/cms/operator";
 import { PROVIDERS } from "@/lib/cms/providerIds";
@@ -26,8 +26,8 @@ async function missingEnvByProvider() {
 }
 
 export async function GET() {
-  const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase } = await requireAdmin("full-access");
+  if (denied) return denied;
 
   const { data, error } = await supabase.from("provider_settings").select("provider, enabled, updated_by, updated_at");
   if (error) {
@@ -67,8 +67,8 @@ export async function GET() {
 
 // { provider, enabled }
 export async function PUT(request: Request) {
-  const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase, user } = await requireAdmin("full-access");
+  if (denied) return denied;
   try {
     const body = (await request.json()) as { provider?: unknown; enabled?: unknown };
     const info = PROVIDERS.find((p) => p.id === body.provider);

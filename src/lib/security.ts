@@ -3,6 +3,14 @@
  * Everything here is a pure function so it can be unit-tested without a browser.
  */
 
+/** Compares a presented secret without stopping at the first wrong character. Empty never matches. */
+export function sameSecret(given: string, secret: string) {
+  if (!secret || given.length !== secret.length) return false;
+  let difference = 0;
+  for (let i = 0; i < secret.length; i += 1) difference |= given.charCodeAt(i) ^ secret.charCodeAt(i);
+  return difference === 0;
+}
+
 /**
  * Returns a same-origin path (plus query/hash) that is safe to navigate to after
  * sign-in, or `fallback` when `raw` is missing or could leave the site.

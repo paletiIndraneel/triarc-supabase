@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { accessChangeError, hasFullAccess, isEmail, toLevels, type AdminRecord } from "@/lib/adminAccess";
 import { GRANTABLE_MODULES } from "@/components/admin/adminNavigation";
@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 type Service = NonNullable<Awaited<ReturnType<typeof getServiceClient>>>;
 
 async function context() {
-  const { user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return { error: new NextResponse("Forbidden", { status: 403 }) } as const;
+  const { denied, user } = await requireAdmin("full-access");
+  if (denied) return { error: denied } as const;
   const service = await getServiceClient();
   if (!service) {
     return { error: NextResponse.json({ error: "SUPABASE_SECRET_KEY is not set for this deployment." }, { status: 500 }) } as const;

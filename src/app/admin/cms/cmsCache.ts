@@ -48,6 +48,8 @@ export type CmsCache = {
   // Kept with the rows so a reload served from cache still shows locations and live sessions.
   dashboard?: Dashboard;
   active?: ActiveTransactionResponse;
+  // Parts of the last load that failed without failing it, e.g. sessions that could not be saved.
+  warnings?: string[];
 };
 
 export const CMS_CACHE_KEY = "triarc-cms-transaction-cache-v9";
@@ -269,6 +271,7 @@ export async function loadCmsWindow(
     dashboard?: Dashboard;
     transactions?: TransactionResponse & {
       coverage?: { startDate: string; endDate: string };
+      sourceErrors?: string[];
     };
     active?: ActiveTransactionResponse;
   };
@@ -294,6 +297,7 @@ export async function loadCmsWindow(
     coverage: [...cache.coverage, coverage],
     dashboard: dashboardData,
     active: data.active ?? {},
+    warnings: data.transactions?.sourceErrors ?? [],
   };
   writeCmsCache(cache);
   return cache;

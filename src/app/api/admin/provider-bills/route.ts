@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/supabase/server";
 import { PROVIDERS } from "@/lib/cms/providerIds";
 import { SESSIONS_TABLE } from "@/lib/cms/transactionStore";
 import { normalizeMobile } from "@/app/admin/cms/transactionFilters";
@@ -106,8 +106,8 @@ function platformOr400(value: unknown) {
 
 export async function GET(request: Request) {
   // Platform bills are full access only (investors are read-only; audit run-1).
-  const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase, isPartner } = await requireAdmin("full-access");
+  if (denied) return denied;
 
   const asked = new URL(request.url).searchParams.get("provider");
   const info = asked ? platformOr400(asked) : PROVIDERS[0];
@@ -163,8 +163,8 @@ export async function GET(request: Request) {
 // { provider, periodStart, theirEnergyKwh?, theirAmount?, theirCommission?, status?, note? }
 // Our own figures are never taken from the request: they are recomputed here from the sessions.
 export async function PUT(request: Request) {
-  const { supabase, user, isPartner } = await getAdminClient();
-  if (!user || !isPartner) return new NextResponse("Forbidden", { status: 403 });
+  const { denied, supabase, user } = await requireAdmin("full-access");
+  if (denied) return denied;
   try {
     const body = (await request.json()) as Record<string, unknown>;
     const info = platformOr400(body.provider);
